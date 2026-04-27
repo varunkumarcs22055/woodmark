@@ -1,0 +1,70 @@
+/* OrderCard Styles */
+.order-card {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-light);
+  overflow: hidden;
+}
+
+.order-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-lg);
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.order-id {
+  font-weight: 700;
+  font-size: var(--text-base);
+  color: var(--color-text);
+  margin-right: var(--space-md);
+}
+
+.order-date { font-size: var(--text-sm); color: var(--color-text-muted); }
+
+.order-badges { display: flex; gap: var(--space-sm); }
+
+.order-items-list { padding: var(--space-md) var(--space-lg); }
+
+.order-item-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+}
+
+.order-item-row + .order-item-row { border-top: 1px solid var(--color-border-light); }
+
+.order-item-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  background: var(--color-bg-secondary);
+}
+
+.order-item-info { flex: 1; }
+.order-item-name { display: block; font-weight: 500; font-size: var(--text-sm); }
+.order-item-qty { font-size: var(--text-xs); color: var(--color-text-muted); }
+.order-item-subtotal { font-weight: 600; font-size: var(--text-sm); }
+
+.order-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.order-meta { font-size: var(--text-sm); color: var(--color-text-secondary); }
+.erp-id { display: block; font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 2px; }
+
+.order-total { text-align: right; }
+.total-label { display: block; font-size: var(--text-xs); color: var(--color-text-muted); }
+.total-value { font-size: var(--text-xl); font-weight: 700; color: var(--color-text); }
+
+@media (max-width: 768px) {
+  .order-card-header { flex-direction: column; align-items: flex-start; gap: var(--space-sm); }
+}

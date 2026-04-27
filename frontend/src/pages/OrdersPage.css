@@ -1,0 +1,45 @@
+/* OrdersPage Styles */
+.orders-page { padding: var(--space-xl) 0 var(--space-3xl); min-height: 60vh; }
+
+.orders-header { margin-bottom: var(--space-xl); }
+.orders-header p { color: var(--color-text-secondary); margin-top: var(--space-sm); }
+
+.orders-search {
+  display: flex;
+  gap: var(--space-md);
+  margin-bottom: var(--space-2xl);
+  max-width: 600px;
+}
+
+.orders-search-input-wrap {
+  position: relative;
+  flex: 1;
+}
+
+.orders-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+}
+
+.orders-email-input { padding-left: 40px !important; }
+
+.orders-list { display: flex; flex-direction: column; gap: var(--space-lg); }
+
+.orders-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-3xl) var(--space-xl);
+  gap: var(--space-md);
+}
+
+.orders-empty-icon { color: var(--color-text-muted); }
+.orders-empty p { color: var(--color-text-secondary); }
+
+@media (max-width: 600px) {
+  .orders-search { flex-direction: column; }
+}

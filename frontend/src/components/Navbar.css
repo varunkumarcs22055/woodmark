@@ -93,11 +93,13 @@
   display: flex;
   align-items: stretch;
   flex: 1;
-  gap: 1.5rem; /* Reduce column gap for more natural look */
+  gap: 1.5rem;
+  /* Reduce column gap for more natural look */
 }
 
 .nav-item {
-  position: static; /* mega menu is full-width via .navbar */
+  position: static;
+  /* mega menu is full-width via .navbar */
   display: flex;
   align-items: stretch;
 }
@@ -133,6 +135,7 @@
     color 0.2s,
     border-color 0.2s;
 }
+
 .nav-trigger:hover {
   color: var(--color-brand);
   border-bottom-color: var(--color-brand);
@@ -152,6 +155,7 @@
   transition: transform var(--transition-fast);
   opacity: 0.6;
 }
+
 .nav-chevron.rotated {
   transform: rotate(180deg);
 }
@@ -161,7 +165,8 @@
    Full-width panel anchored to bottom of navbar
 ───────────────────────────────────────────────────────────────────── */
 .mega-menu {
-  position: fixed; /* full-width below the navbar */
+  position: fixed;
+  /* full-width below the navbar */
   top: calc(var(--announcement-height) + var(--nav-height));
   left: 0;
   right: 0;
@@ -178,6 +183,7 @@
     opacity: 0;
     transform: translateY(-6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -187,7 +193,8 @@
 /* Multi-column row */
 .mega-menu-cols {
   display: flex;
-  gap: 1.5rem; /* Reduce column gap for more natural look */
+  gap: 1.5rem;
+  /* Reduce column gap for more natural look */
   padding: var(--space-6) 0 var(--space-4);
   max-width: 1400px;
   margin: 0 auto;
@@ -258,7 +265,7 @@
 }
 
 /* Mega menu needs its own full-width footer */
-.mega-menu > .mega-footer {
+.mega-menu>.mega-footer {
   max-width: 100%;
   padding: var(--space-3) calc(var(--space-8) + ((100% - 1400px) / 2));
 }
@@ -367,6 +374,7 @@
   cursor: pointer;
   transition: background var(--transition-fast);
 }
+
 .mobile-toggle:hover {
   background: var(--color-surface-2);
 }
@@ -425,6 +433,7 @@
   padding: 8px 0;
   font-family: var(--font-sans);
 }
+
 .search-form-input::placeholder {
   color: var(--color-text-muted);
 }
@@ -450,6 +459,7 @@
   flex-shrink: 0;
   transition: all var(--transition-fast);
 }
+
 .search-close-btn:hover {
   color: var(--color-text);
   background: var(--color-surface-2);
@@ -521,6 +531,7 @@
   from {
     transform: translateX(-100%);
   }
+
   to {
     transform: translateX(0);
   }
@@ -549,6 +560,7 @@
   color: var(--color-text);
   transition: background var(--transition-fast);
 }
+
 .mobile-drawer-header button:hover {
   background: var(--color-border);
 }
@@ -576,6 +588,7 @@
   transition: transform var(--transition-fast);
   flex-shrink: 0;
 }
+
 .mobile-accordion-arrow.rotated {
   transform: rotate(180deg);
 }
@@ -613,12 +626,15 @@
   text-decoration: none;
   transition: color var(--transition-fast);
 }
+
 .mobile-nav-label:hover {
   color: var(--color-brand);
 }
+
 .mobile-nav-label.highlight {
   color: var(--color-accent);
 }
+
 .mobile-nav-label.expanded {
   color: var(--color-brand);
 }
@@ -640,6 +656,7 @@
     color var(--transition-fast),
     background var(--transition-fast);
 }
+
 .mobile-nav-link:hover {
   color: var(--color-brand);
   background: var(--color-brand-50);
@@ -656,12 +673,15 @@
   .navbar-nav {
     display: none;
   }
+
   .mobile-toggle {
     display: flex;
   }
+
   .nav-action-btn:not(:last-of-type) {
     display: none;
   }
+
   .announcement-right {
     display: none;
   }
@@ -671,4 +691,154 @@
   .announcement-text {
     font-size: 10px;
   }
+}
+
+/* ─── Account Dropdown ───────────────────────────────────────────────── */
+.account-wrap {
+  position: relative;
+}
+
+.account-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  min-width: 280px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-3);
+  z-index: 1200;
+  animation: slideDown 0.18s var(--ease-out);
+}
+
+.account-menu__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-3);
+}
+
+.account-menu__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  color: var(--color-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: var(--text-md);
+  flex-shrink: 0;
+}
+
+.account-menu__user {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.account-menu__name {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.account-menu__role {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.account-menu__greet {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: var(--space-2) 0 var(--space-3);
+  margin: 0;
+}
+
+.account-menu__cta {
+  width: 100%;
+  margin-bottom: var(--space-3);
+}
+
+.account-menu__hint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+  margin: 0 0 var(--space-2);
+}
+
+.account-menu__hint a {
+  color: var(--color-brand);
+  font-weight: 600;
+}
+
+.account-menu__hint a:hover {
+  text-decoration: underline;
+}
+
+.account-menu__divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: var(--space-2) 0;
+}
+
+.account-menu__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.account-menu__link:hover {
+  background: var(--color-surface-2);
+}
+
+.account-menu__link--danger {
+  color: var(--color-error);
+}
+
+.account-menu__link--danger:hover {
+  background: var(--color-error-bg);
+}
+
+/* ─── Mobile User Card ───────────────────────────────────────────────── */
+.mobile-user-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-brand-pale);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+}
+
+.mobile-user-card .account-menu__user,
+.mobile-user-card > div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }

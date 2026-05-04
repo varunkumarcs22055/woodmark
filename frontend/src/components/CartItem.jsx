@@ -1,20 +1,24 @@
 /**
- * CartItem — Livspace-style cart item row.
+ * CartItem — single cart row, discount-aware.
+ * Subtotal uses effective_price when present so totals match what the backend
+ * will actually charge. MRP is shown struck-through when discounted.
  */
 
-import { useCart } from '../context/CartContext';
-import { FiMinus, FiPlus, FiX } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
+import { FiMinus, FiPlus, FiX } from 'react-icons/fi';
+import { useCart } from '../context/CartContext';
+import { formatPrice } from '../utils/format';
 import './CartItem.css';
 
 export default function CartItem({ item }) {
   const { updateQuantity, removeFromCart } = useCart();
   const { product, quantity } = item;
 
-  const formatPrice = (price) =>
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(price);
-
-  const subtotal = parseFloat(product.price) * quantity;
+  const mrp = parseFloat(product.price);
+  const effective = parseFloat(product.effective_price ?? product.price);
+  const hasDiscount = effective < mrp;
+  const subtotal = effective * quantity;
+  const maxQty = Math.min(product.stock || 99, 10);
 
   return (
     <div className="cart-item fade-in" id={`cart-item-${product.id}`}>
@@ -28,10 +32,21 @@ export default function CartItem({ item }) {
         <div className="cart-item-header">
           <div style={{ flex: 1, minWidth: 0 }}>
             <p className="cart-item-category">{product.category_name}</p>
-            <Link to={`/product/${product.slug}`} className="cart-item-name">{product.name}</Link>
+            <Link to={`/product/${product.slug}`} className="cart-item-name">
+              {product.name}
+            </Link>
             {product.material && (
-              <p className="cart-item-meta">{product.material}{product.color ? ` · ${product.color}` : ''}</p>
+              <p className="cart-item-meta">
+                {product.material}
+                {product.color ? ` · ${product.color}` : ''}
+              </p>
             )}
+            <div className="cart-item-unit-price">
+              <span>{formatPrice(effective)}</span>
+              {hasDiscount && (
+                <span className="cart-item-unit-mrp">{formatPrice(mrp)}</span>
+              )}
+            </div>
           </div>
           <button
             className="cart-item-remove"
@@ -54,6 +69,7 @@ export default function CartItem({ item }) {
             <span>{quantity}</span>
             <button
               onClick={() => updateQuantity(product.id, quantity + 1)}
+              disabled={quantity >= maxQty}
               aria-label="Increase quantity"
             >
               <FiPlus size={13} />

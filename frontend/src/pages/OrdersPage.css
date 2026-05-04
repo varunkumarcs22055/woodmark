@@ -43,3 +43,29 @@
 @media (max-width: 600px) {
   .orders-search { flex-direction: column; }
 }
+
+/* ─── Sign-in nudge for guests ───────────────────────────────────────── */
+.orders-signin-nudge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+  background: var(--color-brand-pale);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.orders-signin-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-brand);
+  font-weight: 700;
+}
+
+.orders-signin-link:hover {
+  text-decoration: underline;
+}

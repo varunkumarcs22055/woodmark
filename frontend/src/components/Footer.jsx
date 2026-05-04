@@ -10,11 +10,12 @@ const FOOTER_LINKS = [
   {
     heading: 'Shop',
     links: [
-      { label: 'Bed Linen', to: '/?category=Beds' },
-      { label: 'Bath Linen', to: '/?category=Bath' },
-      { label: 'Furniture', to: '/?category=Sofas' },
-      { label: 'Cushions & Pillows', to: '/?category=Cushions' },
-      { label: 'Best Sellers', to: '/' },
+      { label: 'Sofas & Seating', to: '/?category=sofas' },
+      { label: 'Tables', to: '/?category=tables' },
+      { label: 'Chairs', to: '/?category=chairs' },
+      { label: 'Beds', to: '/?category=beds' },
+      { label: 'Storage', to: '/?category=storage' },
+      { label: 'Outdoor', to: '/?category=outdoor' },
     ],
   },
   {
@@ -23,7 +24,8 @@ const FOOTER_LINKS = [
       { label: 'My Orders', to: '/orders' },
       { label: 'Cart', to: '/cart' },
       { label: 'Track Order', to: '/orders' },
-      { label: 'Wishlist', to: '/' },
+      { label: 'Become a Dealer', to: '/dealer-apply' },
+      { label: 'Sign In', to: '/login' },
     ],
   },
   {

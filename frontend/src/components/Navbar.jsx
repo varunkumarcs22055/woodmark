@@ -1,11 +1,20 @@
 /**
- * Navbar — Featherlite-style catalog mega menu.
- * Multi-column dropdown with product series from catalog.
+ * Navbar — premium mega-menu navigation with auth-aware account menu.
+ *
+ *   - Announcement bar (top strip)
+ *   - Main row: logo · mega-menu nav · search · account · cart
+ *   - Mega menu: multi-column dropdown per category, slug-based navigation
+ *   - Search overlay with quick suggestion chips
+ *   - Mobile drawer with accordion nav
+ *   - Account button: shows Login link when logged out, dropdown menu when logged in
+ *     (Profile, Orders, Admin/Dealer dashboard by role, Sign Out)
+ *
+ * NAV_ITEMS slugs MUST match seeded Category slugs in the backend
+ * (sofas, tables, chairs, beds, storage, desks, dining-sets, outdoor).
  */
 
-import { useState, useRef, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useCart } from "../context/CartContext";
+import { useState, useRef, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   FiSearch,
   FiShoppingBag,
@@ -13,320 +22,142 @@ import {
   FiChevronDown,
   FiMenu,
   FiX,
-  FiHeart,
   FiPhone,
-} from "react-icons/fi";
-import "./Navbar.css";
+  FiLogOut,
+  FiPackage,
+  FiSettings,
+  FiTrendingUp,
+} from 'react-icons/fi';
+import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import './Navbar.css';
 
-/* ─────────────────────────────────────────────────────────────────────
-   Catalog nav structure — extracted from Featherlite catalog images.
-   Each top-level item can have `columns` (multi-column mega menu).
-   `slug` maps to backend API category slug.
-───────────────────────────────────────────────────────────────────── */
-// const NAV_ITEMS = [
-//   {
-//     label: 'Chairs',
-//     key: 'chairs',
-//     columns: [
-//       {
-//         heading: 'WFH Chairs',
-//         items: [
-//           { label: 'High Back Chairs',    slug: 'chairs' },
-//           { label: 'Medium Back Chairs',  slug: 'chairs' },
-//           { label: 'Mesh Chairs',         slug: 'chairs' },
-//           { label: 'Fabric Chairs',       slug: 'chairs' },
-//         ],
-//       },
-//       {
-//         heading: 'Director / Executive',
-//         items: [
-//           { label: 'Chairman Chair Series',  slug: 'chairs' },
-//           { label: 'Director Chair Series',  slug: 'chairs' },
-//           { label: 'Executive Chair Series', slug: 'chairs' },
-//           { label: 'Manager Chair Series',   slug: 'chairs' },
-//           { label: 'Mesh Chair Series',      slug: 'chairs' },
-//         ],
-//       },
-//       {
-//         heading: 'Living Chairs',
-//         items: [
-//           { label: 'Lounge Chairs',           slug: 'chairs' },
-//           { label: 'Gaming Chairs',           slug: 'chairs' },
-//           { label: 'Living Fabric Chair',     slug: 'chairs' },
-//           { label: 'Living Leatherette Chair',slug: 'chairs' },
-//         ],
-//       },
-//       {
-//         heading: 'Visitor / Specialty',
-//         items: [
-//           { label: 'Visitor Chair Series',   slug: 'chairs' },
-//           { label: 'Classroom Chair Series', slug: 'chairs' },
-//           { label: 'Restaurant & Bar Chairs',slug: 'chairs' },
-//           { label: 'Auditorium Chairs',      slug: 'chairs' },
-//           { label: 'Waiting Chair Series',   slug: 'chairs' },
-//         ],
-//       },
-//     ],
-//   },
-//   {
-//     label: 'Tables',
-//     key: 'tables',
-//     columns: [
-//       {
-//         heading: 'WFH Tables',
-//         items: [
-//           { label: 'Height Adjustable Tables', slug: 'tables' },
-//           { label: 'Computer Tables',          slug: 'tables' },
-//           { label: 'Study Tables',             slug: 'tables' },
-//           { label: 'Executive Tables',         slug: 'tables' },
-//           { label: 'Portable Tables',          slug: 'tables' },
-//         ],
-//       },
-//       {
-//         heading: 'Office / Conference',
-//         items: [
-//           { label: 'Conference Table Series',  slug: 'tables' },
-//           { label: 'Manager Table',            slug: 'tables' },
-//           { label: 'CEO Table',                slug: 'tables' },
-//           { label: 'Chairman Suit',            slug: 'tables' },
-//           { label: 'Free Standing Director Table', slug: 'desks' },
-//         ],
-//       },
-//       {
-//         heading: 'Workstations',
-//         items: [
-//           { label: 'Modular Workstation',      slug: 'desks' },
-//           { label: 'Modular Cabin Table',      slug: 'desks' },
-//           { label: 'Modular Computer Table',   slug: 'desks' },
-//           { label: 'Prestino Director Table',  slug: 'desks' },
-//         ],
-//       },
-//       {
-//         heading: 'Living Tables',
-//         items: [
-//           { label: 'Coffee Table', slug: 'tables' },
-//           { label: 'Side Table',   slug: 'tables' },
-//         ],
-//       },
-//     ],
-//   },
-//   {
-//     label: 'Storage',
-//     key: 'storage',
-//     columns: [
-//       {
-//         heading: 'WFH Accessories',
-//         items: [
-//           { label: 'Open Storage',       slug: 'storage' },
-//           { label: 'Pedestal',           slug: 'storage' },
-//           { label: 'Laptop Stands',      slug: 'storage' },
-//           { label: 'Table Top Storage',  slug: 'storage' },
-//         ],
-//       },
-//       {
-//         heading: 'Office Storage',
-//         items: [
-//           { label: 'Prestino Storage',         slug: 'storage' },
-//           { label: 'Prestino Book Shelf',      slug: 'storage' },
-//           { label: 'Kid Storage Furniture',    slug: 'storage' },
-//           { label: 'Storage Compactor Series', slug: 'storage' },
-//         ],
-//       },
-//       {
-//         heading: 'Steel & Partitions',
-//         items: [
-//           { label: 'Steel Furniture Series',   slug: 'storage' },
-//           { label: 'Partition Series',         slug: 'storage' },
-//           { label: 'Laboratory Furniture',     slug: 'storage' },
-//           { label: 'Hostel Furniture Series',  slug: 'storage' },
-//         ],
-//       },
-//     ],
-//   },
-//   {
-//     label: 'Sofas & Seating',
-//     key: 'sofas',
-//     columns: [
-//       {
-//         heading: 'Office Sofas',
-//         items: [
-//           { label: 'Office Sofa Series',      slug: 'sofas' },
-//           { label: 'President / GM Suit',     slug: 'sofas' },
-//           { label: 'Prestino Director Suit',  slug: 'sofas' },
-//           { label: 'Reception Sofas',         slug: 'sofas' },
-//         ],
-//       },
-//       {
-//         heading: 'Dining & Restaurant',
-//         items: [
-//           { label: 'Dining Sets',                     slug: 'dining-sets' },
-//           { label: 'Restaurant & Bar Stool Series',   slug: 'dining-sets' },
-//           { label: 'Institutional Restaurant Chairs', slug: 'dining-sets' },
-//         ],
-//       },
-//       {
-//         heading: 'Outdoor',
-//         items: [
-//           { label: 'Outdoor Furniture',  slug: 'outdoor' },
-//           { label: 'Garden Seating',     slug: 'outdoor' },
-//         ],
-//       },
-//     ],
-//   },
-//   {
-//     label: 'Beds & Hospital',
-//     key: 'beds',
-//     columns: [
-//       {
-//         heading: 'Beds',
-//         items: [
-//           { label: 'Beds & Bedroom Sets', slug: 'beds' },
-//           { label: 'Kid Furniture Series', slug: 'beds' },
-//         ],
-//       },
-//       {
-//         heading: 'Hospital Furniture',
-//         items: [
-//           { label: 'Hospital Bed Series',              slug: 'beds' },
-//           { label: 'Patient Transfer Trolley Series',  slug: 'beds' },
-//         ],
-//       },
-//       {
-//         heading: 'Accessories',
-//         items: [
-//           { label: 'Chair Part & Accessories', slug: 'chairs' },
-//           { label: 'Lab Furniture',            slug: 'storage' },
-//         ],
-//       },
-//     ],
-//   },
-//   {
-//     label: 'Best Sellers',
-//     key: 'best-sellers',
-//     slug: '',            // no dropdown — direct link to all products
-//     highlight: true,
-//   },
-// ];
-
+/* ─── Catalog navigation
+ * Labels keep the original Featherlite-style office-furniture series naming.
+ * `slug` MUST be one of the seeded backend categories so /?category=<slug>
+ * actually returns products: sofas, tables, chairs, beds, storage, desks,
+ * dining-sets, outdoor.
+ */
 const NAV_ITEMS = [
   {
-    label: "Prestino Director Suit Series",
-    key: "category-1",
+    label: 'Prestino Director Suit Series',
+    key: 'prestino',
     columns: [
       {
-        heading: "Prestino Director Suit Series",
+        heading: 'Prestino Director Suit Series',
         items: [
-          // { label: 'Prestino Director Suit Series', slug: 'category-1' },
-          { label: "Prestino Director Table", slug: "category-1" },
-          { label: "Prestino Storage", slug: "category-1" },
-          { label: "Prestino Book Shelf & Full Height", slug: "category-1" },
-          { label: "Free Standing Director Table", slug: "category-1" },
-          { label: "Manager Table", slug: "category-1" },
-          { label: "CEO Table", slug: "category-1" },
-          { label: "Chairman Suit", slug: "category-1" },
-          { label: "Modular Computer Table", slug: "category-1" },
-          { label: "Conference Table Series", slug: "category-1" },
-          { label: "Modular Workstation Series", slug: "category-1" },
-          { label: "Modular Cabin Table", slug: "category-1" },
-          { label: "Modular Workstation", slug: "category-1" },
+          { label: 'Prestino Director Table', slug: 'desks' },
+          { label: 'Prestino Storage', slug: 'storage' },
+          { label: 'Prestino Book Shelf & Full Height', slug: 'storage' },
+          { label: 'Free Standing Director Table', slug: 'desks' },
+          { label: 'Manager Table', slug: 'desks' },
+          { label: 'CEO Table', slug: 'desks' },
+          { label: 'Chairman Suit', slug: 'sofas' },
+          { label: 'Modular Computer Table', slug: 'desks' },
+          { label: 'Conference Table Series', slug: 'tables' },
+          { label: 'Modular Workstation Series', slug: 'desks' },
+          { label: 'Modular Cabin Table', slug: 'desks' },
+          { label: 'Modular Workstation', slug: 'desks' },
         ],
       },
     ],
   },
 
   {
-    label: "Modular Workstation Series",
-    key: "category-2",
+    label: 'Modular Workstation Series',
+    key: 'modular',
     columns: [
       {
-        heading: "Modular Workstation Series",
+        heading: 'Modular Workstation Series',
         items: [
-          // { label: 'Modular Workstation Series', slug: 'category-2' },
-          { label: "Modular Cabin Table", slug: "category-2" },
-          { label: "Modular Workstation", slug: "category-2" },
+          { label: 'Modular Cabin Table', slug: 'desks' },
+          { label: 'Modular Workstation', slug: 'desks' },
         ],
       },
     ],
   },
 
   {
-    label: "Chair Series",
-    key: "chairs",
+    label: 'Chair Series',
+    key: 'chairs',
     columns: [
       {
-        heading: "Chair Series",
+        heading: 'Chair Series',
         items: [
-          { label: "Chairman Chair Series", slug: "chairs" },
-          { label: "Director Chair Series", slug: "chairs" },
-          { label: "Executive Chair Series", slug: "chairs" },
-          { label: "Manager Chair Series", slug: "chairs" },
-          { label: "Director Chair MSH Series", slug: "chairs" },
-          { label: "Director MSH Chair Color Series", slug: "chairs" },
-          { label: "Visitor Chair Series", slug: "chairs" },
-          { label: "Classroom Chair Series", slug: "chairs" },
-          { label: "Institutional Restaurant Chair Series", slug: "chairs" },
-          { label: "Restaurant & Bar Stool Chair Series", slug: "chairs" },
-          { label: "Restaurant & Bar Chair Series", slug: "chairs" },
-          { label: "Auditorium Chair Series", slug: "chairs" },
+          { label: 'Chairman Chair Series', slug: 'chairs' },
+          { label: 'Director Chair Series', slug: 'chairs' },
+          { label: 'Executive Chair Series', slug: 'chairs' },
+          { label: 'Manager Chair Series', slug: 'chairs' },
+          { label: 'Director Chair MSH Series', slug: 'chairs' },
+          { label: 'Director MSH Chair Color Series', slug: 'chairs' },
+          { label: 'Visitor Chair Series', slug: 'chairs' },
+          { label: 'Classroom Chair Series', slug: 'chairs' },
+          { label: 'Institutional Restaurant Chair Series', slug: 'chairs' },
+          { label: 'Restaurant & Bar Stool Chair Series', slug: 'chairs' },
+          { label: 'Restaurant & Bar Chair Series', slug: 'chairs' },
+          { label: 'Auditorium Chair Series', slug: 'chairs' },
         ],
       },
     ],
   },
 
   {
-    label: "Kid Series",
-    key: "kids",
+    label: 'Kid Series',
+    key: 'kids',
     columns: [
       {
-        heading: "Kids Furniture",
+        heading: 'Kids Furniture',
         items: [
-          { label: "Kid Furniture Series", slug: "kids" },
-          { label: "Kid Storage Furniture Series", slug: "kids" },
+          { label: 'Kid Furniture Series', slug: 'beds' },
+          { label: 'Kid Storage Furniture Series', slug: 'storage' },
         ],
       },
     ],
   },
 
   {
-    label: "Hospital Furniture",
-    key: "hospital",
+    label: 'Hospital Furniture',
+    key: 'hospital',
     columns: [
       {
-        heading: "Hospital",
+        heading: 'Hospital',
         items: [
-          { label: "Hospital Bed Series", slug: "hospital" },
-          { label: "Patient Transfer Trolley Series", slug: "hospital" },
+          { label: 'Hospital Bed Series', slug: 'beds' },
+          { label: 'Patient Transfer Trolley Series', slug: 'beds' },
         ],
       },
     ],
   },
 
   {
-    label: "Other Series",
-    key: "others",
+    label: 'Other Series',
+    key: 'others',
     columns: [
       {
-        heading: "Others",
+        heading: 'Others',
         items: [
-          { label: "Laboratory Furniture Series", slug: "others" },
-          { label: "Hostel Furniture Series", slug: "others" },
-          { label: "Reception Table Series", slug: "others" },
-          { label: "Waiting Chair Series", slug: "others" },
-          { label: "Office Sofa Series", slug: "others" },
-          { label: "Steel Furniture Series", slug: "others" },
-          { label: "Storage Compactor Series", slug: "others" },
-          { label: "Partition Series", slug: "others" },
-          { label: "Chair Part & Accessories Series", slug: "others" },
+          { label: 'Laboratory Furniture Series', slug: 'storage' },
+          { label: 'Hostel Furniture Series', slug: 'beds' },
+          { label: 'Reception Table Series', slug: 'tables' },
+          { label: 'Waiting Chair Series', slug: 'chairs' },
+          { label: 'Office Sofa Series', slug: 'sofas' },
+          { label: 'Steel Furniture Series', slug: 'storage' },
+          { label: 'Storage Compactor Series', slug: 'storage' },
+          { label: 'Partition Series', slug: 'storage' },
+          { label: 'Chair Part & Accessories Series', slug: 'chairs' },
+          { label: 'Outdoor & Garden Seating', slug: 'outdoor' },
+          { label: 'Dining Sets', slug: 'dining-sets' },
         ],
       },
     ],
   },
 ];
-/* ─────────────────────────────────────────────────────────────────────
-   Component
-───────────────────────────────────────────────────────────────────── */
+
+const SEARCH_SUGGESTIONS = ['Sofas', 'Dining Tables', 'Beds', 'Office Chairs', 'Bookshelves'];
+
 export default function Navbar() {
   const { cartCount } = useCart();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -334,67 +165,87 @@ export default function Navbar() {
   const [mobileExpanded, setMobileExpanded] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [accountOpen, setAccountOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   const searchRef = useRef(null);
   const menuTimer = useRef(null);
+  const accountRef = useRef(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 2);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   useEffect(() => {
     setMobileOpen(false);
     setActiveMenu(null);
+    setAccountOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
     if (searchOpen && searchRef.current) searchRef.current.focus();
   }, [searchOpen]);
 
+  // Close account menu when clicking outside
+  useEffect(() => {
+    if (!accountOpen) return;
+    const onClick = (e) => {
+      if (accountRef.current && !accountRef.current.contains(e.target)) {
+        setAccountOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [accountOpen]);
+
   const openMenu = (key) => {
     clearTimeout(menuTimer.current);
     setActiveMenu(key);
   };
+
   const closeMenu = () => {
     menuTimer.current = setTimeout(() => setActiveMenu(null), 150);
   };
 
   const goTo = (slug) => {
-    navigate(slug ? `/?category=${encodeURIComponent(slug)}` : "/");
+    navigate(slug ? `/?category=${encodeURIComponent(slug)}` : '/');
     setActiveMenu(null);
     setMobileOpen(false);
   };
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/?search=${encodeURIComponent(searchQuery.trim())}`);
+    const q = searchQuery.trim();
+    if (q) {
+      navigate(`/?search=${encodeURIComponent(q)}`);
       setSearchOpen(false);
-      setSearchQuery("");
+      setSearchQuery('');
     }
   };
 
-  // Helper to split items into columns
-  function splitIntoColumns(items, colCount = 3) {
+  const handleLogout = async () => {
+    await logout();
+    setAccountOpen(false);
+    navigate('/');
+  };
+
+  // Long single-column item lists look better split into multiple columns
+  const splitIntoColumns = (items, colCount = 3) => {
     const columns = Array.from({ length: colCount }, () => []);
-    items.forEach((item, idx) => {
-      columns[idx % colCount].push(item);
-    });
+    items.forEach((item, idx) => columns[idx % colCount].push(item));
     return columns;
-  }
+  };
 
   return (
     <>
       {/* Announcement Bar */}
-      <div className="announcement-bar" id="announcement-bar">
+      <div className="announcement-bar">
         <div className="announcement-inner container">
           <span className="announcement-text">
-            🎉 Free shipping on orders above ₹2,999 &nbsp;·&nbsp; Trusted by 1
-            Lakh+ happy homes
+            🎉 Free shipping on orders above ₹2,999 &nbsp;·&nbsp; Trusted by 1 Lakh+ happy homes
           </span>
           <div className="announcement-right">
             <FiPhone size={12} />
@@ -404,18 +255,15 @@ export default function Navbar() {
       </div>
 
       {/* Main Navbar */}
-      <nav className={`navbar ${scrolled ? "scrolled" : ""}`} id="main-navbar">
+      <nav className={`navbar ${scrolled ? 'scrolled' : ''}`}>
         <div className="navbar-inner container">
           {/* Logo */}
-          <Link to="/" className="navbar-brand" id="navbar-brand">
+          <Link to="/" className="navbar-brand">
             <div className="brand-logo">
               <span className="brand-icon-wrap">
                 <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
                   <rect width="28" height="28" rx="6" fill="#00736A" />
-                  <path
-                    d="M7 20V12L14 7L21 12V20H16V15H12V20H7Z"
-                    fill="white"
-                  />
+                  <path d="M7 20V12L14 7L21 12V20H16V15H12V20H7Z" fill="white" />
                 </svg>
               </span>
               <span className="brand-text">FurniShop</span>
@@ -425,70 +273,46 @@ export default function Navbar() {
           {/* Desktop Nav */}
           <div className="navbar-nav">
             {NAV_ITEMS.map((item) => {
-              const hasManyProducts =
-                item.columns &&
-                item.columns.length === 1 &&
-                item.columns[0].items.length > 6;
-              const colCount = hasManyProducts
-                ? 3
-                : item.columns
-                  ? item.columns.length
-                  : 1;
-              let columns = item.columns;
-              if (hasManyProducts) {
-                // Split products into 3 columns for better look
-                const splitCols = splitIntoColumns(item.columns[0].items, 3);
-                columns = splitCols.map((colItems, idx) => ({
-                  heading: idx === 0 ? item.columns[0].heading : "",
-                  items: colItems,
-                }));
-              }
+              // If a column has many items, fan it across 3 sub-columns for layout
+              const shouldSplit =
+                item.columns.length === 1 && item.columns[0].items.length > 6;
+              const renderedColumns = shouldSplit
+                ? splitIntoColumns(item.columns[0].items, 3).map((items, idx) => ({
+                    heading: idx === 0 ? item.columns[0].heading : '',
+                    items,
+                  }))
+                : item.columns;
+
               return (
                 <div
                   key={item.key}
                   className="nav-item"
-                  onMouseEnter={() => item.columns && openMenu(item.key)}
+                  onMouseEnter={() => openMenu(item.key)}
                   onMouseLeave={closeMenu}
                 >
-                  {/* Trigger */}
-                  {item.columns ? (
-                    <button
-                      className={`nav-trigger ${activeMenu === item.key ? "active" : ""}`}
-                    >
-                      {item.label}
-                      <FiChevronDown
-                        size={13}
-                        className={`nav-chevron ${activeMenu === item.key ? "rotated" : ""}`}
-                      />
-                    </button>
-                  ) : (
-                    <button
-                      className={`nav-trigger ${item.highlight ? "nav-highlight" : ""}`}
-                      onClick={() => goTo(item.slug ?? "")}
-                    >
-                      {item.label}
-                    </button>
-                  )}
+                  <button className={`nav-trigger ${activeMenu === item.key ? 'active' : ''}`}>
+                    {item.label}
+                    <FiChevronDown
+                      size={13}
+                      className={`nav-chevron ${activeMenu === item.key ? 'rotated' : ''}`}
+                    />
+                  </button>
 
-                  {/* Multi-column mega dropdown */}
-                  {item.columns && activeMenu === item.key && (
+                  {activeMenu === item.key && (
                     <div
                       className="mega-menu"
                       onMouseEnter={() => clearTimeout(menuTimer.current)}
                       onMouseLeave={closeMenu}
                     >
                       <div className="mega-menu-inner mega-menu-cols">
-                        {columns.map((col, colIdx) => (
-                          <div key={col.heading + colIdx} className="mega-col">
-                            {col.heading && (
-                              <p className="mega-col-title">{col.heading}</p>
-                            )}
+                        {renderedColumns.map((col, colIdx) => (
+                          <div key={(col.heading || 'col') + colIdx} className="mega-col">
+                            {col.heading && <p className="mega-col-title">{col.heading}</p>}
                             {col.items.map((child) => (
                               <button
                                 key={child.label}
                                 className="mega-link"
                                 onClick={() => goTo(child.slug)}
-                                id={`nav-${item.key}-${child.label.toLowerCase().replace(/\s+/g, "-")}`}
                               >
                                 {child.label}
                               </button>
@@ -496,7 +320,6 @@ export default function Navbar() {
                           </div>
                         ))}
                       </div>
-                      {/* Bottom bar */}
                       <div className="mega-footer">
                         <span className="mega-footer-text">
                           Browse all <strong>{item.label}</strong>
@@ -519,34 +342,108 @@ export default function Navbar() {
           <div className="navbar-actions">
             <button
               className="nav-action-btn"
-              id="search-toggle-btn"
               onClick={() => setSearchOpen(!searchOpen)}
               title="Search"
+              aria-label="Search"
             >
               <FiSearch size={20} />
             </button>
-            <button className="nav-action-btn" title="Wishlist">
-              <FiHeart size={20} />
-            </button>
-            <button className="nav-action-btn" title="Account">
-              <FiUser size={20} />
-            </button>
-            <Link
-              to="/cart"
-              className="nav-cart-btn"
-              id="nav-cart-btn"
-              title="Cart"
-            >
-              <FiShoppingBag size={20} />
-              {cartCount > 0 && (
-                <span className="cart-badge" id="cart-count-badge">
-                  {cartCount}
-                </span>
+
+            {/* Account dropdown */}
+            <div className="account-wrap" ref={accountRef}>
+              <button
+                className="nav-action-btn"
+                onClick={() => setAccountOpen((o) => !o)}
+                title="Account"
+                aria-label="Account"
+              >
+                <FiUser size={20} />
+              </button>
+
+              {accountOpen && (
+                <div className="account-menu">
+                  {user ? (
+                    <>
+                      <div className="account-menu__header">
+                        <div className="account-menu__avatar">
+                          {user.full_name?.charAt(0).toUpperCase() ||
+                            user.email?.charAt(0).toUpperCase() ||
+                            'U'}
+                        </div>
+                        <div className="account-menu__user">
+                          <span className="account-menu__name">
+                            {user.full_name || user.email}
+                          </span>
+                          <span className="account-menu__role">{user.role}</span>
+                        </div>
+                      </div>
+                      <Link to="/orders" className="account-menu__link" onClick={() => setAccountOpen(false)}>
+                        <FiPackage size={16} /> My Orders
+                      </Link>
+                      {user.role === 'admin' && (
+                        <Link
+                          to="/admin-dashboard"
+                          className="account-menu__link"
+                          onClick={() => setAccountOpen(false)}
+                        >
+                          <FiSettings size={16} /> Admin Dashboard
+                        </Link>
+                      )}
+                      {user.role === 'dealer' && (
+                        <Link
+                          to="/dealer-dashboard"
+                          className="account-menu__link"
+                          onClick={() => setAccountOpen(false)}
+                        >
+                          <FiTrendingUp size={16} /> Dealer Portal
+                        </Link>
+                      )}
+                      {user.role === 'user' && (
+                        <Link
+                          to="/dealer-apply"
+                          className="account-menu__link"
+                          onClick={() => setAccountOpen(false)}
+                        >
+                          <FiTrendingUp size={16} /> Become a Dealer
+                        </Link>
+                      )}
+                      <div className="account-menu__divider" />
+                      <button onClick={handleLogout} className="account-menu__link account-menu__link--danger">
+                        <FiLogOut size={16} /> Sign Out
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="account-menu__greet">Welcome to FurniShop</p>
+                      <Link to="/login" className="btn-primary account-menu__cta" onClick={() => setAccountOpen(false)}>
+                        Sign In
+                      </Link>
+                      <p className="account-menu__hint">
+                        New here?{' '}
+                        <Link to="/signup" onClick={() => setAccountOpen(false)}>
+                          Create an account
+                        </Link>
+                      </p>
+                      <div className="account-menu__divider" />
+                      <Link to="/orders" className="account-menu__link" onClick={() => setAccountOpen(false)}>
+                        <FiPackage size={16} /> Track an Order
+                      </Link>
+                      <Link to="/dealer-apply" className="account-menu__link" onClick={() => setAccountOpen(false)}>
+                        <FiTrendingUp size={16} /> Become a Dealer
+                      </Link>
+                    </>
+                  )}
+                </div>
               )}
+            </div>
+
+            <Link to="/cart" className="nav-cart-btn" title="Cart" aria-label="Cart">
+              <FiShoppingBag size={20} />
+              {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
             </Link>
+
             <button
               className="mobile-toggle"
-              id="mobile-menu-toggle"
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label="Toggle menu"
             >
@@ -557,18 +454,17 @@ export default function Navbar() {
 
         {/* Search overlay */}
         {searchOpen && (
-          <div className="search-overlay" id="search-overlay">
+          <div className="search-overlay">
             <div className="search-overlay-inner container">
               <form className="search-form" onSubmit={handleSearch}>
                 <FiSearch size={20} className="search-form-icon" />
                 <input
                   ref={searchRef}
                   type="text"
-                  placeholder="Search chairs, tables, sofas, storage..."
+                  placeholder="Search sofas, tables, beds, storage…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="search-form-input"
-                  id="main-search-input"
                 />
                 <button type="submit" className="btn-primary search-submit">
                   Search
@@ -577,24 +473,18 @@ export default function Navbar() {
                   type="button"
                   className="search-close-btn"
                   onClick={() => setSearchOpen(false)}
+                  aria-label="Close search"
                 >
                   <FiX size={20} />
                 </button>
               </form>
               <div className="search-suggestions">
-                {[
-                  "Mesh Chairs",
-                  "Executive Tables",
-                  "Office Sofas",
-                  "Workstations",
-                  "Storage",
-                ].map((s) => (
+                {SEARCH_SUGGESTIONS.map((s) => (
                   <button
                     key={s}
                     className="search-suggestion-chip"
                     onClick={() => {
-                      setSearchQuery(s);
-                      navigate(`/?search=${s}`);
+                      navigate(`/?search=${encodeURIComponent(s)}`);
                       setSearchOpen(false);
                     }}
                   >
@@ -609,93 +499,108 @@ export default function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileOpen && (
-        <div className="mobile-drawer" id="mobile-drawer">
+        <div className="mobile-drawer">
           <div className="mobile-drawer-header">
-            <Link
-              to="/"
-              className="navbar-brand"
-              onClick={() => setMobileOpen(false)}
-            >
+            <Link to="/" className="navbar-brand" onClick={() => setMobileOpen(false)}>
               <span className="brand-text">FurniShop</span>
             </Link>
-            <button
-              onClick={() => setMobileOpen(false)}
-              aria-label="Close menu"
-            >
+            <button onClick={() => setMobileOpen(false)} aria-label="Close menu">
               <FiX size={22} />
             </button>
           </div>
           <div className="mobile-drawer-body">
             {NAV_ITEMS.map((item) => (
               <div key={item.key} className="mobile-nav-group">
-                {item.columns ? (
-                  <>
-                    {/* Accordion header */}
-                    <button
-                      className={`mobile-nav-label mobile-accordion ${mobileExpanded === item.key ? "expanded" : ""}`}
-                      onClick={() =>
-                        setMobileExpanded(
-                          mobileExpanded === item.key ? null : item.key,
-                        )
-                      }
-                    >
-                      <span>{item.label}</span>
-                      <FiChevronDown
-                        size={16}
-                        className={`mobile-accordion-arrow ${mobileExpanded === item.key ? "rotated" : ""}`}
-                      />
-                    </button>
-                    {/* Accordion content */}
-                    {mobileExpanded === item.key && (
-                      <div className="mobile-accordion-content">
-                        {item.columns.map((col) => (
-                          <div key={col.heading} className="mobile-sub-group">
-                            <p className="mobile-sub-heading">{col.heading}</p>
-                            {col.items.map((child) => (
-                              <button
-                                key={child.label}
-                                className="mobile-nav-link"
-                                onClick={() => goTo(child.slug)}
-                              >
-                                {child.label}
-                              </button>
-                            ))}
-                          </div>
+                <button
+                  className={`mobile-nav-label mobile-accordion ${
+                    mobileExpanded === item.key ? 'expanded' : ''
+                  }`}
+                  onClick={() =>
+                    setMobileExpanded(mobileExpanded === item.key ? null : item.key)
+                  }
+                >
+                  <span>{item.label}</span>
+                  <FiChevronDown
+                    size={16}
+                    className={`mobile-accordion-arrow ${
+                      mobileExpanded === item.key ? 'rotated' : ''
+                    }`}
+                  />
+                </button>
+                {mobileExpanded === item.key && (
+                  <div className="mobile-accordion-content">
+                    {item.columns.map((col) => (
+                      <div key={col.heading} className="mobile-sub-group">
+                        <p className="mobile-sub-heading">{col.heading}</p>
+                        {col.items.map((child) => (
+                          <button
+                            key={child.label}
+                            className="mobile-nav-link"
+                            onClick={() => goTo(child.slug)}
+                          >
+                            {child.label}
+                          </button>
                         ))}
                       </div>
-                    )}
-                  </>
-                ) : (
-                  <button
-                    className={`mobile-nav-label ${item.highlight ? "highlight" : ""}`}
-                    onClick={() => goTo(item.slug ?? "")}
-                  >
-                    {item.label}
-                  </button>
+                    ))}
+                  </div>
                 )}
               </div>
             ))}
+
             <div className="mobile-drawer-divider" />
-            <Link
-              to="/orders"
-              className="mobile-nav-label"
-              onClick={() => setMobileOpen(false)}
-            >
-              My Orders
-            </Link>
-            <Link
-              to="/cart"
-              className="mobile-nav-label"
-              onClick={() => setMobileOpen(false)}
-            >
+
+            {user ? (
+              <>
+                <div className="mobile-user-card">
+                  <div className="account-menu__avatar">
+                    {user.full_name?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                  <div>
+                    <span className="account-menu__name">{user.full_name || user.email}</span>
+                    <span className="account-menu__role">{user.role}</span>
+                  </div>
+                </div>
+                <Link to="/orders" className="mobile-nav-label" onClick={() => setMobileOpen(false)}>
+                  My Orders
+                </Link>
+                {user.role === 'admin' && (
+                  <Link to="/admin-dashboard" className="mobile-nav-label" onClick={() => setMobileOpen(false)}>
+                    Admin Dashboard
+                  </Link>
+                )}
+                {user.role === 'dealer' && (
+                  <Link to="/dealer-dashboard" className="mobile-nav-label" onClick={() => setMobileOpen(false)}>
+                    Dealer Portal
+                  </Link>
+                )}
+                <button className="mobile-nav-label" onClick={handleLogout}>
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="mobile-nav-label" onClick={() => setMobileOpen(false)}>
+                  Sign In
+                </Link>
+                <Link to="/signup" className="mobile-nav-label" onClick={() => setMobileOpen(false)}>
+                  Create Account
+                </Link>
+                <Link to="/orders" className="mobile-nav-label" onClick={() => setMobileOpen(false)}>
+                  Track an Order
+                </Link>
+                <Link to="/dealer-apply" className="mobile-nav-label" onClick={() => setMobileOpen(false)}>
+                  Become a Dealer
+                </Link>
+              </>
+            )}
+            <Link to="/cart" className="mobile-nav-label" onClick={() => setMobileOpen(false)}>
               Cart {cartCount > 0 && `(${cartCount})`}
             </Link>
           </div>
         </div>
       )}
-      {mobileOpen && (
-        <div className="mobile-overlay" onClick={() => setMobileOpen(false)} />
-      )}
+      {mobileOpen && <div className="mobile-overlay" onClick={() => setMobileOpen(false)} />}
     </>
   );
 }

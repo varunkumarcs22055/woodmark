@@ -256,3 +256,41 @@
   z-index: 1100;
   animation: fadeIn 0.2s ease;
 }
+
+/* ─── Sort dropdown ──────────────────────────────────────────────────── */
+.filter-sort-select {
+  width: 100%;
+  cursor: pointer;
+  background: var(--color-white);
+}
+
+/* ─── Price presets ──────────────────────────────────────────────────── */
+.price-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.price-preset-chip {
+  padding: 6px 12px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.price-preset-chip:hover {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+.price-preset-chip.active {
+  background: var(--color-brand);
+  color: var(--color-white);
+  border-color: var(--color-brand);
+}

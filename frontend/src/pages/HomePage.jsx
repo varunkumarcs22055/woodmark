@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { fetchProducts } from "../api";
 import ProductCard from "../components/ProductCard";
 import FilterSidebar from "../components/FilterSidebar";
@@ -27,49 +27,20 @@ import "swiper/css";
 import "swiper/css/pagination";
 import "swiper/css/effect-fade";
 
+/**
+ * Category chips. `value` MUST match the seeded backend category slug
+ * (sofas, tables, chairs, beds, storage, desks, dining-sets, outdoor)
+ * so the /?category=<slug> URL actually filters correctly.
+ */
 const CATEGORIES = [
-  {
-    label: "Bed Linen",
-    value: "Beds",
-    emoji: "🛏️",
-    color: "#FFF8F0",
-    border: "#FFD9B3",
-  },
-  {
-    label: "Bath Linen",
-    value: "Bath",
-    emoji: "🛁",
-    color: "#F0FAFF",
-    border: "#B3E4FF",
-  },
-  {
-    label: "Sofas",
-    value: "Sofas",
-    emoji: "🛋️",
-    color: "#F0FFF4",
-    border: "#B3F0C8",
-  },
-  {
-    label: "Tables",
-    value: "Tables",
-    emoji: "🪵",
-    color: "#FFF5F0",
-    border: "#FFCCB3",
-  },
-  {
-    label: "Chairs",
-    value: "Chairs",
-    emoji: "🪑",
-    color: "#F5F0FF",
-    border: "#D4B3FF",
-  },
-  {
-    label: "Cushions",
-    value: "Cushions",
-    emoji: "🎁",
-    color: "#FFFAF0",
-    border: "#FFE9B3",
-  },
+  { label: "Sofas",       value: "sofas",       emoji: "🛋️", color: "#F0FFF4", border: "#B3F0C8" },
+  { label: "Tables",      value: "tables",      emoji: "🪵", color: "#FFF5F0", border: "#FFCCB3" },
+  { label: "Chairs",      value: "chairs",      emoji: "🪑", color: "#F5F0FF", border: "#D4B3FF" },
+  { label: "Beds",        value: "beds",        emoji: "🛏️", color: "#FFF8F0", border: "#FFD9B3" },
+  { label: "Storage",     value: "storage",     emoji: "📦", color: "#F0F8FF", border: "#B3DAFF" },
+  { label: "Desks",       value: "desks",       emoji: "💻", color: "#FFFAF0", border: "#FFE9B3" },
+  { label: "Dining Sets", value: "dining-sets", emoji: "🍽️", color: "#FFF0F5", border: "#FFB3CC" },
+  { label: "Outdoor",     value: "outdoor",     emoji: "🌿", color: "#F0FAFF", border: "#B3E4FF" },
 ];
 
 const WHY_US = [
@@ -98,36 +69,35 @@ const WHY_US = [
 const FEATURED_COLLECTIONS = [
   {
     title: "Bedroom Essentials",
-    subtitle: "Comfort meets style",
+    subtitle: "Comfort meets timeless design",
     cta: "Shop Beds",
-    category: "Beds",
+    category: "beds",
     image: "/cat_bed.png",
     bg: "#F0FAF9",
     accent: "#00736A",
   },
   {
     title: "Living Room",
-    subtitle: "Timeless furniture",
+    subtitle: "Make it yours",
     cta: "Shop Sofas",
-    category: "Sofas",
+    category: "sofas",
     image: "/cat_furniture.png",
     bg: "#FAF5F0",
     accent: "#8B5E3C",
   },
   {
-    title: "Bath Collection",
-    subtitle: "Spa-like luxury",
-    cta: "Shop Bath",
-    category: "Bath",
+    title: "Work From Home",
+    subtitle: "Designed for focus",
+    cta: "Shop Desks",
+    category: "desks",
     image: "/cat_bath.png",
     bg: "#F0F5FA",
-    accent: "#1A5276",
+    accent: "#2C3E50",
   },
 ];
 
 export default function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
@@ -141,6 +111,7 @@ export default function HomePage() {
     price_min: searchParams.get("price_min") || "",
     price_max: searchParams.get("price_max") || "",
     search: searchParams.get("search") || "",
+    ordering: searchParams.get("ordering") || "-created_at",
   });
 
   const loadProducts = useCallback(
@@ -153,6 +124,7 @@ export default function HomePage() {
         if (filters.price_min) params.price_min = filters.price_min;
         if (filters.price_max) params.price_max = filters.price_max;
         if (filters.search) params.search = filters.search;
+        if (filters.ordering) params.ordering = filters.ordering;
 
         const data = await fetchProducts(params);
         setProducts(data.results || []);
@@ -269,7 +241,7 @@ export default function HomePage() {
                     </button>
                   </form>
                   <div className="hero-tags">
-                    {["Sofas", "Bed Sheets", "Bath Towels", "Cushions"].map(
+                    {["Sofa", "Dining Table", "Bed", "Office Chair", "Bookshelf"].map(
                       (tag) => (
                         <button
                           key={tag}
@@ -350,7 +322,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Featured Collections ─────────────────────────────── */}
+      {/* ── Featured Collections ───────────────────────────────
       <section className="featured-collections container">
         <div className="section-header-row">
           <div>
@@ -385,7 +357,7 @@ export default function HomePage() {
             </button>
           ))}
         </div>
-      </section>
+      </section> */}
 
       {/* ── Promo Banner ─────────────────────────────────────── */}
       <section className="promo-banner-section container">
@@ -423,7 +395,7 @@ export default function HomePage() {
             <span className="section-tag">Our Range</span>
             <h2 className="section-title">
               {filters.category
-                ? `${filters.category} Collection`
+                ? `${(CATEGORIES.find((c) => c.value === filters.category)?.label) || filters.category} Collection`
                 : filters.search
                   ? `Results for "${filters.search}"`
                   : "All Products"}
@@ -440,6 +412,7 @@ export default function HomePage() {
                     price_min: "",
                     price_max: "",
                     search: "",
+                    ordering: "-created_at",
                   })
                 }
               >
@@ -550,6 +523,7 @@ export default function HomePage() {
                       price_min: "",
                       price_max: "",
                       search: "",
+                      ordering: "-created_at",
                     })
                   }
                 >

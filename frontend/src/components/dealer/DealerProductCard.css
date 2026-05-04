@@ -1,0 +1,187 @@
+.dealer-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  text-decoration: none;
+  color: inherit;
+}
+
+.dealer-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.dealer-card__badge {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: linear-gradient(90deg, #B58900 0%, #D4A017 100%);
+  color: white;
+}
+
+.dealer-card__image-wrap {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: var(--color-bg);
+  overflow: hidden;
+}
+
+.dealer-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-base);
+}
+
+.dealer-card:hover .dealer-card__image {
+  transform: scale(1.05);
+}
+
+.dealer-card__out-of-stock {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: var(--text-sm);
+}
+
+.dealer-card__body {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dealer-card__category {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.dealer-card__name {
+  font-family: var(--font-heading);
+  font-size: var(--text-md);
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.dealer-card__meta {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.dealer-card__pricing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.dealer-card__price-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.dealer-card__your-price-label {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-brand);
+  font-weight: 700;
+}
+
+.dealer-card__your-price {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.dealer-card__mrp-block {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-xs);
+}
+
+.dealer-card__mrp-label { color: var(--color-text-muted); }
+.dealer-card__mrp { text-decoration: line-through; color: var(--color-text-muted); }
+
+.dealer-card__savings {
+  background: rgba(46, 125, 50, 0.1);
+  color: var(--color-success);
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+}
+
+.dealer-card__units {
+  font-size: var(--text-xs);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 115, 106, 0.08);
+  color: var(--color-brand);
+  font-weight: 600;
+}
+
+.dealer-card__units--low {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.dealer-card__units--ended {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+.dealer-card__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3);
+  background: var(--color-brand);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  margin-top: var(--space-2);
+}
+
+.dealer-card__cta:hover:not(:disabled) {
+  background: var(--color-brand-dark);
+}
+
+.dealer-card__cta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

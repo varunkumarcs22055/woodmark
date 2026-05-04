@@ -103,6 +103,20 @@
   --max-width: 1400px;
   --nav-height: 64px;
   --announcement-height: 38px;
+  --navbar-height: 102px; /* nav-height + announcement-height */
+  --container-padding: var(--space-6);
+
+  /* ─── Aliases (canonical names used by prompts 2–7) ─── */
+  --color-primary: var(--color-brand);
+  --color-primary-dark: var(--color-brand-dark);
+  --color-primary-light: var(--color-brand-pale);
+  --color-text-primary: var(--color-text);
+  --color-text-inverse: var(--color-white);
+  --color-border-dark: #C8C8C0;
+  --font-heading: var(--font-serif);
+  --font-body: var(--font-sans);
+  --radius-pill: var(--radius-full);
+  --transition-base: var(--transition);
 }
 
 /* ─── Reset ─────────────────────────────────────────────────────────── */

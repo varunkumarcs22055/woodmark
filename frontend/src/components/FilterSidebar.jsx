@@ -51,6 +51,14 @@ export default function FilterSidebar({ filters, onFilterChange, mobileOpen, onC
     });
   };
 
+  const handleSortChange = (ordering) => {
+    onFilterChange({ ...filters, ordering });
+  };
+
+  const handlePresetClick = (min, max) => {
+    onFilterChange({ ...filters, price_min: min, price_max: max });
+  };
+
   const clearFilters = () => {
     onFilterChange({
       category: '',
@@ -58,8 +66,16 @@ export default function FilterSidebar({ filters, onFilterChange, mobileOpen, onC
       price_min: '',
       price_max: '',
       search: '',
+      ordering: '-created_at',
     });
   };
+
+  const PRICE_PRESETS = [
+    { label: 'Under ₹10k', min: '', max: '10000' },
+    { label: '₹10k–₹30k', min: '10000', max: '30000' },
+    { label: '₹30k–₹60k', min: '30000', max: '60000' },
+    { label: '₹60k+', min: '60000', max: '' },
+  ];
 
   const hasActiveFilters = filters.category || filters.material ||
     filters.price_min || filters.price_max;
@@ -81,6 +97,22 @@ export default function FilterSidebar({ filters, onFilterChange, mobileOpen, onC
               <FiX size={20} />
             </button>
           </div>
+        </div>
+
+        {/* Sort By */}
+        <div className="filter-section">
+          <h4 className="filter-section-title">Sort By</h4>
+          <select
+            className="form-input filter-sort-select"
+            value={filters.ordering || '-created_at'}
+            onChange={(e) => handleSortChange(e.target.value)}
+          >
+            <option value="-created_at">Newest First</option>
+            <option value="price">Price: Low to High</option>
+            <option value="-price">Price: High to Low</option>
+            <option value="name">Name: A to Z</option>
+            <option value="-name">Name: Z to A</option>
+          </select>
         </div>
 
         {/* Category Filter */}
@@ -134,6 +166,7 @@ export default function FilterSidebar({ filters, onFilterChange, mobileOpen, onC
                 onChange={(e) => handlePriceChange('price_min', e.target.value)}
                 className="form-input price-input"
                 id="filter-price-min"
+                min="0"
               />
             </div>
             <span className="price-separator">—</span>
@@ -146,8 +179,24 @@ export default function FilterSidebar({ filters, onFilterChange, mobileOpen, onC
                 onChange={(e) => handlePriceChange('price_max', e.target.value)}
                 className="form-input price-input"
                 id="filter-price-max"
+                min="0"
               />
             </div>
+          </div>
+          <div className="price-presets">
+            {PRICE_PRESETS.map((p) => {
+              const active = filters.price_min === p.min && filters.price_max === p.max;
+              return (
+                <button
+                  key={p.label}
+                  type="button"
+                  className={`price-preset-chip ${active ? 'active' : ''}`}
+                  onClick={() => handlePresetClick(p.min, p.max)}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </aside>

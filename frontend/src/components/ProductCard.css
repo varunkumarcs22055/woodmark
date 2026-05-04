@@ -117,6 +117,32 @@
   color: var(--color-white);
 }
 
+.pc-badge-dealer {
+  background: linear-gradient(90deg, #B58900 0%, #D4A017 100%);
+  color: var(--color-white);
+}
+
+.product-card-units {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-brand);
+  background: var(--color-brand-pale);
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  display: inline-block;
+}
+
+.product-card-units--low {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.product-card-units--ended {
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+}
+
 /* ─── Wishlist ───────────────────────────────────────────────────────── */
 .pc-wishlist-btn {
   position: absolute;

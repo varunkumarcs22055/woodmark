@@ -1,12 +1,24 @@
 /**
- * ProductDetailPage — Shows full product details and similar products.
+ * ProductDetailPage — full product view with role-aware pricing.
+ *
+ * Reads the same backend pricing fields as ProductCard:
+ *   product.effective_price, product.discount_applied,
+ *   product.discount_units_remaining
+ *
+ * Backend may return category as nested object OR flat `category_name` —
+ * we handle both shapes.
  */
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import {
+  FiShoppingCart, FiCheck, FiChevronRight,
+  FiPackage, FiTruck, FiShield, FiTag,
+} from 'react-icons/fi';
+import toast from 'react-hot-toast';
 import { fetchProduct, fetchSimilarProducts } from '../api';
 import { useCart } from '../context/CartContext';
+import { formatPrice, calcDiscountPercent } from '../utils/format';
 import ProductCard from '../components/ProductCard';
-import { FiShoppingCart, FiCheck, FiChevronRight, FiPackage, FiTruck, FiShield } from 'react-icons/fi';
 import './ProductDetailPage.css';
 
 export default function ProductDetailPage() {
@@ -25,7 +37,7 @@ export default function ProductDetailPage() {
     fetchProduct(slug)
       .then((data) => {
         setProduct(data);
-        return fetchSimilarProducts(data.id);
+        return fetchSimilarProducts(data.id).catch(() => []);
       })
       .then((simData) => setSimilar(simData))
       .catch((err) => console.error(err))
@@ -33,20 +45,12 @@ export default function ProductDetailPage() {
   }, [slug]);
 
   const handleAddToCart = () => {
-    if (product) {
-      addToCart({
-        id: product.id, name: product.name, slug: product.slug,
-        price: product.price, image_url: product.image_url,
-        category_name: product.category?.name, material: product.material,
-        color: product.color, in_stock: product.in_stock,
-      }, quantity);
-      setAdded(true);
-      setTimeout(() => setAdded(false), 2000);
-    }
+    if (!product || !product.in_stock) return;
+    addToCart(product, quantity);
+    setAdded(true);
+    toast.success(`${quantity}× ${product.name} added to cart!`);
+    setTimeout(() => setAdded(false), 2000);
   };
-
-  const formatPrice = (price) =>
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(price);
 
   if (loading) {
     return (
@@ -69,13 +73,34 @@ export default function ProductDetailPage() {
       <div className="product-detail-page container">
         <div className="empty-state">
           <h3>Product not found</h3>
+          <p>The product you're looking for doesn't exist or has been removed.</p>
           <Link to="/" className="btn-primary">Back to Shop</Link>
         </div>
       </div>
     );
   }
 
-  const isInCart = cartItems.some(item => item.product.id === product.id);
+  const isInCart = cartItems.some((item) => item.product.id === product.id);
+  const categoryName = product.category_name || product.category?.name || '';
+
+  // Real pricing — read directly from backend response
+  const mrp = parseFloat(product.price);
+  const effective = parseFloat(product.effective_price ?? product.price);
+  const hasDiscount = effective < mrp;
+  const discountPercent = hasDiscount ? calcDiscountPercent(mrp, effective) : 0;
+  const unitsLeft = product.discount_units_remaining;
+
+  // Stock status
+  const stockBucket =
+    product.stock === 0 ? 'oos' : product.stock <= 5 ? 'low' : 'ok';
+  const stockMessage =
+    stockBucket === 'oos' ? 'Out of Stock'
+      : stockBucket === 'low' ? `Only ${product.stock} left in stock!`
+      : `In Stock (${product.stock} available)`;
+
+  const maxQty = Math.min(product.stock || 1, 10);
+  const decrementQty = () => setQuantity((q) => Math.max(1, q - 1));
+  const incrementQty = () => setQuantity((q) => Math.min(maxQty, q + 1));
 
   return (
     <div className="product-detail-page">
@@ -83,8 +108,14 @@ export default function ProductDetailPage() {
       <div className="breadcrumb container">
         <Link to="/">Shop</Link>
         <FiChevronRight size={14} />
-        <span>{product.category?.name}</span>
-        <FiChevronRight size={14} />
+        {categoryName && (
+          <>
+            <Link to={`/?category=${encodeURIComponent(categoryName.toLowerCase().replace(/\s+/g, '-'))}`}>
+              {categoryName}
+            </Link>
+            <FiChevronRight size={14} />
+          </>
+        )}
         <span className="current">{product.name}</span>
       </div>
 
@@ -92,12 +123,16 @@ export default function ProductDetailPage() {
         {/* Product Image */}
         <div className="pd-image-wrapper" id="product-image">
           <img src={product.image_url} alt={product.name} className="pd-image" />
+          {discountPercent > 0 && (
+            <span className="pd-image-badge">{discountPercent}% OFF</span>
+          )}
         </div>
 
         {/* Product Info */}
         <div className="pd-info">
-          <span className="pd-category">{product.category?.name}</span>
+          {categoryName && <span className="pd-category">{categoryName}</span>}
           <h1 className="pd-name">{product.name}</h1>
+
           <div className="pd-rating">
             <div className="pd-stars">
               {'★★★★☆'.split('').map((s, i) => (
@@ -106,11 +141,33 @@ export default function ProductDetailPage() {
             </div>
             <span className="pd-rating-text">4.0 (248 reviews)</span>
           </div>
+
+          {/* Pricing */}
           <div className="pd-pricing">
-            <span className="pd-price">{formatPrice(product.price)}</span>
-            <span className="pd-original-price">{formatPrice(Math.round(product.price * 1.2))}</span>
-            <span className="pd-discount-badge">20% OFF</span>
+            <span className="pd-price">{formatPrice(effective)}</span>
+            {hasDiscount && (
+              <>
+                <span className="pd-original-price">{formatPrice(mrp)}</span>
+                <span className="pd-discount-badge">{discountPercent}% OFF</span>
+              </>
+            )}
           </div>
+
+          {/* Discount-units note */}
+          {unitsLeft !== null && unitsLeft !== undefined && (
+            <p className={`pd-units-note ${unitsLeft === 0 ? 'pd-units-note--ended' : ''}`}>
+              <FiTag size={14} />
+              {unitsLeft === 0
+                ? 'Offer has ended — showing regular price'
+                : `Only ${unitsLeft} units left at this discounted price`}
+            </p>
+          )}
+
+          {product.discount_applied === 'dealer' && (
+            <p className="pd-dealer-note">
+              <FiTag size={14} /> You're seeing exclusive dealer pricing
+            </p>
+          )}
 
           <p className="pd-description">{product.description}</p>
 
@@ -118,47 +175,70 @@ export default function ProductDetailPage() {
           <div className="pd-specs">
             <div className="pd-spec">
               <span className="spec-label">Material</span>
-              <span className="spec-value">{product.material}</span>
+              <span className="spec-value">{product.material || '—'}</span>
             </div>
             <div className="pd-spec">
               <span className="spec-label">Color</span>
-              <span className="spec-value">{product.color}</span>
+              <span className="spec-value">{product.color || '—'}</span>
             </div>
             <div className="pd-spec">
               <span className="spec-label">Dimensions</span>
-              <span className="spec-value">{product.dimensions}</span>
+              <span className="spec-value">{product.dimensions || '—'}</span>
             </div>
             <div className="pd-spec">
               <span className="spec-label">Availability</span>
-              <span className={`spec-value ${product.in_stock ? 'in-stock' : 'out-stock'}`}>
-                {product.in_stock ? `In Stock (${product.stock})` : 'Out of Stock'}
+              <span
+                className={`spec-value ${
+                  stockBucket === 'oos' ? 'out-stock'
+                    : stockBucket === 'low' ? 'low-stock' : 'in-stock'
+                }`}
+              >
+                {stockMessage}
               </span>
             </div>
           </div>
 
           {/* Add to Cart */}
-          {product.in_stock && (
+          {product.in_stock ? (
             <div className="pd-actions">
               <div className="pd-quantity">
-                <button onClick={() => setQuantity(Math.max(1, quantity - 1))}>−</button>
+                <button onClick={decrementQty} disabled={quantity <= 1} aria-label="Decrease quantity">−</button>
                 <span>{quantity}</span>
-                <button onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}>+</button>
+                <button onClick={incrementQty} disabled={quantity >= maxQty} aria-label="Increase quantity">+</button>
               </div>
               <button
                 className={`btn-primary pd-add-btn ${added ? 'added' : ''}`}
                 onClick={handleAddToCart}
                 id="add-to-cart-btn"
               >
-                {added ? <><FiCheck /> Added to Cart!</> : isInCart ? <><FiShoppingCart /> Update Cart</> : <><FiShoppingCart /> Add to Cart</>}
+                {added ? (
+                  <><FiCheck /> Added to Cart!</>
+                ) : isInCart ? (
+                  <><FiShoppingCart /> Add Again</>
+                ) : (
+                  <><FiShoppingCart /> Add to Cart</>
+                )}
+              </button>
+            </div>
+          ) : (
+            <div className="pd-actions">
+              <button className="btn-primary pd-add-btn" disabled>
+                Out of Stock
               </button>
             </div>
           )}
 
           {/* Trust badges */}
           <div className="pd-trust">
-            <div className="trust-item"><FiTruck size={18} /> <span>Free shipping over ₹5,000</span></div>
-            <div className="trust-item"><FiShield size={18} /> <span>2-year warranty</span></div>
-            <div className="trust-item"><FiPackage size={18} /> <span>Easy returns</span></div>
+            <div className="trust-item">
+              <FiTruck size={18} /> <span>Free shipping over ₹2,999</span>
+            </div>
+            <div className="trust-item">
+              <FiShield size={18} /> <span>1-year warranty</span>
+            </div>
+            <div className="trust-item">
+              <FiPackage size={18} /> <span>30-day easy returns</span>
+            </div>
           </div>
         </div>
       </div>
@@ -166,9 +246,9 @@ export default function ProductDetailPage() {
       {/* Similar Products */}
       {similar.length > 0 && (
         <section className="similar-section container">
-          <h2>Similar Products</h2>
+          <h2>You May Also Like</h2>
           <div className="similar-grid">
-            {similar.map((p) => (
+            {similar.slice(0, 4).map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
           </div>

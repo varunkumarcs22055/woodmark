@@ -1,19 +1,34 @@
 /**
- * OrderCard Component — Displays a single order summary.
+ * OrderCard — single order summary with color-coded status dots.
  */
+import { formatPrice, formatDate } from '../utils/format';
 import './OrderCard.css';
 
+const STATUS_DOT_COLORS = {
+  CREATED: '#8A8A8A',
+  CONFIRMED: '#00736A',
+  SHIPPED: '#1565C0',
+  DELIVERED: '#2E7D32',
+  CANCELLED: '#C62828',
+};
+
+const STATUS_BADGE_CLASS = {
+  CREATED: 'info',
+  CONFIRMED: 'info',
+  SHIPPED: 'warning',
+  DELIVERED: 'success',
+  CANCELLED: 'error',
+};
+
+const PAYMENT_BADGE_CLASS = {
+  PENDING: 'warning',
+  SUCCESS: 'success',
+  PAID: 'success',
+  FAILED: 'error',
+};
+
 export default function OrderCard({ order }) {
-  const formatPrice = (price) =>
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(price);
-
-  const formatDate = (dateStr) =>
-    new Date(dateStr).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
-
-  const statusColors = {
-    CREATED: 'info', CONFIRMED: 'info', SHIPPED: 'warning', DELIVERED: 'success', CANCELLED: 'error',
-  };
-  const paymentColors = { PENDING: 'warning', SUCCESS: 'success', FAILED: 'error' };
+  const dotColor = STATUS_DOT_COLORS[order.order_status] || '#8A8A8A';
 
   return (
     <div className="order-card fade-in" id={`order-${order.order_id}`}>
@@ -23,10 +38,16 @@ export default function OrderCard({ order }) {
           <span className="order-date">{formatDate(order.created_at)}</span>
         </div>
         <div className="order-badges">
-          <span className={`badge badge-${paymentColors[order.payment_status]}`}>
+          <span className={`badge badge-${PAYMENT_BADGE_CLASS[order.payment_status] || 'info'}`}>
             {order.payment_status}
           </span>
-          <span className={`badge badge-${statusColors[order.order_status]}`}>
+          <span
+            className={`badge badge-${STATUS_BADGE_CLASS[order.order_status] || 'info'}`}
+          >
+            <span
+              className="order-status-dot"
+              style={{ background: dotColor }}
+            />
             {order.order_status}
           </span>
         </div>
@@ -34,11 +55,17 @@ export default function OrderCard({ order }) {
 
       <div className="order-items-list">
         {order.items?.map((item, idx) => (
-          <div key={idx} className="order-item-row">
-            <img src={item.product_image} alt={item.product_name} className="order-item-thumb" />
+          <div key={item.id ?? idx} className="order-item-row">
+            <img
+              src={item.product_image}
+              alt={item.product_name}
+              className="order-item-thumb"
+            />
             <div className="order-item-info">
               <span className="order-item-name">{item.product_name}</span>
-              <span className="order-item-qty">Qty: {item.quantity} × {formatPrice(item.price)}</span>
+              <span className="order-item-qty">
+                Qty: {item.quantity} × {formatPrice(item.price)}
+              </span>
             </div>
             <span className="order-item-subtotal">{formatPrice(item.subtotal)}</span>
           </div>
@@ -48,7 +75,9 @@ export default function OrderCard({ order }) {
       <div className="order-card-footer">
         <div className="order-meta">
           <span>Ship to: {order.user_name}</span>
-          {order.erp_order_id && <span className="erp-id">ERP: {order.erp_order_id}</span>}
+          {order.erp_order_id && (
+            <span className="erp-id">ERP: {order.erp_order_id}</span>
+          )}
         </div>
         <div className="order-total">
           <span className="total-label">Total</span>

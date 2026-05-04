@@ -4,33 +4,74 @@
  * Uses React Context + useReducer for predictable state updates.
  * Cart is persisted to localStorage so it survives page refreshes.
  *
+ * Important: only a SLIM product snapshot is stored — we strip large fields
+ * like `description` so a typical cart fits well under the ~5MB localStorage
+ * quota even with many items. saveCart is wrapped in try/catch so a quota
+ * blow-up never crashes the provider.
+ *
  * Provides:
  *   - cartItems: array of { product, quantity }
- *   - cartTotal: calculated total price
- *   - cartCount: total number of items
+ *   - cartTotal: calculated total price (uses effective_price when present)
+ *   - cartCount: total number of units
  *   - addToCart(product, quantity)
  *   - removeFromCart(productId)
  *   - updateQuantity(productId, quantity)
  *   - clearCart()
  */
 
-import { createContext, useContext, useReducer, useEffect } from 'react';
+import { createContext, useContext, useReducer } from 'react';
 
 const CartContext = createContext();
+const STORAGE_KEY = 'furnishop_cart';
 
-// Load cart from localStorage
+/**
+ * Trim an API product down to only the fields the cart actually renders.
+ * Drops `description`, timestamps, and any unknown extras to keep
+ * localStorage tiny.
+ */
+const slimProduct = (p) => ({
+  id: p.id,
+  name: p.name,
+  slug: p.slug,
+  price: p.price,
+  effective_price: p.effective_price ?? null,
+  discount_applied: p.discount_applied ?? null,
+  discount_units_remaining: p.discount_units_remaining ?? null,
+  image_url: p.image_url,
+  category_name: p.category_name ?? p.category?.name ?? '',
+  material: p.material ?? '',
+  color: p.color ?? '',
+  stock: p.stock ?? 0,
+  in_stock: p.in_stock ?? (p.stock ?? 0) > 0,
+});
+
 const loadCart = () => {
   try {
-    const stored = localStorage.getItem('furnishop_cart');
-    return stored ? JSON.parse(stored) : [];
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const parsed = stored ? JSON.parse(stored) : [];
+    if (!Array.isArray(parsed)) return [];
+    // Defensive: re-slim on load in case the stored shape is older/bloated
+    return parsed
+      .filter((it) => it && it.product && it.product.id)
+      .map((it) => ({
+        product: slimProduct(it.product),
+        quantity: Math.max(1, parseInt(it.quantity, 10) || 1),
+      }));
   } catch {
+    // Corrupt or unreadable — start fresh
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     return [];
   }
 };
 
-// Save cart to localStorage
 const saveCart = (items) => {
-  localStorage.setItem('furnishop_cart', JSON.stringify(items));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch (err) {
+    // Most likely QuotaExceededError. Don't crash the app — log and continue.
+    // The in-memory cart still works for this session.
+    console.warn('Cart could not be persisted to localStorage:', err?.name || err);
+  }
 };
 
 // ─── Reducer ───────────────────────────────────────────────────────
@@ -41,36 +82,33 @@ const cartReducer = (state, action) => {
   switch (action.type) {
     case 'ADD_ITEM': {
       const { product, quantity = 1 } = action.payload;
-      const existingIndex = state.findIndex(item => item.product.id === product.id);
+      const slim = slimProduct(product);
+      const existingIndex = state.findIndex((item) => item.product.id === slim.id);
 
       if (existingIndex >= 0) {
-        // Update quantity of existing item
         newState = state.map((item, index) =>
           index === existingIndex
-            ? { ...item, quantity: item.quantity + quantity }
+            ? { ...item, product: slim, quantity: item.quantity + quantity }
             : item
         );
       } else {
-        // Add new item
-        newState = [...state, { product, quantity }];
+        newState = [...state, { product: slim, quantity }];
       }
       break;
     }
 
     case 'REMOVE_ITEM': {
-      newState = state.filter(item => item.product.id !== action.payload);
+      newState = state.filter((item) => item.product.id !== action.payload);
       break;
     }
 
     case 'UPDATE_QUANTITY': {
       const { productId, quantity } = action.payload;
       if (quantity <= 0) {
-        newState = state.filter(item => item.product.id !== productId);
+        newState = state.filter((item) => item.product.id !== productId);
       } else {
-        newState = state.map(item =>
-          item.product.id === productId
-            ? { ...item, quantity }
-            : item
+        newState = state.map((item) =>
+          item.product.id === productId ? { ...item, quantity } : item
         );
       }
       break;
@@ -93,9 +131,10 @@ const cartReducer = (state, action) => {
 export function CartProvider({ children }) {
   const [cartItems, dispatch] = useReducer(cartReducer, [], loadCart);
 
-  // Calculate derived values
+  // Discount-aware totals
   const cartTotal = cartItems.reduce(
-    (sum, item) => sum + parseFloat(item.product.price) * item.quantity,
+    (sum, item) =>
+      sum + parseFloat(item.product.effective_price ?? item.product.price) * item.quantity,
     0
   );
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);

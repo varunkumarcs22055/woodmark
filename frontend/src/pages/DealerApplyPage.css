@@ -1,0 +1,164 @@
+/* ─── Dealer Apply Page ──────────────────────────────────────────── */
+.dealer-apply {
+  min-height: calc(100vh - var(--navbar-height));
+  background: var(--color-bg);
+  padding: var(--space-8) var(--space-4);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.dealer-apply__container {
+  width: 100%;
+  max-width: 560px;
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-md);
+}
+
+.dealer-apply__header {
+  text-align: center;
+  margin-bottom: var(--space-6);
+}
+
+.dealer-apply__header h1 {
+  font-family: var(--font-heading);
+  font-size: var(--text-3xl);
+  margin-bottom: var(--space-3);
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.dealer-apply__header p {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  max-width: 420px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+/* ─── Step indicator ─────────────────────────────────────────────── */
+.dealer-apply__steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.dealer-apply__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  opacity: 0.45;
+  transition: opacity var(--transition-base);
+}
+
+.dealer-apply__step.active {
+  opacity: 1;
+}
+
+.dealer-apply__step-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-surface-2);
+  border: 2px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  transition: all var(--transition-base);
+}
+
+.dealer-apply__step.active .dealer-apply__step-num {
+  background: var(--color-brand);
+  border-color: var(--color-brand);
+  color: var(--color-white);
+}
+
+.dealer-apply__step-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
+}
+
+.dealer-apply__step-line {
+  flex: 0 0 60px;
+  height: 2px;
+  background: var(--color-border);
+  margin-bottom: 24px;
+}
+
+/* ─── Action row (Back + Submit) ─────────────────────────────────── */
+.dealer-apply__actions-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.dealer-apply__actions-row .btn-outline {
+  flex-shrink: 0;
+}
+
+/* ─── Success state ──────────────────────────────────────────────── */
+.dealer-apply__success {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: var(--space-12) var(--space-8);
+  text-align: center;
+  max-width: 540px;
+  box-shadow: var(--shadow-lg);
+}
+
+.dealer-apply__success-icon {
+  color: var(--color-success);
+  margin-bottom: var(--space-4);
+}
+
+.dealer-apply__success h2 {
+  font-family: var(--font-heading);
+  font-size: var(--text-3xl);
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
+}
+
+.dealer-apply__success p {
+  color: var(--color-text-secondary);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  margin-bottom: var(--space-3);
+}
+
+.dealer-apply__note {
+  background: var(--color-brand-pale);
+  color: var(--color-brand-dark);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm) !important;
+  margin: var(--space-4) 0 var(--space-6) !important;
+}
+
+.dealer-apply__actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .dealer-apply__container {
+    padding: var(--space-5);
+  }
+
+  .dealer-apply__step-line {
+    flex: 0 0 40px;
+  }
+}

@@ -1,0 +1,117 @@
+.product-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.pg-hero {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: zoom-in;
+  background: var(--color-surface);
+}
+
+.pg-hero__media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.pg-hero:hover .pg-hero__media {
+  transform: scale(1.03);
+}
+
+.pg-hero__play-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  pointer-events: none;
+}
+
+.pg-hero__hint {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  font-size: 11px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 3px 8px;
+  border-radius: 20px;
+  pointer-events: none;
+}
+
+.pg-thumbs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 4px;
+}
+
+.pg-thumb {
+  flex-shrink: 0;
+  width: 68px;
+  height: 68px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  background: var(--color-surface);
+  transition: border-color 0.15s;
+}
+
+.pg-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pg-thumb--active {
+  border-color: var(--color-brand);
+}
+
+.pg-thumb:hover:not(.pg-thumb--active) {
+  border-color: var(--color-border);
+}
+
+.pg-thumb__video-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-hover);
+  color: var(--color-text-muted);
+}
+
+/* Mobile: swiper-style scroll */
+@media (max-width: 768px) {
+  .pg-hero {
+    aspect-ratio: 1 / 1;
+    cursor: default;
+  }
+  .pg-hero:hover .pg-hero__media {
+    transform: none;
+  }
+  .pg-hero__hint {
+    display: none;
+  }
+  .pg-thumbs {
+    gap: 6px;
+  }
+  .pg-thumb {
+    width: 56px;
+    height: 56px;
+  }
+}

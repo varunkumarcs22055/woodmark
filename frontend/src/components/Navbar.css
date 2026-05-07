@@ -11,6 +11,27 @@
   align-items: center;
 }
 
+.announcement-bar--dealer {
+  background: linear-gradient(90deg, #B58900 0%, #D4A017 50%, #B58900 100%);
+  color: white;
+  font-weight: 700;
+}
+
+.announcement-bar--dealer .announcement-text {
+  color: white;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.announcement-bar--dealer .announcement-right {
+  color: white;
+  font-weight: 700;
+}
+
+.announcement-bar--dealer .announcement-right a:hover {
+  text-decoration: underline;
+}
+
 .announcement-inner {
   display: flex;
   align-items: center;

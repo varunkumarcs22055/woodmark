@@ -1,7 +1,11 @@
 /**
  * App — Root component with routing and layout.
+ *
+ * The Admin and Dealer dashboards are full-screen apps with their own
+ * sidebar navigation, so we hide the global Navbar / Footer / main-content
+ * padding on those routes via useLocation.
  */
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -21,9 +25,16 @@ import DealerDashboard from './pages/dealer/DealerDashboard';
 
 import './App.css';
 
+const FULLSCREEN_PREFIXES = ['/admin-dashboard', '/dealer-dashboard'];
+
 export default function App() {
+  const location = useLocation();
+  const isFullscreenLayout = FULLSCREEN_PREFIXES.some((p) =>
+    location.pathname.startsWith(p)
+  );
+
   return (
-    <div className="app">
+    <div className={`app ${isFullscreenLayout ? 'app--fullscreen' : ''}`}>
       <Toaster
         position="top-right"
         toastOptions={{
@@ -36,8 +47,10 @@ export default function App() {
           },
         }}
       />
-      <Navbar />
-      <main className="main-content">
+
+      {!isFullscreenLayout && <Navbar />}
+
+      <main className={isFullscreenLayout ? 'main-content--fullscreen' : 'main-content'}>
         <Routes>
           {/* Public */}
           <Route path="/" element={<HomePage />} />
@@ -50,7 +63,7 @@ export default function App() {
           <Route path="/auth-callback" element={<AuthCallbackPage />} />
           <Route path="/dealer-apply" element={<DealerApplyPage />} />
 
-          {/* Dealer-only */}
+          {/* Dealer-only — full-screen */}
           <Route
             path="/dealer-dashboard/*"
             element={
@@ -60,7 +73,7 @@ export default function App() {
             }
           />
 
-          {/* Admin-only */}
+          {/* Admin-only — full-screen */}
           <Route
             path="/admin-dashboard/*"
             element={
@@ -71,7 +84,8 @@ export default function App() {
           />
         </Routes>
       </main>
-      <Footer />
+
+      {!isFullscreenLayout && <Footer />}
     </div>
   );
 }

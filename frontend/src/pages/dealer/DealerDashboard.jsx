@@ -10,12 +10,13 @@
 import { useState } from 'react';
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import {
-  FiHome, FiBox, FiShoppingBag, FiUser, FiLogOut, FiTrendingUp, FiMenu, FiX,
+  FiHome, FiShoppingBag, FiUser, FiLogOut, FiTrendingUp, FiMenu, FiX,
+  FiExternalLink,
 } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import DealerStatusBadge from '../../components/dealer/DealerStatusBadge';
 import DealerOverview from './DealerOverview';
-import DealerCatalog from './DealerCatalog';
 import DealerOrders from './DealerOrders';
 import DealerProfile from './DealerProfile';
 import DealerPendingScreen from './DealerPendingScreen';
@@ -23,10 +24,9 @@ import DealerRejectedScreen from './DealerRejectedScreen';
 import './DealerDashboard.css';
 
 const NAV_ITEMS = [
-  { path: '',        label: 'Overview',       icon: <FiHome /> },
-  { path: 'catalog', label: 'Browse Catalog', icon: <FiBox /> },
-  { path: 'orders',  label: 'My Orders',      icon: <FiShoppingBag /> },
-  { path: 'profile', label: 'Account',        icon: <FiUser /> },
+  { path: '',        label: 'Overview',  icon: <FiHome /> },
+  { path: 'orders',  label: 'My Orders', icon: <FiShoppingBag /> },
+  { path: 'profile', label: 'Account',   icon: <FiUser /> },
 ];
 
 export default function DealerDashboard() {
@@ -87,6 +87,15 @@ export default function DealerDashboard() {
               {item.icon} {item.label}
             </NavLink>
           ))}
+
+          {/* Shop on the public site — same UI as users, but dealer prices */}
+          <Link
+            to="/"
+            className="dealer-sidebar__link dealer-sidebar__link--external"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <FiExternalLink /> Shop the Catalog
+          </Link>
         </nav>
 
         <div className="dealer-sidebar__footer">
@@ -114,7 +123,6 @@ export default function DealerDashboard() {
         <div className="dealer-main__content">
           <Routes>
             <Route index element={<DealerOverview />} />
-            <Route path="catalog" element={<DealerCatalog />} />
             <Route path="orders" element={<DealerOrders />} />
             <Route path="profile" element={<DealerProfile />} />
           </Routes>

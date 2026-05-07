@@ -16,3 +16,21 @@ requests>=2.31,<3.0
 
 # Production server
 gunicorn>=22.0,<23.0
+
+# JWT authentication
+djangorestframework-simplejwt>=5.3,<6.0
+
+# Google OAuth
+social-auth-app-django>=5.4,<6.0
+social-auth-core>=4.5,<5.0
+
+# Payments
+razorpay>=1.4
+
+# Media storage & image handling
+django-storages>=1.14,<2.0
+Pillow>=10.0,<11.0
+
+# Cloudinary — product image + video hosting
+cloudinary==1.41.0
+django-cloudinary-storage==0.3.0

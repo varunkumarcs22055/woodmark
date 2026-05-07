@@ -754,12 +754,19 @@ export const calcDiscountPercent = (original, effective) => {
 ## Navbar Component — `src/components/Navbar.jsx`
 
 Build a **production-grade mega-menu navbar** with these sections:
-1. **Announcement bar** (top strip): "Free shipping on orders above ₹2,999 | Call us: 1800-XXX-XXXX"
-2. **Main nav row**: Logo left, desktop nav links center, icon actions right (search, wishlist, account, cart badge)
+1. **Announcement bar** (top strip):
+   - **Default:** "Free shipping on orders above ₹2,999 | Call us: 1800-XXX-XXXX" (teal background)
+   - **When `user.role === 'dealer'`:** swap to a **gold-gradient "Dealer Rates Active" ribbon** with copy *"💼 Dealer rates active · Your B2B prices are applied automatically across the site"* and a **"Dealer Portal →"** link on the right. This is critical — it's how dealers know they're seeing trade pricing while shopping on the public site.
+2. **Main nav row**: Logo left, desktop nav links center, icon actions right (search, account, cart badge)
 3. **Mega menu**: Dropdown with multi-column layout for each category. Each column shows a heading and items. Items link via `goTo(slug)` which navigates to `/?category=${slug}`.
 4. **Search overlay**: Full-width search input with product suggestions on type
 5. **Mobile drawer**: Hamburger → side drawer with accordion nav
-6. **Account icon behavior**: If logged in → show user menu (Profile, My Orders, [Admin Dashboard or Dealer Dashboard based on role], Logout). If not logged in → link to `/login`.
+6. **Account icon behavior**: If logged in → show user menu (Profile, My Orders, [Admin Dashboard or Dealer Portal based on role], Logout). If not logged in → link to `/login`.
+
+**Note on full-screen routes:** App.jsx hides the global Navbar AND Footer on
+`/admin-dashboard/*` and `/dealer-dashboard/*` (they have their own sidebar
+shells). Detect this via `useLocation().pathname` and skip rendering the
+Navbar/Footer when those prefixes match.
 
 **NAV_ITEMS array** (slugs MUST match seeded category slugs exactly):
 ```javascript

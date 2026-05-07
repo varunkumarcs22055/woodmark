@@ -241,18 +241,33 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Announcement Bar */}
-      <div className="announcement-bar">
-        <div className="announcement-inner container">
-          <span className="announcement-text">
-            🎉 Free shipping on orders above ₹2,999 &nbsp;·&nbsp; Trusted by 1 Lakh+ happy homes
-          </span>
-          <div className="announcement-right">
-            <FiPhone size={12} />
-            <span>1800-123-4567</span>
+      {/* Announcement Bar — swaps to a dealer-rates ribbon when a dealer is logged in */}
+      {user?.role === 'dealer' ? (
+        <div className="announcement-bar announcement-bar--dealer">
+          <div className="announcement-inner container">
+            <span className="announcement-text">
+              💼 Dealer rates active &nbsp;·&nbsp; Your B2B prices are applied automatically across the site
+            </span>
+            <div className="announcement-right">
+              <Link to="/dealer-dashboard" style={{ color: 'inherit' }}>
+                Dealer Portal →
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="announcement-bar">
+          <div className="announcement-inner container">
+            <span className="announcement-text">
+              🎉 Free shipping on orders above ₹2,999 &nbsp;·&nbsp; Trusted by 1 Lakh+ happy homes
+            </span>
+            <div className="announcement-right">
+              <FiPhone size={12} />
+              <span>1800-123-4567</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Navbar */}
       <nav className={`navbar ${scrolled ? 'scrolled' : ''}`}>

@@ -74,28 +74,25 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
-   * DEV-ONLY: synthesize a fake authenticated session without calling the
-   * backend. Lets you preview role-gated screens (admin/dealer dashboards)
-   * before the auth backend is wired up. NEVER ship this to production —
-   * the guard below ensures it's a no-op outside Vite's dev mode.
+   * DEV-ONLY: logs in a real backend test user so all API calls work correctly.
+   * Uses POST /api/auth/dev-login/ which is only available when DEBUG=True.
    */
-  const loginAsTestUser = useCallback((role = 'admin') => {
-    if (!import.meta.env.DEV) {
-      console.warn('loginAsTestUser is dev-only');
-      return;
+  const loginAsTestUser = useCallback(async (role = 'admin') => {
+    if (!import.meta.env.DEV) return;
+    try {
+      const res = await fetch('/api/auth/dev-login/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role }),
+      });
+      if (!res.ok) throw new Error('dev-login failed');
+      const data = await res.json();
+      window.__accessToken = data.access;
+      localStorage.setItem('furnishop_refresh_token', data.refresh);
+      setUser(data.user);
+    } catch (err) {
+      console.error('Dev login failed:', err);
     }
-    const profiles = {
-      admin: { id: 1, email: 'test-admin@furnishop.local', full_name: 'Test Admin',
-               role: 'admin', dealer_status: null, phone: '' },
-      dealer: { id: 2, email: 'test-dealer@furnishop.local', full_name: 'Test Dealer',
-                role: 'dealer', dealer_status: 'active',
-                dealer_company_name: 'Test Dealer Co.',
-                dealer_gst_number: '29ABCDE1234F1Z5', phone: '9876543210' },
-      user: { id: 3, email: 'test-user@furnishop.local', full_name: 'Test User',
-              role: 'user', dealer_status: null, phone: '9876543210' },
-    };
-    window.__accessToken = `dev-test-token-${role}`;
-    setUser(profiles[role] || profiles.user);
   }, []);
 
   // Refresh user profile in-place (used after profile edits, dealer apply, etc.)

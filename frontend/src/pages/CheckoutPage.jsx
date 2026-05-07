@@ -18,6 +18,7 @@ import { FiLock, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 import {
   createOrder, simulatePayment, createRazorpayOrder, verifyPayment,
 } from '../api';
@@ -47,6 +48,7 @@ const loadRazorpayScript = () =>
 export default function CheckoutPage() {
   const { cartItems, cartTotal, cartCount, clearCart } = useCart();
   const { user } = useAuth();
+  const { gst_percent, free_shipping_threshold, standard_shipping_fee } = useSettings();
   const navigate = useNavigate();
 
   const [step, setStep] = useState('form'); // form | processing | success | error
@@ -90,8 +92,12 @@ export default function CheckoutPage() {
     (sum, item) => sum + parseFloat(item.product.price) * item.quantity, 0
   );
   const savings = originalTotal - subtotal;
-  const shipping = subtotal >= 2999 ? 0 : 499;
-  const grandTotal = subtotal + shipping;
+  const gstPercent = parseFloat(gst_percent);
+  const gstAmount = Math.round(subtotal * gstPercent) / 100;
+  const freeThreshold = parseFloat(free_shipping_threshold);
+  const shippingFee = parseFloat(standard_shipping_fee);
+  const shipping = subtotal >= freeThreshold ? 0 : shippingFee;
+  const grandTotal = subtotal + gstAmount + shipping;
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -399,6 +405,10 @@ export default function CheckoutPage() {
                 <span>−{formatPrice(savings)}</span>
               </div>
             )}
+            <div className="checkout-summary__row">
+              <span>GST ({gstPercent}%)</span>
+              <span>{formatPrice(gstAmount)}</span>
+            </div>
             <div className="checkout-summary__row">
               <span>Shipping</span>
               <span style={{ color: shipping === 0 ? 'var(--color-success)' : 'inherit' }}>

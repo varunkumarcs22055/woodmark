@@ -177,25 +177,25 @@ export default function LoginPage() {
               <div className="dev-quick-login__buttons">
                 <button
                   type="button"
-                  onClick={() => { loginAsTestUser('user'); navigate('/'); }}
+                  onClick={() => loginAsTestUser('user').then(() => navigate('/'))}
                 >
                   As User
                 </button>
                 <button
                   type="button"
-                  onClick={() => { loginAsTestUser('dealer'); navigate('/dealer-dashboard'); }}
+                  onClick={() => loginAsTestUser('dealer').then(() => navigate('/dealer-dashboard'))}
                 >
                   As Dealer
                 </button>
                 <button
                   type="button"
-                  onClick={() => { loginAsTestUser('admin'); navigate('/admin-dashboard'); }}
+                  onClick={() => loginAsTestUser('admin').then(() => navigate('/admin-dashboard'))}
                 >
                   As Admin
                 </button>
               </div>
               <p className="dev-quick-login__note">
-                Bypasses backend — preview role-gated screens locally.
+                Logs in as a real backend test user — API calls work fully.
               </p>
             </div>
           )}

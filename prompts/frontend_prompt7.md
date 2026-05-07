@@ -1,30 +1,42 @@
-# Frontend Prompt 7 — Dealer Dashboard
+# Frontend Prompt 7 — Dealer Portal (B2B Account Hub)
+
+> **⚠️ ARCHITECTURE UPDATE (2026-05):** The Dealer Portal is **NOT** a parallel storefront.
+> Dealers shop the **same** public site as regular users — the backend serves
+> dealer-tier pricing automatically based on JWT role. The portal is a slim
+> B2B account hub: Overview · Orders · Profile only. **Do NOT create**
+> `DealerCatalog.jsx` or `DealerProductCard.jsx` — they were deliberately removed.
+>
+> Why this matters: one catalog, one ProductCard, one cart, one checkout. The
+> `ProductCard` already shows a gold "Dealer Price" chip when
+> `product.discount_applied === 'dealer'`, so dealers see their pricing
+> everywhere on the public site. The Navbar shows a gold "Dealer Rates Active"
+> ribbon when `user.role === 'dealer'` (added in Frontend Prompt 1).
 
 ## Role
-You are a senior frontend engineer. Build the complete Dealer Dashboard for FurniShop — the B2B portal where approved dealers see dealer-specific pricing, their order history, account status, and the discount-allotted unit counts available to them.
+You are a senior frontend engineer. Build the Dealer Portal for FurniShop — a
+B2B account hub where approved dealers manage their account, review orders,
+and check their dealer status. The shopping experience itself lives on the
+public site.
 
 ---
 
 ## Context
-Dealers are approved B2B partners (furniture retailers, interior designers, contractors). They:
-- See dealer-specific pricing on every product (lower than retail, controlled by `discount_type='dealer'`)
-- Get a count-limited dealer discount per product (e.g., "first 50 units at ₹X")
-- Place bulk orders that flow through the same checkout as users but with dealer pricing
+Dealers are approved B2B partners (retailers, designers, contractors). They:
+- Shop on the **public site** (`/`) — backend serves dealer prices to dealer JWTs
+- Use the **portal** at `/dealer-dashboard/*` for account management only
+- See dealer-specific pricing automatically everywhere (gold chip on ProductCard,
+  gold ribbon in Navbar, dealer-priced totals in Cart/Checkout)
 - Cannot manage products or other users — that's admin-only
 
-The dealer experience must feel premium and B2B-grade: clean, data-dense, fast, and trustworthy. It should make the dealer feel like a valued partner, not just another customer.
-
-**Depends on:** Frontend Prompts 1, 2, 3, 4, 5, 6 (auth, products, cart, checkout, admin patterns)
+**Depends on:** Frontend Prompts 1, 2, 3, 4, 5, 6 (the global Navbar + ProductCard already handle dealer-rate UI)
 **Backend endpoints used:**
-- `GET /api/products/` (JWT-authenticated → returns `effective_price` with dealer discount applied)
-- `GET /api/products/{slug}/` (dealer pricing)
 - `GET /api/orders/` (authenticated → returns this dealer's orders)
 - `GET /api/auth/profile/` (dealer profile + dealer_status + company_name + gst_number)
 - `PATCH /api/auth/profile/` (update profile)
 
 **Permission Model:**
 - Route guarded by `<RoleRoute allowedRoles={['dealer']}>`
-- Only `dealer_status === 'active'` dealers see full dashboard
+- Only `dealer_status === 'active'` dealers see the full portal
 - `dealer_status === 'pending'` → show pending approval screen
 - `dealer_status === 'rejected'` → show rejection screen with support contact
 
@@ -34,35 +46,46 @@ The dealer experience must feel premium and B2B-grade: clean, data-dense, fast, 
 
 ```
 frontend/src/pages/dealer/
-├── DealerDashboard.jsx          # Layout shell with sidebar + nested routes
+├── DealerDashboard.jsx          # Layout shell with sidebar + nested routes (3 sections)
 ├── DealerDashboard.css
-├── DealerOverview.jsx           # Stats + recent orders + featured products
-├── DealerCatalog.jsx            # Product browsing with dealer pricing
-├── DealerOrders.jsx             # Dealer's order history
+├── DealerOverview.jsx           # KPI cards + CTA banner + recent orders
+├── DealerOrders.jsx             # Dealer's order history with status filters
 ├── DealerProfile.jsx            # Account/company details + edit
 ├── DealerPendingScreen.jsx      # Shown when dealer_status='pending'
 └── DealerRejectedScreen.jsx     # Shown when dealer_status='rejected'
 
 frontend/src/components/dealer/
-├── DealerProductCard.jsx        # Product card with dealer pricing emphasis
-├── DealerProductCard.css
 ├── DealerStatusBadge.jsx        # Status pill (Active / Pending / Rejected)
 └── DealerStatusBadge.css
 ```
 
 **Routes to add to App.jsx:**
 ```jsx
-<Route path="/dealer" element={
-  <RoleRoute allowedRoles={['dealer']}>
-    <DealerDashboard />
-  </RoleRoute>
-}>
+<Route
+  path="/dealer-dashboard/*"
+  element={
+    <RoleRoute allowedRoles={['dealer']}>
+      <DealerDashboard />
+    </RoleRoute>
+  }
+/>
+```
+
+The full-screen wrapping (Navbar/Footer hidden on `/dealer-dashboard/*` and
+`/admin-dashboard/*`) is handled in App.jsx via a `useLocation` check —
+already in place from earlier prompts.
+
+**`DealerDashboard.jsx` internal routes (Routes block inside the layout shell):**
+```jsx
+<Routes>
   <Route index element={<DealerOverview />} />
-  <Route path="catalog" element={<DealerCatalog />} />
   <Route path="orders" element={<DealerOrders />} />
   <Route path="profile" element={<DealerProfile />} />
-</Route>
+</Routes>
 ```
+
+The sidebar must include a **"Shop the Catalog →"** link that navigates to `/`
+(the public homepage) — that's the dealer's primary path for shopping.
 
 ---
 
@@ -152,9 +175,32 @@ export default function DealerDashboard() {
 
 ## DealerOverview — `src/pages/dealer/DealerOverview.jsx`
 
-Landing page when dealer logs in. Shows stats, recent orders, and featured products with dealer pricing.
+Landing page when dealer logs in. Shows a **teal-gradient CTA banner** at the
+top with a "Browse Products →" button (primary path — sends them to the public
+catalog `/`), then KPI cards (Total Orders / Total Spent / In Transit /
+Delivered), then a recent-orders list. **Do NOT include a featured-products
+grid** — the dealer shops on the public site, not here.
 
-### Layout
+### Layout (updated)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ Welcome back, {company name}                              │
+├──────────────────────────────────────────────────────────┤
+│ ╔══════════════════════════════════════════════════════╗ │
+│ ║ 💼 Shop the Catalog at Dealer Prices  [Browse →]    ║ │
+│ ║ Same products. Same site. Your B2B prices auto-      ║ │
+│ ║ apply across the catalog.                            ║ │
+│ ╚══════════════════════════════════════════════════════╝ │
+├──────────────────────────────────────────────────────────┤
+│ [Orders] [Total Spent] [In Transit] [Delivered]          │
+├──────────────────────────────────────────────────────────┤
+│ Recent Orders                          [View All →]      │
+│ [OrderCard] [OrderCard] [OrderCard]                      │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Original layout below (KEPT for reference — IGNORE the featured-products section)
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -301,288 +347,24 @@ function StatCard({ icon, label, value }) {
 
 ---
 
-## DealerCatalog — `src/pages/dealer/DealerCatalog.jsx`
+## ❌ DealerCatalog — REMOVED (single-interface architecture)
 
-Same product browsing experience as the public homepage but uses `DealerProductCard` instead of standard `ProductCard`. Backend automatically returns `effective_price` based on dealer JWT role, so no special API call is needed — `fetchProducts()` already returns dealer pricing for authenticated dealers.
-
-### Layout
-
-```
-┌──────────────────────────────────────────────────────────┐
-│ Dealer Catalog                                            │
-│ All prices shown are exclusive B2B rates.                 │
-├─────────────┬────────────────────────────────────────────┤
-│  Filters    │  [Search bar................] [Sort: ▼]    │
-│             │                                             │
-│  Category   │  Showing 24 products                       │
-│  ◯ All      │  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐      │
-│  ◯ Sofas    │  │ Card │ │ Card │ │ Card │ │ Card │      │
-│  ◯ Tables   │  └──────┘ └──────┘ └──────┘ └──────┘      │
-│             │  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐      │
-│  Price      │  │ Card │ │ Card │ │ Card │ │ Card │      │
-│  [____]–[__]│  └──────┘ └──────┘ └──────┘ └──────┘      │
-│             │                                             │
-│  Material   │  [← Prev]   Page 1 of 3   [Next →]         │
-│             │                                             │
-│  [Reset]    │                                             │
-└─────────────┴────────────────────────────────────────────┘
-```
-
-### Implementation
-
-```javascript
-import { useEffect, useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { FiSearch, FiX } from 'react-icons/fi';
-import { fetchProducts, fetchCategories } from '../../api';
-import DealerProductCard from '../../components/dealer/DealerProductCard';
-import FilterSidebar from '../../components/FilterSidebar';
-
-export default function DealerCatalog() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({ count: 0, next: null, previous: null });
-
-  const filters = useMemo(() => ({
-    category: searchParams.get('category') || '',
-    price_min: searchParams.get('price_min') || '',
-    price_max: searchParams.get('price_max') || '',
-    material: searchParams.get('material') || '',
-    search: searchParams.get('search') || '',
-    ordering: searchParams.get('ordering') || '-created_at',
-    page: parseInt(searchParams.get('page') || '1', 10),
-  }), [searchParams]);
-
-  useEffect(() => {
-    fetchCategories().then(setCategories).catch(console.error);
-  }, []);
-
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const data = await fetchProducts(filters);
-        setProducts(data.results || data);
-        setPagination({
-          count: data.count || data.length,
-          next: data.next,
-          previous: data.previous,
-        });
-      } catch (err) {
-        console.error('Failed to load catalog', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [filters]);
-
-  const updateFilter = (key, value) => {
-    const next = new URLSearchParams(searchParams);
-    if (value) next.set(key, value);
-    else next.delete(key);
-    if (key !== 'page') next.delete('page');
-    setSearchParams(next);
-  };
-
-  const resetFilters = () => setSearchParams({});
-
-  return (
-    <div className="dealer-catalog">
-      <header className="dealer-catalog__header">
-        <h1>Dealer Catalog</h1>
-        <p>All prices shown reflect your exclusive B2B rates.</p>
-      </header>
-
-      <div className="dealer-catalog__layout">
-        <aside className="dealer-catalog__sidebar">
-          <FilterSidebar
-            categories={categories}
-            filters={filters}
-            onChange={updateFilter}
-            onReset={resetFilters}
-          />
-        </aside>
-
-        <section className="dealer-catalog__results">
-          <div className="dealer-catalog__toolbar">
-            <div className="dealer-catalog__search">
-              <FiSearch />
-              <input
-                type="search"
-                placeholder="Search products..."
-                value={filters.search}
-                onChange={(e) => updateFilter('search', e.target.value)}
-              />
-              {filters.search && (
-                <button onClick={() => updateFilter('search', '')}>
-                  <FiX />
-                </button>
-              )}
-            </div>
-
-            <select
-              value={filters.ordering}
-              onChange={(e) => updateFilter('ordering', e.target.value)}
-              className="dealer-catalog__sort"
-            >
-              <option value="-created_at">Newest First</option>
-              <option value="price">Price: Low to High</option>
-              <option value="-price">Price: High to Low</option>
-              <option value="name">Name: A–Z</option>
-            </select>
-          </div>
-
-          <div className="dealer-catalog__count">
-            Showing {products.length} of {pagination.count} products
-          </div>
-
-          {loading ? (
-            <div className="dealer-catalog__loading">Loading...</div>
-          ) : products.length === 0 ? (
-            <div className="dealer-catalog__empty">
-              <p>No products match your filters.</p>
-              <button onClick={resetFilters} className="btn-outline">Clear Filters</button>
-            </div>
-          ) : (
-            <div className="dealer-catalog__grid">
-              {products.map((product) => (
-                <DealerProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          )}
-
-          {(pagination.next || pagination.previous) && (
-            <div className="dealer-catalog__pagination">
-              <button
-                disabled={!pagination.previous}
-                onClick={() => updateFilter('page', String(filters.page - 1))}
-                className="btn-outline"
-              >
-                ← Previous
-              </button>
-              <span>Page {filters.page}</span>
-              <button
-                disabled={!pagination.next}
-                onClick={() => updateFilter('page', String(filters.page + 1))}
-                className="btn-outline"
-              >
-                Next →
-              </button>
-            </div>
-          )}
-        </section>
-      </div>
-    </div>
-  );
-}
-```
+> Per the Architecture Update at the top of this prompt, **the dealer shops on
+> the public site (`/`)**, not in a parallel catalog. Do NOT create
+> `DealerCatalog.jsx`. The DealerOverview already includes a teal-gradient
+> "Shop the Catalog →" CTA banner that links to `/`, and the sidebar has a
+> dashed "Shop the Catalog" external-link entry. Backend serves dealer prices
+> on the public catalog automatically based on JWT role.
 
 ---
 
-## DealerProductCard — `src/components/dealer/DealerProductCard.jsx`
+## ❌ DealerProductCard — REMOVED (single-interface architecture)
 
-A product card optimized for dealer experience. Emphasizes:
-- **MRP** struck through, **Your Price** (effective_price) prominent
-- **Savings** chip showing percent off MRP
-- **Units remaining at dealer price** badge (when count_limit set)
-- "View Details" → standard product page (`/product/:slug`)
-- "Add to Cart" — same cart as users, but stored at dealer price
-
-```javascript
-import { Link } from 'react-router-dom';
-import { FiShoppingCart, FiTag } from 'react-icons/fi';
-import { useCart } from '../../context/CartContext';
-import { formatPrice, calcDiscountPercent } from '../../utils/format';
-import toast from 'react-hot-toast';
-import './DealerProductCard.css';
-
-export default function DealerProductCard({ product }) {
-  const { addToCart } = useCart();
-
-  const mrp = parseFloat(product.price);
-  const yourPrice = parseFloat(product.effective_price ?? product.price);
-  const hasDealerDiscount = product.discount_applied === 'dealer';
-  const savings = mrp - yourPrice;
-  const savingsPercent = calcDiscountPercent(mrp, yourPrice);
-
-  const handleAddToCart = (e) => {
-    e.preventDefault();
-    if (!product.in_stock) return;
-    addToCart(product, 1);
-    toast.success(`${product.name} added to cart at dealer price.`);
-  };
-
-  return (
-    <Link to={`/product/${product.slug}`} className="dealer-card">
-      {hasDealerDiscount && (
-        <span className="dealer-card__badge dealer-card__badge--exclusive">
-          <FiTag size={12} /> Dealer Price
-        </span>
-      )}
-
-      <div className="dealer-card__image-wrap">
-        <img
-          src={product.image_url}
-          alt={product.name}
-          loading="lazy"
-          className="dealer-card__image"
-        />
-        {!product.in_stock && (
-          <div className="dealer-card__out-of-stock">Out of Stock</div>
-        )}
-      </div>
-
-      <div className="dealer-card__body">
-        <span className="dealer-card__category">{product.category_name}</span>
-        <h3 className="dealer-card__name">{product.name}</h3>
-        <span className="dealer-card__meta">
-          {product.material} · {product.color}
-        </span>
-
-        <div className="dealer-card__pricing">
-          <div className="dealer-card__price-block">
-            <span className="dealer-card__your-price-label">Your Price</span>
-            <span className="dealer-card__your-price">{formatPrice(yourPrice)}</span>
-          </div>
-          {hasDealerDiscount && (
-            <div className="dealer-card__mrp-block">
-              <span className="dealer-card__mrp-label">MRP</span>
-              <span className="dealer-card__mrp">{formatPrice(mrp)}</span>
-              <span className="dealer-card__savings">Save {savingsPercent}%</span>
-            </div>
-          )}
-        </div>
-
-        {product.discount_units_remaining !== null && product.discount_units_remaining !== undefined && (
-          <div className={`dealer-card__units ${
-            product.discount_units_remaining === 0
-              ? 'dealer-card__units--ended'
-              : product.discount_units_remaining <= 10
-              ? 'dealer-card__units--low'
-              : ''
-          }`}>
-            {product.discount_units_remaining === 0
-              ? 'Dealer offer ended — showing MRP'
-              : `Only ${product.discount_units_remaining} units at dealer price`}
-          </div>
-        )}
-
-        <button
-          onClick={handleAddToCart}
-          disabled={!product.in_stock}
-          className="dealer-card__cta"
-        >
-          <FiShoppingCart size={16} />
-          {product.in_stock ? 'Add to Cart' : 'Out of Stock'}
-        </button>
-      </div>
-    </Link>
-  );
-}
-```
+> Per the Architecture Update, **there is only ONE ProductCard**. The standard
+> `ProductCard` (Frontend Prompt 2) already shows a gold "Dealer Price" chip
+> when `product.discount_applied === 'dealer'`. That visual is sufficient —
+> dealers see clear dealer-pricing signals on the public site without needing
+> a separate component. Do NOT create `DealerProductCard.jsx` or `.css`.
 
 ---
 

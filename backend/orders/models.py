@@ -1,29 +1,16 @@
-"""
-Orders app — Models.
-
-Defines Order and OrderItem models for tracking customer purchases.
-Orders support guest checkout (no user account required).
-"""
-
 import uuid
+from decimal import Decimal
 from django.db import models
+from django.conf import settings
 from products.models import Product
 
 
 class Order(models.Model):
-    """
-    Order model representing a customer purchase.
-    Supports guest checkout via name/email/phone fields.
-    """
-
-    # Payment status choices
     PAYMENT_STATUS_CHOICES = [
         ('PENDING', 'Pending'),
         ('SUCCESS', 'Success'),
         ('FAILED', 'Failed'),
     ]
-
-    # Order status choices
     ORDER_STATUS_CHOICES = [
         ('CREATED', 'Created'),
         ('CONFIRMED', 'Confirmed'),
@@ -32,53 +19,47 @@ class Order(models.Model):
         ('CANCELLED', 'Cancelled'),
     ]
 
-    # Unique order identifier (human-readable)
-    order_id = models.CharField(
-        max_length=20,
-        unique=True,
-        editable=False,
-        help_text='Auto-generated unique order ID (e.g., ORD-XXXXXX)'
-    )
-
-    # Guest checkout fields (no user account needed)
+    order_id = models.CharField(max_length=20, unique=True, editable=False)
     user_name = models.CharField(max_length=100)
-    user_email = models.EmailField()
+    user_email = models.EmailField(db_index=True)
     phone = models.CharField(max_length=15)
     address = models.TextField()
-
-    # Order financials
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='orders'
+    )
+    subtotal_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    gst_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    gst_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    shipping_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
-
-    # Status tracking
     payment_status = models.CharField(
-        max_length=10,
-        choices=PAYMENT_STATUS_CHOICES,
-        default='PENDING'
+        max_length=10, choices=PAYMENT_STATUS_CHOICES, default='PENDING', db_index=True
     )
     order_status = models.CharField(
-        max_length=12,
-        choices=ORDER_STATUS_CHOICES,
-        default='CREATED'
+        max_length=12, choices=ORDER_STATUS_CHOICES, default='CREATED', db_index=True
     )
-
-    # ERP integration
-    erp_order_id = models.CharField(
-        max_length=50,
-        blank=True,
-        null=True,
-        help_text='Order ID returned from external ERP system'
+    erp_order_id = models.CharField(max_length=50, blank=True, null=True)
+    erp_sync_status = models.CharField(
+        max_length=10,
+        choices=[('pending', 'Pending'), ('synced', 'Synced'), ('failed', 'Failed')],
+        default='pending'
     )
-
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'orders'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user_email']),
+            models.Index(fields=['payment_status', 'order_status']),
+        ]
 
     def save(self, *args, **kwargs):
-        """Auto-generate a unique order_id if not set."""
         if not self.order_id:
-            # Generate format: ORD-XXXXXXXX (8 hex chars)
             self.order_id = f'ORD-{uuid.uuid4().hex[:8].upper()}'
         super().save(*args, **kwargs)
 
@@ -87,34 +68,24 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
-    """
-    Individual item within an order.
-    Stores the price at time of purchase (won't change if product price updates).
-    """
-    order = models.ForeignKey(
-        Order,
-        on_delete=models.CASCADE,
-        related_name='items'
-    )
-    product = models.ForeignKey(
-        Product,
-        on_delete=models.PROTECT,  # Don't delete products that have been ordered
-        related_name='order_items'
-    )
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='order_items')
     quantity = models.PositiveIntegerField()
     price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        help_text='Price at time of order (snapshot)'
+        max_digits=10, decimal_places=2,
+        help_text='Effective price (after discount) at time of order'
+    )
+    original_price = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        help_text='Full price at time of order (before discount)'
     )
 
     class Meta:
         db_table = 'order_items'
 
-    def __str__(self):
-        return f'{self.product.name} x{self.quantity}'
-
     @property
     def subtotal(self):
-        """Calculate line item subtotal."""
-        return self.price * self.quantity
+        return Decimal(str(self.price)) * self.quantity
+
+    def __str__(self):
+        return f'{self.product.name} × {self.quantity}'

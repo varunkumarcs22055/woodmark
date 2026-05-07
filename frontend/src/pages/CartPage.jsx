@@ -1,30 +1,27 @@
-/**
- * CartPage — discount-aware shopping cart.
- *
- * Pricing rules:
- *   subtotal      = sum of effective_price × qty   (this is `cartTotal` from CartContext)
- *   originalTotal = sum of price × qty             (computed locally)
- *   savings       = originalTotal - subtotal       (only shown when > 0)
- *   shipping      = FREE if subtotal >= ₹2,999 else ₹499
- */
 import { Link } from 'react-router-dom';
 import { FiArrowRight, FiChevronLeft } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
+import { useSettings } from '../context/SettingsContext';
 import { formatPrice } from '../utils/format';
 import CartItem from '../components/CartItem';
 import './CartPage.css';
 
 export default function CartPage() {
   const { cartItems, cartTotal, cartCount, clearCart } = useCart();
+  const { gst_percent, free_shipping_threshold, standard_shipping_fee } = useSettings();
 
-  const subtotal = cartTotal; // already discount-aware
+  const subtotal = cartTotal;
   const originalTotal = cartItems.reduce(
     (sum, item) => sum + parseFloat(item.product.price) * item.quantity,
     0
   );
   const savings = originalTotal - subtotal;
-  const shipping = subtotal >= 2999 ? 0 : 499;
-  const finalTotal = subtotal + shipping;
+  const gstPercent = parseFloat(gst_percent);
+  const gstAmount = Math.round(subtotal * gstPercent) / 100;
+  const freeThreshold = parseFloat(free_shipping_threshold);
+  const shippingFee = parseFloat(standard_shipping_fee);
+  const shipping = subtotal >= freeThreshold ? 0 : shippingFee;
+  const finalTotal = subtotal + gstAmount + shipping;
 
   if (cartItems.length === 0) {
     return (
@@ -97,6 +94,11 @@ export default function CartPage() {
               </span>
             </div>
 
+            <div className="cart-summary-row">
+              <span>GST ({gstPercent}%)</span>
+              <span>{formatPrice(gstAmount)}</span>
+            </div>
+
             {shipping > 0 && (
               <p
                 style={{
@@ -108,7 +110,7 @@ export default function CartPage() {
                   borderRadius: 'var(--radius-sm)',
                 }}
               >
-                Add {formatPrice(2999 - subtotal)} more for Free Shipping! 🎁
+                Add {formatPrice(freeThreshold - subtotal)} more for Free Shipping! 🎁
               </p>
             )}
           </div>

@@ -146,6 +146,18 @@
   font-weight: 700;
 }
 
+.dealer-sidebar__link--external {
+  margin-top: var(--space-3);
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 700;
+}
+
+.dealer-sidebar__link--external:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-style: solid;
+}
+
 .dealer-sidebar__footer {
   padding-top: var(--space-3);
   border-top: 1px solid rgba(255, 255, 255, 0.15);
@@ -328,6 +340,64 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: var(--space-5);
+}
+
+/* CTA banner — primary path for dealer is shopping the public catalog */
+.dealer-overview__cta {
+  background: linear-gradient(135deg, #00736A 0%, #00897F 60%, #0EA89B 100%);
+  color: white;
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+  box-shadow: var(--shadow-md);
+  flex-wrap: wrap;
+}
+
+.dealer-overview__cta-body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex: 1;
+  min-width: 0;
+}
+
+.dealer-overview__cta-icon {
+  width: 48px;
+  height: 48px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dealer-overview__cta h2 {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  margin: 0 0 4px;
+  color: white;
+}
+
+.dealer-overview__cta p {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.5;
+}
+
+.dealer-overview__cta-btn {
+  background: white !important;
+  color: var(--color-brand) !important;
+  border: none !important;
+  flex-shrink: 0;
+}
+
+.dealer-overview__cta-btn:hover {
+  background: var(--color-bg) !important;
+  transform: translateY(-1px);
 }
 
 .dealer-overview__empty {
@@ -688,9 +758,9 @@
 
 /* ─── Status Screens (Pending / Rejected) ────────────────────────── */
 .dealer-status-screen-wrap {
-  min-height: calc(100vh - var(--navbar-height));
+  min-height: 100vh;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   background: var(--color-bg);
   padding: var(--space-8) var(--space-4);

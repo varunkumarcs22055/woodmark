@@ -1,133 +1,291 @@
-"""
-Payments app — Views.
-
-Handles payment simulation and future Razorpay integration.
-
-CURRENT BEHAVIOR (Simulated):
-    - POST /api/payment/success/ with order_id
-    - Marks order as paid immediately
-    - Triggers ERP integration
-
-FUTURE BEHAVIOR (Razorpay):
-    - Replace the dummy logic in PaymentSuccessView with Razorpay
-      signature verification using razorpay.Client.utility.verify_payment_signature()
-    - The rest of the flow (Payment model, ERP call) stays the same
-"""
-
+import hashlib
+import hmac
+import json
 import logging
+
+import razorpay
+from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import AllowAny
+
 from orders.models import Order
+from users.permissions import IsAdminRole
+from services.erp import send_order_to_erp
 from .models import Payment
 from .serializers import PaymentSerializer
-from services.erp import send_order_to_erp
 
 logger = logging.getLogger(__name__)
 
 
-class PaymentSuccessView(APIView):
+def get_razorpay_client():
+    return razorpay.Client(
+        auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
+    )
+
+
+def confirm_order_and_sync_erp(order, razorpay_order_id=None, razorpay_payment_id=None, razorpay_signature=None):
     """
-    POST /api/payment/success/
-
-    Simulate payment success for an order.
-
-    Request body:
-    {
-        "order_id": "ORD-XXXXXXXX"
-    }
-
-    What happens:
-    1. Creates a Payment record with status=SUCCESS
-    2. Updates Order.payment_status to SUCCESS
-    3. Sends order data to ERP system
-    4. Stores erp_order_id in Order model
-
-    To integrate Razorpay later:
-    - Add razorpay_order_id, razorpay_payment_id, razorpay_signature to request body
-    - Verify signature before marking as success
-    - Everything else remains unchanged
+    Mark order as paid, create/update Payment record, and sync to ERP.
+    Can be called from both PaymentVerifyView and the webhook.
+    Returns the Payment instance.
     """
+    payment, _ = Payment.objects.get_or_create(
+        order=order,
+        defaults={'amount': order.total_amount}
+    )
+    payment.status = 'SUCCESS'
+    payment.amount = order.total_amount
+    if razorpay_order_id:
+        payment.razorpay_order_id = razorpay_order_id
+    if razorpay_payment_id:
+        payment.razorpay_payment_id = razorpay_payment_id
+    if razorpay_signature:
+        payment.razorpay_signature = razorpay_signature
+    payment.save()
+
+    order.payment_status = 'SUCCESS'
+    order.order_status = 'CONFIRMED'
+    order.save(update_fields=['payment_status', 'order_status'])
+
+    order_with_items = Order.objects.prefetch_related('items__product').get(pk=order.pk)
+    erp_result = send_order_to_erp(order_with_items)
+    if erp_result and erp_result.get('erp_order_id'):
+        order.erp_order_id = erp_result['erp_order_id']
+        order.erp_sync_status = 'synced'
+    else:
+        order.erp_sync_status = 'failed'
+        logger.warning(f'ERP sync failed for order {order.order_id}')
+    order.save(update_fields=['erp_order_id', 'erp_sync_status'])
+
+    try:
+        from discounts.services import apply_discounts_to_order
+        user_role = getattr(order.user, 'role', 'user') if order.user else 'user'
+        apply_discounts_to_order(order_with_items, user_role)
+    except Exception as e:
+        logger.error(f'Failed to update discount units_sold for order {order.order_id}: {e}')
+
+    return payment
+
+
+class CreateRazorpayOrderView(APIView):
+    """POST /api/payment/create-razorpay-order/"""
+    permission_classes = [AllowAny]
+
     def post(self, request):
         order_id = request.data.get('order_id')
-
         if not order_id:
-            return Response(
-                {'error': 'order_id is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': 'order_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Find the order
         try:
-            order = Order.objects.prefetch_related('items__product').get(
-                order_id=order_id
-            )
+            order = Order.objects.get(order_id=order_id)
         except Order.DoesNotExist:
-            return Response(
-                {'error': f'Order {order_id} not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({'error': f'Order {order_id} not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Check if already paid
         if order.payment_status == 'SUCCESS':
+            return Response({'error': 'Order is already paid.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            client = get_razorpay_client()
+            razorpay_order = client.order.create({
+                'amount': int(order.total_amount * 100),
+                'currency': 'INR',
+                'receipt': order.order_id,
+                'notes': {
+                    'furnishop_order_id': order.order_id,
+                    'customer_email': order.user_email,
+                },
+            })
+        except Exception as e:
+            logger.error(f'Razorpay order creation failed for {order_id}: {e}')
             return Response(
-                {'error': 'Order is already paid'},
-                status=status.HTTP_400_BAD_REQUEST
+                {'error': 'Payment gateway error. Please try again.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
 
-        # ─── SIMULATED PAYMENT SUCCESS ───────────────────────────────
-        # In the future, replace this section with Razorpay verification:
-        #
-        # razorpay_order_id = request.data.get('razorpay_order_id')
-        # razorpay_payment_id = request.data.get('razorpay_payment_id')
-        # razorpay_signature = request.data.get('razorpay_signature')
-        #
-        # client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-        # client.utility.verify_payment_signature({
-        #     'razorpay_order_id': razorpay_order_id,
-        #     'razorpay_payment_id': razorpay_payment_id,
-        #     'razorpay_signature': razorpay_signature,
-        # })
-        # ─────────────────────────────────────────────────────────────
+        return Response({
+            'razorpay_order_id': razorpay_order['id'],
+            'amount': razorpay_order['amount'],
+            'currency': razorpay_order['currency'],
+            'key_id': settings.RAZORPAY_KEY_ID,
+            'order_id': order.order_id,
+            'prefill': {
+                'name': order.user_name,
+                'email': order.user_email,
+                'contact': order.phone,
+            },
+        })
 
-        # Create payment record
-        payment, created = Payment.objects.get_or_create(
-            order=order,
-            defaults={
-                'status': 'SUCCESS',
-                'amount': order.total_amount,
-                # razorpay_order_id and razorpay_payment_id left null for now
-            }
+
+class PaymentVerifyView(APIView):
+    """POST /api/payment/verify/"""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        order_id = request.data.get('order_id')
+        razorpay_order_id = request.data.get('razorpay_order_id')
+        razorpay_payment_id = request.data.get('razorpay_payment_id')
+        razorpay_signature = request.data.get('razorpay_signature')
+
+        if not all([order_id, razorpay_order_id, razorpay_payment_id, razorpay_signature]):
+            return Response({'error': 'All payment fields are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            order = Order.objects.get(order_id=order_id)
+        except Order.DoesNotExist:
+            return Response({'error': f'Order {order_id} not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if order.payment_status == 'SUCCESS':
+            return Response({'error': 'Order is already paid.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            client = get_razorpay_client()
+            client.utility.verify_payment_signature({
+                'razorpay_order_id': razorpay_order_id,
+                'razorpay_payment_id': razorpay_payment_id,
+                'razorpay_signature': razorpay_signature,
+            })
+        except razorpay.errors.SignatureVerificationError:
+            logger.warning(f'Razorpay signature verification failed for order {order_id}')
+            order.payment_status = 'FAILED'
+            order.save(update_fields=['payment_status'])
+            return Response({'error': 'Payment verification failed. Invalid signature.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        payment = confirm_order_and_sync_erp(
+            order, razorpay_order_id, razorpay_payment_id, razorpay_signature
         )
 
-        if not created:
-            payment.status = 'SUCCESS'
-            payment.save()
+        return Response({
+            'message': 'Payment verified successfully.',
+            'order_id': order.order_id,
+            'erp_order_id': order.erp_order_id,
+            'payment': PaymentSerializer(payment).data,
+        })
 
-        # Update order payment status
-        order.payment_status = 'SUCCESS'
-        order.order_status = 'CONFIRMED'
-        order.save()
 
-        # ─── ERP INTEGRATION ────────────────────────────────────────
-        # Send order to external ERP system
+@method_decorator(csrf_exempt, name='dispatch')
+class RazorpayWebhookView(APIView):
+    """POST /api/payment/webhook/"""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        webhook_signature = request.META.get('HTTP_X_RAZORPAY_SIGNATURE', '')
+        webhook_secret = settings.RAZORPAY_WEBHOOK_SECRET
+
+        if not webhook_secret:
+            logger.error('RAZORPAY_WEBHOOK_SECRET not configured. Skipping webhook.')
+            return Response({'status': 'ignored'})
+
+        expected = hmac.new(
+            webhook_secret.encode('utf-8'),
+            request.body,
+            hashlib.sha256
+        ).hexdigest()
+
+        if not hmac.compare_digest(expected, webhook_signature):
+            logger.warning('Razorpay webhook signature mismatch.')
+            return Response({'error': 'Invalid signature'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            payload = json.loads(request.body)
+            event = payload.get('event')
+
+            if event != 'payment.captured':
+                return Response({'status': f'event {event} ignored'})
+
+            payment_data = payload['payload']['payment']['entity']
+            razorpay_order_id = payment_data.get('order_id')
+
+            if not razorpay_order_id:
+                return Response({'status': 'no order_id in payload'})
+
+            try:
+                payment_record = Payment.objects.select_related('order').get(
+                    razorpay_order_id=razorpay_order_id
+                )
+                order = payment_record.order
+            except Payment.DoesNotExist:
+                furnishop_order_id = payment_data.get('notes', {}).get('furnishop_order_id')
+                if not furnishop_order_id:
+                    return Response({'status': 'order not found'})
+                try:
+                    order = Order.objects.get(order_id=furnishop_order_id)
+                except Order.DoesNotExist:
+                    return Response({'status': 'order not found'})
+
+            if order.payment_status == 'SUCCESS':
+                return Response({'status': 'already processed'})
+
+            confirm_order_and_sync_erp(
+                order,
+                razorpay_order_id=razorpay_order_id,
+                razorpay_payment_id=payment_data.get('id'),
+            )
+            logger.info(f'Webhook processed successfully for order {order.order_id}')
+
+        except Exception as e:
+            logger.error(f'Webhook processing error: {type(e).__name__}: {e}')
+
+        return Response({'status': 'ok'})
+
+
+class PaymentSimulateView(APIView):
+    """POST /api/payment/success/ — dev only"""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        if not settings.DEBUG:
+            return Response({'error': 'This endpoint is only available in development.'}, status=status.HTTP_403_FORBIDDEN)
+
+        order_id = request.data.get('order_id')
+        if not order_id:
+            return Response({'error': 'order_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            order = Order.objects.get(order_id=order_id)
+        except Order.DoesNotExist:
+            return Response({'error': f'Order {order_id} not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if order.payment_status == 'SUCCESS':
+            return Response({'error': 'Order is already paid.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        payment = confirm_order_and_sync_erp(order)
+
+        return Response({
+            'message': 'Payment successful (simulated).',
+            'order_id': order.order_id,
+            'erp_order_id': order.erp_order_id,
+            'payment': PaymentSerializer(payment).data,
+        })
+
+
+class ERPRetryView(APIView):
+    """POST /api/orders/{id}/retry-erp/ — admin only"""
+    permission_classes = [IsAdminRole]
+
+    def post(self, request, pk):
+        try:
+            order = Order.objects.prefetch_related('items__product').get(pk=pk)
+        except Order.DoesNotExist:
+            return Response({'error': 'Order not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if order.payment_status != 'SUCCESS':
+            return Response({'error': 'Can only retry ERP sync for paid orders.'}, status=status.HTTP_400_BAD_REQUEST)
+
         erp_result = send_order_to_erp(order)
         if erp_result and erp_result.get('erp_order_id'):
             order.erp_order_id = erp_result['erp_order_id']
-            order.save()
-            logger.info(
-                f'Order {order.order_id} synced to ERP: {order.erp_order_id}'
-            )
+            order.erp_sync_status = 'synced'
+            order.save(update_fields=['erp_order_id', 'erp_sync_status'])
+            return Response({
+                'message': 'ERP sync successful.',
+                'erp_order_id': order.erp_order_id,
+            })
         else:
-            logger.warning(
-                f'ERP sync failed for order {order.order_id}. '
-                f'Will retry later.'
+            return Response(
+                {'error': 'ERP sync failed. Check server logs for details.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
-        # ─────────────────────────────────────────────────────────────
-
-        return Response({
-            'message': 'Payment successful',
-            'order_id': order.order_id,
-            'payment': PaymentSerializer(payment).data,
-            'erp_order_id': order.erp_order_id,
-        })

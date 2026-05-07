@@ -139,7 +139,7 @@ export const fetchUsers = (params = {}) =>
   api.get('/auth/users/', { params }).then((r) => r.data);
 
 export const approveDealer = (userId, action) =>
-  api.post(`/auth/dealer-approve/${userId}/`, { action }).then((r) => r.data);
+  api.patch(`/auth/dealers/${userId}/approve/`, { dealer_status: action }).then((r) => r.data);
 
 // ─── Cart (session-based; secondary to localStorage CartContext) ────
 export const fetchCartAPI = () =>
@@ -179,6 +179,17 @@ export const verifyPayment = (data) =>
 
 export const simulatePayment = (orderId) =>
   api.post('/payment/success/', { order_id: orderId }).then((r) => r.data);
+
+// ─── Store Settings ─────────────────────────────────────────────────
+export const fetchStoreSettings = () =>
+  api.get('/settings/').then((r) => r.data);
+
+export const updateStoreSettings = (data) =>
+  api.patch('/settings/', data).then((r) => r.data);
+
+// ─── Product Media ───────────────────────────────────────────────────
+export const deleteProductMedia = (mediaId) =>
+  api.delete(`/products/media/${mediaId}/`).then((r) => r.data);
 
 // ─── Discounts (Admin) ──────────────────────────────────────────────
 export const fetchDiscounts = (params = {}) =>

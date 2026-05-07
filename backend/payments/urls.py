@@ -1,11 +1,9 @@
-"""
-Payments app — URL configuration.
-"""
-
 from django.urls import path
 from . import views
 
 urlpatterns = [
-    # POST /api/payment/success/ — Simulate payment success
-    path('success/', views.PaymentSuccessView.as_view(), name='payment-success'),
+    path('create-razorpay-order/', views.CreateRazorpayOrderView.as_view(), name='create-razorpay-order'),
+    path('verify/', views.PaymentVerifyView.as_view(), name='payment-verify'),
+    path('webhook/', views.RazorpayWebhookView.as_view(), name='razorpay-webhook'),
+    path('success/', views.PaymentSimulateView.as_view(), name='payment-simulate'),
 ]

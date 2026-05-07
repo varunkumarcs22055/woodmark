@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import {
   FiGrid, FiPackage, FiTag, FiShoppingBag,
-  FiUsers, FiRefreshCw, FiLogOut, FiMenu, FiX,
+  FiUsers, FiRefreshCw, FiLogOut, FiMenu, FiX, FiSettings,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 
@@ -16,6 +16,7 @@ import AdminDiscounts from './admin/AdminDiscounts';
 import AdminOrders from './admin/AdminOrders';
 import AdminDealers from './admin/AdminDealers';
 import AdminERP from './admin/AdminERP';
+import AdminSettings from './admin/AdminSettings';
 
 import './AdminDashboard.css';
 import './admin/AdminPanel.css';
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { path: 'orders',    label: 'Orders',    icon: <FiShoppingBag /> },
   { path: 'dealers',   label: 'Dealers',   icon: <FiUsers /> },
   { path: 'erp',       label: 'ERP Status',icon: <FiRefreshCw /> },
+  { path: 'settings',  label: 'Settings',  icon: <FiSettings /> },
 ];
 
 export default function AdminDashboard() {
@@ -101,6 +103,7 @@ export default function AdminDashboard() {
             <Route path="orders" element={<AdminOrders />} />
             <Route path="dealers" element={<AdminDealers />} />
             <Route path="erp" element={<AdminERP />} />
+            <Route path="settings" element={<AdminSettings />} />
           </Routes>
         </div>
       </div>

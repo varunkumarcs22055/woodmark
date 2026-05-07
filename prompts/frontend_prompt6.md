@@ -101,7 +101,6 @@ export default function AdminDashboard() {
             </NavLink>
           ))}
         </nav>
-
         <div className="admin-sidebar__footer">
           <div className="admin-user">
             <span className="admin-user__email">{user?.email}</span>

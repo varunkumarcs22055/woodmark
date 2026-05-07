@@ -19,6 +19,7 @@ import { fetchProduct, fetchSimilarProducts } from '../api';
 import { useCart } from '../context/CartContext';
 import { formatPrice, calcDiscountPercent } from '../utils/format';
 import ProductCard from '../components/ProductCard';
+import ProductGallery from '../components/ProductGallery';
 import './ProductDetailPage.css';
 
 export default function ProductDetailPage() {
@@ -120,9 +121,12 @@ export default function ProductDetailPage() {
       </div>
 
       <div className="pd-layout container">
-        {/* Product Image */}
+        {/* Product Gallery */}
         <div className="pd-image-wrapper" id="product-image">
-          <img src={product.image_url} alt={product.name} className="pd-image" />
+          <ProductGallery
+            media={product.media || []}
+            fallbackUrl={product.primary_image || product.image_url}
+          />
           {discountPercent > 0 && (
             <span className="pd-image-badge">{discountPercent}% OFF</span>
           )}

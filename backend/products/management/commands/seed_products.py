@@ -1,224 +1,179 @@
-"""
-Management command to seed the database with sample furniture products.
-
-Usage:
-    python manage.py seed_products
-
-This creates categories and sample products for development/testing.
-All data is created via Django ORM, exactly the same as adding via Admin panel.
-"""
-
 from django.core.management.base import BaseCommand
 from products.models import Category, Product
 
 
 class Command(BaseCommand):
-    help = 'Seed database with sample furniture products and categories'
+    help = 'Seed the database with sample furniture products'
 
-    def handle(self, *args, **options):
-        self.stdout.write('Seeding database...\n')
+    def handle(self, *args, **kwargs):
+        self.stdout.write('Seeding products...')
 
-        # ─── Create Categories ────────────────────────────────────
         categories_data = [
-            'Sofas', 'Tables', 'Chairs', 'Beds', 'Storage',
-            'Desks', 'Dining Sets', 'Outdoor'
+            {'name': 'Sofas', 'slug': 'sofas', 'description': 'Comfortable sofas and sectionals'},
+            {'name': 'Tables', 'slug': 'tables', 'description': 'Dining and coffee tables'},
+            {'name': 'Chairs', 'slug': 'chairs', 'description': 'Office and accent chairs'},
+            {'name': 'Beds', 'slug': 'beds', 'description': 'Beds and bedroom furniture'},
+            {'name': 'Storage', 'slug': 'storage', 'description': 'Shelves, wardrobes, and storage'},
+            {'name': 'Desks', 'slug': 'desks', 'description': 'Work-from-home and study desks'},
+            {'name': 'Dining Sets', 'slug': 'dining-sets', 'description': 'Complete dining room sets'},
+            {'name': 'Outdoor', 'slug': 'outdoor', 'description': 'Outdoor and garden furniture'},
         ]
+
         categories = {}
-        for name in categories_data:
-            cat, created = Category.objects.get_or_create(name=name)
-            categories[name] = cat
-            status = 'Created' if created else 'Exists'
-            self.stdout.write(f'  Category: {name} [{status}]')
+        for cat_data in categories_data:
+            cat, _ = Category.objects.update_or_create(
+                slug=cat_data['slug'],
+                defaults={'name': cat_data['name'], 'description': cat_data['description']},
+            )
+            categories[cat_data['slug']] = cat
+            self.stdout.write(f'  Category: {cat.name}')
 
-        # ─── Create Products ─────────────────────────────────────
         products_data = [
+            # Sofas
             {
-                'name': 'Oslo Velvet Sofa',
-                'description': 'A luxurious 3-seater velvet sofa with solid oak legs. Features high-density foam cushions and a contemporary Scandinavian design that elevates any living room.',
-                'price': 45999.00,
-                'category': categories['Sofas'],
-                'material': 'fabric',
-                'color': 'Emerald Green',
-                'dimensions': '220x85x80 cm',
+                'name': 'Oslo Velvet Sofa', 'slug': 'oslo-velvet-sofa',
+                'description': 'Premium 3-seater velvet sofa with solid oak legs. Mid-century modern design that brings timeless elegance to your living room.',
+                'price': '45999.00', 'category_slug': 'sofas', 'material': 'fabric',
+                'color': 'Emerald Green', 'dimensions': '220x85x80 cm',
                 'image_url': 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800',
-                'stock': 15,
+                'stock': 15, 'is_featured': True,
             },
             {
-                'name': 'Manhattan Leather Recliner',
-                'description': 'Premium genuine leather recliner with manual recline mechanism. Padded armrests and lumbar support for ultimate comfort. Perfect for reading corners and home theaters.',
-                'price': 32999.00,
-                'category': categories['Sofas'],
-                'material': 'leather',
-                'color': 'Dark Brown',
-                'dimensions': '95x90x100 cm',
-                'image_url': 'https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=800',
-                'stock': 8,
-            },
-            {
-                'name': 'Aria Sectional Sofa',
-                'description': 'Modern L-shaped sectional sofa with reversible chaise. Stain-resistant upholstery, perfect for families. Includes 4 throw pillows.',
-                'price': 67999.00,
-                'category': categories['Sofas'],
-                'material': 'fabric',
-                'color': 'Slate Gray',
-                'dimensions': '280x170x85 cm',
+                'name': 'Nordic L-Shape Sectional', 'slug': 'nordic-l-shape-sectional',
+                'description': 'Spacious L-shaped sectional sofa with removable covers. Perfect for large living rooms and open-plan spaces.',
+                'price': '78999.00', 'category_slug': 'sofas', 'material': 'fabric',
+                'color': 'Charcoal Grey', 'dimensions': '300x200x80 cm',
                 'image_url': 'https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=800',
-                'stock': 5,
+                'stock': 8, 'is_featured': False,
+            },
+            # Tables
+            {
+                'name': 'Acacia Wood Coffee Table', 'slug': 'acacia-wood-coffee-table',
+                'description': 'Hand-crafted solid acacia wood coffee table with natural grain finish. Each piece is unique.',
+                'price': '18999.00', 'category_slug': 'tables', 'material': 'wood',
+                'color': 'Natural Brown', 'dimensions': '120x60x45 cm',
+                'image_url': 'https://images.unsplash.com/photo-1611269154421-4e27233ac5c7?w=800',
+                'stock': 22, 'is_featured': False,
             },
             {
-                'name': 'Nordic Oak Dining Table',
-                'description': 'Solid oak dining table with tapered legs. Seats 6 comfortably. Hand-finished with food-safe natural oil for a warm, organic look.',
-                'price': 38999.00,
-                'category': categories['Tables'],
-                'material': 'wood',
-                'color': 'Natural Oak',
-                'dimensions': '180x90x75 cm',
+                'name': 'Marble Top Dining Table', 'slug': 'marble-top-dining-table',
+                'description': 'Luxurious white marble dining table with powder-coated steel frame. Seats 6 comfortably.',
+                'price': '54999.00', 'category_slug': 'tables', 'material': 'marble',
+                'color': 'White', 'dimensions': '180x90x75 cm',
                 'image_url': 'https://images.unsplash.com/photo-1617806118233-18e1de247200?w=800',
-                'stock': 12,
+                'stock': 10, 'is_featured': True,
+            },
+            # Chairs
+            {
+                'name': 'Tulip Accent Chair', 'slug': 'tulip-accent-chair',
+                'description': 'Mid-century modern accent chair with button tufting and walnut legs. Available in multiple colors.',
+                'price': '12999.00', 'category_slug': 'chairs', 'material': 'fabric',
+                'color': 'Mustard Yellow', 'dimensions': '75x78x85 cm',
+                'image_url': 'https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=800',
+                'stock': 30, 'is_featured': False,
             },
             {
-                'name': 'Marble Coffee Table',
-                'description': 'Elegant coffee table with genuine Italian Carrara marble top and brushed brass legs. A statement piece for sophisticated living rooms.',
-                'price': 28999.00,
-                'category': categories['Tables'],
-                'material': 'marble',
-                'color': 'White Marble',
-                'dimensions': '120x60x45 cm',
-                'image_url': 'https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?w=800',
-                'stock': 10,
+                'name': 'Ergonomic Mesh Office Chair', 'slug': 'ergonomic-mesh-office-chair',
+                'description': 'Full lumbar support mesh office chair with adjustable armrests and headrest. 8-hour comfort guarantee.',
+                'price': '22999.00', 'category_slug': 'chairs', 'material': 'fabric',
+                'color': 'Black', 'dimensions': '65x65x120 cm',
+                'image_url': 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?w=800',
+                'stock': 50, 'is_featured': True,
+            },
+            # Beds
+            {
+                'name': 'King Platform Bed Frame', 'slug': 'king-platform-bed-frame',
+                'description': 'Solid walnut king-size platform bed with under-bed storage drawers. No box spring required.',
+                'price': '64999.00', 'category_slug': 'beds', 'material': 'wood',
+                'color': 'Walnut Brown', 'dimensions': '200x180x40 cm',
+                'image_url': 'https://images.unsplash.com/photo-1505693314120-0d443867891c?w=800',
+                'stock': 12, 'is_featured': True,
             },
             {
-                'name': 'Industrial Side Table',
-                'description': 'Compact side table with reclaimed wood top and black steel frame. Industrial charm meets modern functionality.',
-                'price': 8999.00,
-                'category': categories['Tables'],
-                'material': 'metal',
-                'color': 'Black / Rustic Brown',
-                'dimensions': '45x45x55 cm',
-                'image_url': 'https://images.unsplash.com/photo-1499933374294-4584851497cc?w=800',
-                'stock': 25,
+                'name': 'Upholstered Wingback Bed', 'slug': 'upholstered-wingback-bed',
+                'description': 'Luxurious upholstered queen bed with tall wingback headboard. Soft velvet finish in rose pink.',
+                'price': '48999.00', 'category_slug': 'beds', 'material': 'fabric',
+                'color': 'Dusty Rose', 'dimensions': '215x165x140 cm',
+                'image_url': 'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=800',
+                'stock': 7, 'is_featured': False,
+            },
+            # Storage
+            {
+                'name': 'Modular Bookshelf Unit', 'slug': 'modular-bookshelf-unit',
+                'description': '5-shelf modular bookshelf with adjustable shelves. Mix-and-match modules to create your perfect storage wall.',
+                'price': '16999.00', 'category_slug': 'storage', 'material': 'wood',
+                'color': 'Oak White', 'dimensions': '90x35x180 cm',
+                'image_url': 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800',
+                'stock': 25, 'is_featured': False,
             },
             {
-                'name': 'Eames Style Dining Chair',
-                'description': 'Mid-century modern dining chair with molded seat and beech wood legs. Ergonomic design for hours of comfortable dining.',
-                'price': 6999.00,
-                'category': categories['Chairs'],
-                'material': 'plastic',
-                'color': 'White',
-                'dimensions': '47x53x82 cm',
-                'image_url': 'https://images.unsplash.com/photo-1503602642458-232111445657?w=800',
-                'stock': 30,
+                'name': '3-Door Wardrobe', 'slug': '3-door-wardrobe',
+                'description': 'Sliding door wardrobe with mirror panel, hanging rods, and 4 internal shelves.',
+                'price': '34999.00', 'category_slug': 'storage', 'material': 'wood',
+                'color': 'Matte White', 'dimensions': '180x60x210 cm',
+                'image_url': 'https://images.unsplash.com/photo-1558997519-83ea9252edf8?w=800',
+                'stock': 9, 'is_featured': False,
+            },
+            # Desks
+            {
+                'name': 'Solid Oak Writing Desk', 'slug': 'solid-oak-writing-desk',
+                'description': 'Minimalist solid oak writing desk with integrated cable management and a hidden drawer.',
+                'price': '28999.00', 'category_slug': 'desks', 'material': 'wood',
+                'color': 'Natural Oak', 'dimensions': '140x70x75 cm',
+                'image_url': 'https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=800',
+                'stock': 18, 'is_featured': False,
             },
             {
-                'name': 'Rattan Accent Chair',
-                'description': 'Handwoven natural rattan accent chair with cotton cushion. Brings warmth and texture to any room. Lightweight and easy to move.',
-                'price': 14999.00,
-                'category': categories['Chairs'],
-                'material': 'rattan',
-                'color': 'Natural',
-                'dimensions': '70x65x85 cm',
-                'image_url': 'https://images.unsplash.com/photo-1580480055273-228ff5388ef8?w=800',
-                'stock': 18,
+                'name': 'Height Adjustable Standing Desk', 'slug': 'height-adjustable-standing-desk',
+                'description': 'Electric sit-stand desk with memory presets. Dual motor system, whisper-quiet operation.',
+                'price': '42999.00', 'category_slug': 'desks', 'material': 'metal',
+                'color': 'White Frame', 'dimensions': '160x80x72-120 cm',
+                'image_url': 'https://images.unsplash.com/photo-1593642532454-e138e28a63f4?w=800',
+                'stock': 14, 'is_featured': True,
+            },
+            # Dining Sets
+            {
+                'name': '6-Seater Teak Dining Set', 'slug': '6-seater-teak-dining-set',
+                'description': 'Complete 6-seater dining set in solid teak with padded chairs. Includes table and 6 chairs.',
+                'price': '84999.00', 'category_slug': 'dining-sets', 'material': 'wood',
+                'color': 'Teak Brown', 'dimensions': 'Table 180x90x75 cm',
+                'image_url': 'https://images.unsplash.com/photo-1617806118233-18e1de247200?w=800',
+                'stock': 5, 'is_featured': True,
             },
             {
-                'name': 'Executive Office Chair',
-                'description': 'High-back mesh office chair with adjustable lumbar support, armrests, and headrest. 360-degree swivel with smooth-rolling casters.',
-                'price': 19999.00,
-                'category': categories['Chairs'],
-                'material': 'metal',
-                'color': 'Black',
-                'dimensions': '65x65x120 cm',
-                'image_url': 'https://images.unsplash.com/photo-1592078615290-033ee584e267?w=800',
-                'stock': 20,
+                'name': 'Compact 4-Seater Dining Set', 'slug': 'compact-4-seater-dining-set',
+                'description': 'Space-saving 4-seater dining set perfect for apartments. Fold-away chairs for extra space.',
+                'price': '36999.00', 'category_slug': 'dining-sets', 'material': 'wood',
+                'color': 'Beech Natural', 'dimensions': 'Table 120x70x75 cm',
+                'image_url': 'https://images.unsplash.com/photo-1615529328331-f8917597711f?w=800',
+                'stock': 20, 'is_featured': False,
+            },
+            # Outdoor
+            {
+                'name': 'Teak Garden Bench', 'slug': 'teak-garden-bench',
+                'description': 'Weather-resistant teak garden bench. Treated with teak oil for outdoor durability.',
+                'price': '14999.00', 'category_slug': 'outdoor', 'material': 'wood',
+                'color': 'Teak', 'dimensions': '150x55x80 cm',
+                'image_url': 'https://images.unsplash.com/photo-1600210492493-0946911123ea?w=800',
+                'stock': 35, 'is_featured': False,
             },
             {
-                'name': 'Royal Upholstered Bed',
-                'description': 'King-size upholstered bed with tufted headboard. Solid wood frame with premium slat support. No box spring needed.',
-                'price': 54999.00,
-                'category': categories['Beds'],
-                'material': 'fabric',
-                'color': 'Navy Blue',
-                'dimensions': '200x180x120 cm',
-                'image_url': 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=800',
-                'stock': 7,
-            },
-            {
-                'name': 'Minimalist Platform Bed',
-                'description': 'Japanese-inspired low platform bed in solid walnut. Clean lines and floating design create a serene bedroom aesthetic.',
-                'price': 42999.00,
-                'category': categories['Beds'],
-                'material': 'wood',
-                'color': 'Walnut',
-                'dimensions': '200x160x30 cm',
-                'image_url': 'https://images.unsplash.com/photo-1540518614846-7eded433c457?w=800',
-                'stock': 10,
-            },
-            {
-                'name': 'Modular Bookshelf',
-                'description': 'Geometric modular bookshelf with 8 open compartments. Wall-mountable or freestanding. Mix and match multiple units for custom configurations.',
-                'price': 16999.00,
-                'category': categories['Storage'],
-                'material': 'wood',
-                'color': 'White Oak',
-                'dimensions': '120x30x180 cm',
-                'image_url': 'https://images.unsplash.com/photo-1594620302200-9a762244a156?w=800',
-                'stock': 14,
-            },
-            {
-                'name': 'Glass Display Cabinet',
-                'description': 'Elegant glass display cabinet with LED lighting and mirrored back. Tempered glass shelves with soft-close hinges. Perfect for showcasing collectibles.',
-                'price': 34999.00,
-                'category': categories['Storage'],
-                'material': 'glass',
-                'color': 'Transparent / Black Frame',
-                'dimensions': '80x40x180 cm',
-                'image_url': 'https://images.unsplash.com/photo-1595428774223-ef52624120d2?w=800',
-                'stock': 6,
-            },
-            {
-                'name': 'Standing Desk Pro',
-                'description': 'Electric height-adjustable standing desk with memory presets. Bamboo tabletop with cable management tray. Dual motor for smooth, quiet operation.',
-                'price': 29999.00,
-                'category': categories['Desks'],
-                'material': 'wood',
-                'color': 'Bamboo / Black',
-                'dimensions': '140x70x65-125 cm',
-                'image_url': 'https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?w=800',
-                'stock': 16,
-            },
-            {
-                'name': 'Classic Writing Desk',
-                'description': 'Elegant writing desk with 3 drawers and leather inlay top. Crafted from solid mahogany with brass hardware. A timeless piece for any study.',
-                'price': 26999.00,
-                'category': categories['Desks'],
-                'material': 'wood',
-                'color': 'Mahogany',
-                'dimensions': '120x60x78 cm',
-                'image_url': 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800',
-                'stock': 9,
-            },
-            {
-                'name': 'Teak Garden Bench',
-                'description': 'Weather-resistant solid teak garden bench. Comfortable contoured seat. Develops a beautiful silver patina over time.',
-                'price': 22999.00,
-                'category': categories['Outdoor'],
-                'material': 'wood',
-                'color': 'Teak',
-                'dimensions': '150x60x90 cm',
-                'image_url': 'https://images.unsplash.com/photo-1521783988139-89397d761dce?w=800',
-                'stock': 11,
+                'name': 'Rattan Outdoor Lounge Set', 'slug': 'rattan-outdoor-lounge-set',
+                'description': '4-piece outdoor rattan lounge set with weather-resistant cushions. Includes 2 chairs, sofa, and table.',
+                'price': '52999.00', 'category_slug': 'outdoor', 'material': 'rattan',
+                'color': 'Natural Rattan', 'dimensions': 'Sofa 180x80x70 cm',
+                'image_url': 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800',
+                'stock': 11, 'is_featured': False,
             },
         ]
 
-        for prod_data in products_data:
-            product, created = Product.objects.get_or_create(
-                name=prod_data['name'],
-                defaults=prod_data
+        for product_data in products_data:
+            category_slug = product_data.pop('category_slug')
+            product, created = Product.objects.update_or_create(
+                slug=product_data['slug'],
+                defaults={**product_data, 'category': categories[category_slug]},
             )
-            status = 'Created' if created else 'Exists'
-            self.stdout.write(f'  Product: {product.name} [INR {product.price}] [{status}]')
+            status_text = 'Created' if created else 'Updated'
+            self.stdout.write(f'  {status_text}: {product.name}')
 
-        self.stdout.write(self.style.SUCCESS(
-            f'\nDone! {Category.objects.count()} categories, '
-            f'{Product.objects.count()} products in database.'
-        ))
+        self.stdout.write(self.style.SUCCESS(f'\nDone! {len(products_data)} products seeded.'))

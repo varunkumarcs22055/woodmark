@@ -298,10 +298,13 @@ export default function LoginPage() {
             Business buyer? <Link to="/dealer-apply">Apply as Dealer →</Link>
           </p>
 
-          {/* DEV-ONLY: instant role-based test login. Hidden in production builds. */}
-          {import.meta.env.DEV && (
+          {/* Quick test login — shown in any Vite dev build, or when
+              VITE_ENABLE_DEV_LOGIN=true is set on the prod build (Vercel).
+              Backend mirrors with the ALLOW_DEV_LOGIN env var on Render. */}
+          {(import.meta.env.DEV
+            || import.meta.env.VITE_ENABLE_DEV_LOGIN === 'true') && (
             <div className="dev-quick-login">
-              <div className="dev-quick-login__label">Dev Quick Login</div>
+              <div className="dev-quick-login__label">Quick Test Login</div>
               <div className="dev-quick-login__buttons">
                 <button
                   type="button"

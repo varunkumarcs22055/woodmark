@@ -269,9 +269,19 @@ class DevLoginView(APIView):
     }
 
     def post(self, request):
+        # Gate via an explicit env flag so we can keep the testing shortcut
+        # available on staging/preview deploys without flipping DEBUG=True
+        # (which would also disable security middleware, secure cookies, etc.).
+        # Default: enabled when DEBUG=True, OR when ALLOW_DEV_LOGIN env=True.
         from django.conf import settings as dj_settings
-        if not dj_settings.DEBUG:
-            return Response({'error': 'Not available in production.'}, status=status.HTTP_403_FORBIDDEN)
+        import os
+        allowed = (
+            dj_settings.DEBUG
+            or os.getenv('ALLOW_DEV_LOGIN', '').lower() in ('1', 'true', 'yes')
+        )
+        if not allowed:
+            return Response({'error': 'Not available in production.'},
+                            status=status.HTTP_403_FORBIDDEN)
 
         role = request.data.get('role', 'user')
         if role not in self.TEST_USERS:

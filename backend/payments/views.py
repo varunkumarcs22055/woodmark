@@ -279,8 +279,17 @@ class PaymentSimulateView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        if not settings.DEBUG:
-            return Response({'error': 'This endpoint is only available in development.'}, status=status.HTTP_403_FORBIDDEN)
+        # Allow in dev OR when ALLOW_DEV_LOGIN=true is set (Render staging).
+        # Same gate the dev-login uses — if you're using fake auth you're
+        # already accepting that the payment is also faked.
+        import os
+        allowed = (
+            settings.DEBUG
+            or os.getenv('ALLOW_DEV_LOGIN', '').lower() in ('1', 'true', 'yes')
+        )
+        if not allowed:
+            return Response({'error': 'This endpoint is only available in development.'},
+                            status=status.HTTP_403_FORBIDDEN)
 
         order_id = request.data.get('order_id')
         if not order_id:

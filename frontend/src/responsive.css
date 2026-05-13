@@ -1,0 +1,241 @@
+/**
+ * responsive.css — global mobile-friendly hardening layer.
+ *
+ * Loaded once from index.css. Adds defensive overrides that touch every
+ * page without changing desktop layout. Three breakpoints:
+ *
+ *   max-width: 1024px  — tablets / small laptops (sidebar, gutters)
+ *   max-width: 768px   — phones landscape / small tablets (most stacking)
+ *   max-width: 480px   — phones portrait (typography + dense controls)
+ *
+ * Rules are scoped narrowly (with !important only where Vite's stylesheet
+ * order makes a specific component override beat us). Touch-target sizes
+ * follow Apple HIG (44px) and Material (48dp) — buttons / inputs in those
+ * media-query blocks are minimum 44px tall.
+ */
+
+/* ─── Universal guards (any width) ───────────────────────────────── */
+
+html { -webkit-text-size-adjust: 100%; }
+
+/* Block-level images shouldn't blow the viewport on long content. */
+img, video, iframe { max-width: 100%; height: auto; }
+
+/* Long unbreakable strings (product slugs, codes, URLs) wrap rather than
+   spilling out of containers on narrow screens. */
+p, li, td, dd, dt, code, pre { overflow-wrap: anywhere; word-break: break-word; }
+
+/* Defensive wrapper — any plain <table> on a small viewport gets a scroll
+   cage so it never blows the page width. Specific app classes
+   (admin-table-wrapper, etc.) already do this; this catches everything else. */
+@media (max-width: 1024px) {
+  .table-scroll, table { max-width: 100%; }
+}
+
+/* ─── Tablet (≤ 1024px) ─────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  /* Tighten gutters on a typical iPad-class device. */
+  .container { padding-left: 16px !important; padding-right: 16px !important; }
+
+  /* Admin / dealer dashboards: sidebar becomes off-canvas. */
+  .admin-sidebar,
+  .dealer-sidebar {
+    transform: translateX(-100%);
+    transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 280px;
+    z-index: 1050;
+    box-shadow: 0 12px 40px -10px rgba(17, 24, 39, 0.4);
+  }
+  .admin-sidebar.admin-sidebar--open,
+  .dealer-sidebar.dealer-sidebar--open { transform: translateX(0); }
+
+  .admin-main,
+  .dealer-main { margin-left: 0 !important; }
+
+  /* The hamburger menu button needs to actually appear on tablets. */
+  .admin-menu-toggle,
+  .dealer-menu-toggle { display: inline-flex !important; }
+}
+
+/* ─── Phone landscape / small tablet (≤ 768px) ──────────────────── */
+@media (max-width: 768px) {
+  /* Touch targets — anything clickable expands to a thumb-friendly size. */
+  button,
+  .btn-primary, .btn-outline, .btn-secondary,
+  input, select, textarea,
+  .product-card-overlay button {
+    min-height: 44px;
+  }
+  button.admin-icon-btn,
+  .pager__btn, .pager__num {
+    min-height: 36px; /* dense action rows stay compact */
+  }
+
+  /* Bigger tap area on links inside lists & nav. */
+  .navbar-nav a, .footer-link, .mobile-nav-label {
+    padding-top: 10px; padding-bottom: 10px;
+  }
+
+  /* All multi-column form grids collapse to single column. */
+  .admin-form-grid,
+  .admin-form-row,
+  .form-row,
+  .support-public-row,
+  .checkout-layout,
+  .pd-layout,
+  .product-detail-page .pd-layout,
+  .order-card .order-card-header,
+  .order-card .order-card-footer {
+    grid-template-columns: 1fr !important;
+    display: grid !important;
+    gap: 14px !important;
+  }
+  .checkout-layout, .pd-layout {
+    /* Some of these are flex by default — force a clean stack. */
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Make every admin/dealer table horizontally scrollable. The
+     .admin-table-wrapper class already does this — this rule covers
+     ad-hoc tables we forgot to wrap. */
+  .admin-page table,
+  .dealer-overview table {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+  /* Restore the inner table-cell layout so column alignment still works. */
+  .admin-page table > thead,
+  .admin-page table > tbody,
+  .admin-page table > tr,
+  .dealer-overview table > thead,
+  .dealer-overview table > tbody,
+  .dealer-overview table > tr {
+    display: table-row-group;
+  }
+
+  /* Admin / dealer page paddings: tighter. */
+  .admin-page, .dealer-overview, .info-page__content,
+  .orders-page, .cart-page, .checkout-page, .info-page {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+  .admin-page__title-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  /* Modals: full-width on phones, allow body to scroll the page. */
+  .admin-modal,
+  .admin-modal-overlay > .admin-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+  .admin-modal-overlay,
+  .admin-modal-backdrop {
+    padding: 0 !important;
+  }
+  .admin-modal__header { padding: 14px 16px !important; }
+  .admin-modal__body { padding: 16px !important; }
+  .admin-modal__footer {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+  .admin-modal__footer > * { width: 100%; }
+
+  /* Hero: smaller padding + smaller stat tiles. */
+  .hero-section { height: auto !important; min-height: 460px; }
+  .hero-content { padding-top: 24px !important; padding-bottom: 24px !important; }
+  .hero-stats { display: none !important; } /* save space on small screens */
+  .hero-title { font-size: clamp(1.6rem, 6vw, 2.2rem) !important; }
+  .hero-search-form { flex-wrap: wrap; }
+  .hero-search-input { min-width: 0; flex: 1 1 200px; }
+  .hero-search-btn { flex: 1 1 100%; }
+
+  /* Product grid: 2 cols, tighter gutter. */
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+  .product-card-name { font-size: 13px !important; }
+
+  /* Support inbox: single column on phones. */
+  .support-shell {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+  }
+  .support-list,
+  .support-detail {
+    max-height: 70vh;
+  }
+
+  /* Footer: column layout. */
+  .footer-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+  .footer-newsletter-form {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .footer-newsletter-input,
+  .footer-newsletter-btn { width: 100%; }
+
+  /* Navbar quick-actions row at phone width. */
+  .navbar-actions { gap: 4px !important; }
+
+  /* ERP / support / dealer toolbars: chip wrap. */
+  .erp-toolbar,
+  .erp-chips,
+  .support-chips,
+  .dealer-orders__filters { flex-wrap: wrap; }
+}
+
+/* ─── Phone portrait (≤ 480px) ──────────────────────────────────── */
+@media (max-width: 480px) {
+  /* Typography: shrink display text but keep body readable. */
+  h1 { font-size: 1.4rem !important; line-height: 1.25 !important; }
+  h2 { font-size: 1.2rem !important; }
+  h3 { font-size: 1.05rem !important; }
+
+  /* Product grid → single column on the smallest devices. */
+  .product-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Tighten stat-card grids. */
+  .admin-stats-grid,
+  .erp-stats,
+  .support-stats {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Quick-login buttons: stack to one column for big easy targets. */
+  .dev-quick-login__buttons {
+    grid-template-columns: 1fr !important;
+    display: grid !important;
+    gap: 8px;
+  }
+  .dev-quick-login__buttons button { width: 100%; }
+
+  /* Page-bar paddings even tighter. */
+  .container { padding-left: 12px !important; padding-right: 12px !important; }
+
+  /* Pager doesn't show the wider pages — keep only prev/active/next. */
+  .pager__num { min-width: 30px; padding: 0 6px; font-size: 12.5px; }
+  .pager__count { font-size: 11.5px; }
+}
+
+/* ─── Print: keep the invoice + receipt readable when printed ──── */
+@media print {
+  .navbar, .footer, .admin-sidebar, .dealer-sidebar,
+  .admin-topbar, .announcement-bar { display: none !important; }
+  .admin-main, .dealer-main { margin: 0 !important; }
+}

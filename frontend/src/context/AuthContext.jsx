@@ -10,7 +10,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { fetchProfile, logoutUser } from '../api';
+import api, { fetchProfile, logoutUser } from '../api';
 
 const AuthContext = createContext();
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -95,24 +95,25 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
-   * DEV-ONLY: logs in a real backend test user so all API calls work correctly.
-   * Uses POST /api/auth/dev-login/ which is only available when DEBUG=True.
+   * Quick test login — issues real JWTs for seeded user / dealer / admin
+   * accounts. The endpoint is gated server-side on `DEBUG=True` OR
+   * `ALLOW_DEV_LOGIN=true` (Render env var), so this is safe to call from
+   * both `vite dev` and prod when the flag is on.
+   *
+   * Uses the configured axios `api` client (so VITE_API_BASE_URL is
+   * honored on prod). The earlier `fetch('/api/...')` hit the Vercel
+   * SPA itself in production and silently failed.
    */
   const loginAsTestUser = useCallback(async (role = 'admin') => {
-    if (!import.meta.env.DEV) return;
     try {
-      const res = await fetch('/api/auth/dev-login/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role }),
-      });
-      if (!res.ok) throw new Error('dev-login failed');
-      const data = await res.json();
+      const { data } = await api.post('/auth/dev-login/', { role });
       window.__accessToken = data.access;
       localStorage.setItem('furnishop_refresh_token', data.refresh);
       setUser(data.user);
+      return data.user;
     } catch (err) {
-      console.error('Dev login failed:', err);
+      console.error('Dev login failed:', err.response?.data || err.message);
+      throw err;
     }
   }, []);
 

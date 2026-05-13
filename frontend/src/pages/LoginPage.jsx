@@ -32,6 +32,29 @@ export default function LoginPage() {
   const [otpCode, setOtpCode] = useState('');
   const [otpDebug, setOtpDebug] = useState('');
 
+  // Quick test login — surface failures explicitly instead of silently
+  // bouncing back to the same page (which is what happened before because
+  // the .then() never ran when loginAsTestUser threw).
+  const quickLogin = async (role, dest) => {
+    try {
+      const user = await loginAsTestUser(role);
+      if (!user) {
+        toast.error('Quick login disabled on this environment.');
+        return;
+      }
+      toast.success(`Signed in as ${user.full_name || user.email}`);
+      navigate(dest, { replace: true });
+    } catch (err) {
+      const msg =
+        err.response?.status === 403
+          ? 'Quick login is disabled on this backend (set ALLOW_DEV_LOGIN=true).'
+          : err.response?.data?.error
+          || err.response?.data?.detail
+          || 'Quick login failed — see browser console for details.';
+      toast.error(msg);
+    }
+  };
+
   const handleOtpRequest = async (e) => {
     e.preventDefault();
     if (!/\S+@\S+\.\S+/.test(form.email)) {
@@ -306,22 +329,13 @@ export default function LoginPage() {
             <div className="dev-quick-login">
               <div className="dev-quick-login__label">Quick Test Login</div>
               <div className="dev-quick-login__buttons">
-                <button
-                  type="button"
-                  onClick={() => loginAsTestUser('user').then(() => navigate('/'))}
-                >
+                <button type="button" onClick={() => quickLogin('user', '/')}>
                   As User
                 </button>
-                <button
-                  type="button"
-                  onClick={() => loginAsTestUser('dealer').then(() => navigate('/dealer-dashboard'))}
-                >
+                <button type="button" onClick={() => quickLogin('dealer', '/dealer-dashboard')}>
                   As Dealer
                 </button>
-                <button
-                  type="button"
-                  onClick={() => loginAsTestUser('admin').then(() => navigate('/admin-dashboard'))}
-                >
+                <button type="button" onClick={() => quickLogin('admin', '/admin-dashboard')}>
                   As Admin
                 </button>
               </div>

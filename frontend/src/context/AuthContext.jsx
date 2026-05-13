@@ -9,15 +9,25 @@
  */
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import { fetchProfile, logoutUser } from '../api';
 
 const AuthContext = createContext();
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Restore session from refresh token on app boot
+  // Restore session from refresh token on app boot.
+  //
+  // On a fresh tab/window, `window.__accessToken` is undefined (it lives in
+  // memory only, per the XSS-mitigation policy). If we just call fetchProfile
+  // it produces a 401 → the interceptor refreshes → retries. That worked, BUT
+  // it failed silently when the refresh token had been rotated and never saved
+  // back to localStorage (now fixed in api/index.js). To make session restore
+  // bulletproof we now refresh proactively here so the access token is in
+  // memory before any other request fires.
   useEffect(() => {
     const restore = async () => {
       const refresh = localStorage.getItem('furnishop_refresh_token');
@@ -26,11 +36,22 @@ export function AuthProvider({ children }) {
         return;
       }
       try {
+        // Proactive refresh — pre-warms window.__accessToken and rotates the
+        // refresh token in localStorage so every tab opened later sees a
+        // fresh, non-blacklisted token.
+        const res = await axios.post(`${API_BASE}/auth/token/refresh/`,
+          { refresh });
+        window.__accessToken = res.data.access;
+        if (res.data.refresh) {
+          localStorage.setItem('furnishop_refresh_token', res.data.refresh);
+        }
         const profile = await fetchProfile();
         setUser(profile);
       } catch {
+        // Refresh failed → token is dead, clear and force re-login.
         localStorage.removeItem('furnishop_refresh_token');
         window.__accessToken = null;
+        setUser(null);
       } finally {
         setLoading(false);
       }

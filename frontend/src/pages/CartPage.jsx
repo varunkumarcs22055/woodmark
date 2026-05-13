@@ -8,7 +8,9 @@ import './CartPage.css';
 
 export default function CartPage() {
   const { cartItems, cartTotal, cartCount, clearCart } = useCart();
-  const { gst_percent, free_shipping_threshold, standard_shipping_fee } = useSettings();
+  const { settings } = useSettings();
+  const { gst_percent, free_shipping_threshold, standard_shipping_fee } = settings;
+
 
   const subtotal = cartTotal;
   const originalTotal = cartItems.reduce(

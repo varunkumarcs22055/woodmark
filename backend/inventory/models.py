@@ -1,0 +1,91 @@
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db import models, transaction
+from products.models import Product, ProductVariant
+
+
+class Warehouse(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    code = models.CharField(max_length=10, unique=True)
+    address = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'warehouses'
+        ordering = ['name']
+
+    def __str__(self):
+        return f'{self.name} [{self.code}]'
+
+
+class StockLevel(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='stock_levels')
+    variant = models.ForeignKey(
+        ProductVariant, null=True, blank=True,
+        on_delete=models.CASCADE, related_name='stock_levels',
+    )
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name='stock_levels')
+    quantity = models.IntegerField(default=0)
+    low_threshold = models.PositiveIntegerField(default=5)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'stock_levels'
+        unique_together = [('product', 'variant', 'warehouse')]
+        indexes = [
+            models.Index(fields=['warehouse', 'product']),
+        ]
+
+    def clean(self):
+        if self.quantity < 0:
+            raise ValidationError({'quantity': 'Stock level cannot be negative.'})
+
+    @property
+    def is_low(self):
+        return self.quantity <= self.low_threshold
+
+    def __str__(self):
+        var = f' / {self.variant.option_value}' if self.variant_id else ''
+        return f'{self.product.name}{var} @ {self.warehouse.code}: {self.quantity}'
+
+
+class StockMovement(models.Model):
+    REASON_CHOICES = [
+        ('inbound', 'Inbound'),
+        ('order', 'Order Fulfillment'),
+        ('return', 'Return Restock'),
+        ('adjustment', 'Manual Adjustment'),
+    ]
+
+    stock_level = models.ForeignKey(StockLevel, on_delete=models.PROTECT, related_name='movements')
+    delta = models.IntegerField(help_text='Positive = inbound, negative = outbound.')
+    reason = models.CharField(max_length=20, choices=REASON_CHOICES)
+    reference = models.CharField(max_length=64, blank=True, help_text='e.g. order_id, PO number')
+    note = models.TextField(blank=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='stock_movements',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'stock_movements'
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        # Atomic: lock the stock level row, validate non-negative result, apply delta.
+        with transaction.atomic():
+            level = StockLevel.objects.select_for_update().get(pk=self.stock_level_id)
+            new_quantity = level.quantity + self.delta
+            if new_quantity < 0:
+                raise ValidationError(
+                    f'Movement would drive stock negative ({level.quantity} + {self.delta}).'
+                )
+            level.quantity = new_quantity
+            level.save(update_fields=['quantity', 'updated_at'])
+            super().save(*args, **kwargs)
+
+    def __str__(self):
+        sign = '+' if self.delta >= 0 else ''
+        return f'{sign}{self.delta} ({self.reason}) on {self.stock_level}'

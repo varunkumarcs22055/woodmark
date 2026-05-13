@@ -23,6 +23,14 @@ class Discount(models.Model):
         max_digits=10, decimal_places=2,
         help_text='15 for 15%, or 2000 for ₹2000 off'
     )
+    min_quantity = models.PositiveIntegerField(
+        default=1,
+        help_text=(
+            'Minimum cart quantity required for this tier. Use 1 for a flat '
+            'discount, or build a ladder like 1/2/5/10 with increasing values '
+            'for volume pricing.'
+        ),
+    )
     count_limit = models.PositiveIntegerField(
         null=True, blank=True,
         help_text='Maximum units at discounted price. NULL = unlimited.'
@@ -45,14 +53,20 @@ class Discount(models.Model):
 
     class Meta:
         db_table = 'discounts'
-        unique_together = [('product', 'discount_type')]
+        # One row per (product, type, min_quantity) tier — multiple rows form a ladder.
+        unique_together = [('product', 'discount_type', 'min_quantity')]
+        ordering = ['-min_quantity']
         indexes = [
             models.Index(fields=['product', 'discount_type']),
             models.Index(fields=['active']),
         ]
 
     def __str__(self):
-        return f'{self.get_discount_type_display()} on {self.product.name} — {self.value}{"%" if self.mode == "percent" else "₹"}'
+        ladder = f' (min qty {self.min_quantity})' if self.min_quantity > 1 else ''
+        return (
+            f'{self.get_discount_type_display()} on {self.product.name} — '
+            f'{self.value}{"%" if self.mode == "percent" else "₹"}{ladder}'
+        )
 
     @property
     def units_remaining(self):

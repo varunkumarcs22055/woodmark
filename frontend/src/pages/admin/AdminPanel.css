@@ -108,6 +108,11 @@
   box-shadow: var(--shadow-sm);
 }
 
+.admin-card--tight {
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
 .admin-card__header {
   display: flex;
   justify-content: space-between;
@@ -171,11 +176,14 @@
   background: white;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  overflow: hidden;
+  overflow-x: auto;        /* wide tables scroll within their card on narrow viewports */
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .admin-table {
   width: 100%;
+  min-width: 700px;         /* ensures horizontal scroll kicks in on mobile */
   border-collapse: collapse;
   font-size: var(--text-sm);
 }
@@ -202,6 +210,9 @@
 .admin-table tr:last-child td { border-bottom: none; }
 .admin-table tr:hover td { background: #FBFCFD; }
 
+.admin-table--compact {
+  min-width: 0;
+}
 .admin-table--compact th,
 .admin-table--compact td {
   padding: var(--space-2) var(--space-3);
@@ -248,6 +259,9 @@
 .status-badge--cancelled { background: #FFEBEE; color: #C62828; }
 .status-badge--synced    { background: #E8F5E9; color: #2E7D32; }
 .status-badge--failed    { background: #FFEBEE; color: #C62828; }
+.status-badge--pending   { background: #FEF3C7; color: #92400E; }
+.status-badge--approved  { background: #DCFCE7; color: #166534; }
+.status-badge--rejected  { background: #FEE2E2; color: #991B1B; }
 
 /* ─── Icon buttons ──────────────────────────────────────────────── */
 .admin-icon-btn {
@@ -287,6 +301,13 @@
   background: var(--color-success-bg);
 }
 
+/* ─── Action groups ────────────────────────────────────────────── */
+.admin-action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 /* ─── Modal ──────────────────────────────────────────────────────── */
 .admin-modal-overlay {
   position: fixed;
@@ -303,10 +324,44 @@
   background: white;
   border-radius: var(--radius-lg);
   width: 100%;
-  max-width: 720px;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-width: 880px;
+  max-height: 90vh;        /* slightly shorter to guarantee screen margin */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: var(--shadow-xl);
+}
+/* The <form> inside the modal needs to participate in the same flex column
+   so the body's overflow:auto actually clips at the available height. Without
+   this, the form is a block, the body grows to fit content, and the modal
+   overflows the page — making the whole page scroll instead of the body. */
+.admin-modal > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.admin-modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-5); /* merged from duplicate below */
+}
+/* prevent form-grid from forcing horizontal overflow on narrow viewports */
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+  min-width: 0;
+}
+.admin-form-grid > * { min-width: 0; }
+/* form fields shouldn't break the grid */
+.admin-field input, .admin-field select, .admin-field textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .admin-modal__header {
@@ -335,9 +390,6 @@
   color: var(--color-text-muted);
 }
 
-.admin-modal__body {
-  padding: var(--space-5);
-}
 
 .admin-modal__footer {
   padding: var(--space-4) var(--space-5);
@@ -345,9 +397,18 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-3);
-  position: sticky;
-  bottom: 0;
   background: white;
+  flex-shrink: 0;
+}
+
+/* Tab strip inside admin modals — scroll horizontally when too many tabs
+   for the viewport (mobile / narrow window) instead of wrapping or spilling. */
+.admin-modal form > div:first-child[style*="overflow"] {
+  scrollbar-width: thin;
+}
+.admin-modal form > div:first-child::-webkit-scrollbar { height: 4px; }
+.admin-modal form > div:first-child::-webkit-scrollbar-thumb {
+  background: rgba(17,24,39,0.20); border-radius: 2px;
 }
 
 /* ─── Form fields ─────────────────────────────────────────────── */
@@ -449,6 +510,112 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   object-fit: cover;
+}
+
+/* ─── Newsletter Admin ─────────────────────────────────────────── */
+.admin-newsletter-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: var(--space-6);
+}
+
+.admin-newsletter-compose {
+  padding: var(--space-6);
+}
+
+.admin-newsletter-card {
+  padding: var(--space-5);
+}
+
+.newsletter-targets-section {
+  margin-top: var(--space-6);
+}
+
+.newsletter-targets-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.newsletter-targets-header label {
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.newsletter-select-all {
+  padding: 6px 12px;
+  font-size: var(--text-xs);
+}
+
+.newsletter-targets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+}
+
+.newsletter-target-card {
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: white;
+  padding: var(--space-4) var(--space-3);
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.newsletter-target-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.newsletter-target-card.is-selected {
+  border-color: var(--color-brand);
+  background: #F0FDFA;
+}
+
+.newsletter-target-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.newsletter-target-count {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.newsletter-target-card.is-selected .newsletter-target-count {
+  color: var(--color-brand);
+}
+
+.newsletter-target-check {
+  margin-top: 4px;
+  color: var(--color-brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 18px;
+}
+
+.newsletter-target-dot {
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  border: 1px solid #D1D5DB;
+}
+
+@media (max-width: 1100px) {
+  .admin-newsletter-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ─── Tabs ─────────────────────────────────────────────────────── */
@@ -688,4 +855,139 @@
   font-weight: 600;
   font-size: var(--text-sm);
   background: white;
+}
+
+/* ─── Quick-pick chips (e.g. "1 hr / 6 hrs / 24 hrs / No expiry"
+       on the Discount form's Ends-at field) ──────────────────────── */
+.admin-quickpicks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.admin-quickpick {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #4B5563;
+  background: #F3F4F6;
+  border: 1px solid #E5E7EB;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease,
+    transform 100ms ease;
+  font-family: var(--font-sans);
+}
+
+.admin-quickpick:hover {
+  background: #E0F7F4;
+  color: #0E766E;
+  border-color: #99E1D6;
+}
+
+.admin-quickpick:active {
+  transform: scale(0.96);
+}
+
+/* "No expiry" gets a subtle differentiator so it's visually distinct
+   from the timed presets without needing a separate selector. */
+.admin-quickpick:last-child {
+  background: #FFFBEB;
+  color: #92400E;
+  border-color: #FDE68A;
+}
+.admin-quickpick:last-child:hover {
+  background: #FEF3C7;
+  color: #78350F;
+  border-color: #FCD34D;
+}
+
+/* ─── Generic modal + form (used by AdminCoupons) ─────────────────── */
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.admin-form {
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  max-height: calc(92vh - 64px);
+}
+
+.admin-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.admin-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-form-field > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4B5563;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.admin-form-field input[type='text'],
+.admin-form-field input[type='number'],
+.admin-form-field input[type='email'],
+.admin-form-field input[type='datetime-local'],
+.admin-form-field input[type='date'],
+.admin-form-field select,
+.admin-form-field textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+  box-sizing: border-box;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.admin-form-field input:focus,
+.admin-form-field select:focus,
+.admin-form-field textarea:focus {
+  outline: none;
+  border-color: #0E766E;
+  box-shadow: 0 0 0 3px rgba(14, 118, 110, 0.12);
+}
+
+.admin-form-field--checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  align-self: end;
+  padding-bottom: 4px;
+}
+.admin-form-field--checkbox > span {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
 }

@@ -1,6 +1,8 @@
 /**
  * OrderCard — single order summary with color-coded status dots.
  */
+import { Link } from 'react-router-dom';
+import { FiFileText, FiArrowRight } from 'react-icons/fi';
 import { formatPrice, formatDate } from '../utils/format';
 import './OrderCard.css';
 
@@ -78,11 +80,25 @@ export default function OrderCard({ order }) {
           {order.erp_order_id && (
             <span className="erp-id">ERP: {order.erp_order_id}</span>
           )}
+          {order.invoice_number && (
+            <span className="erp-id" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <FiFileText size={12} /> {order.invoice_number}
+            </span>
+          )}
         </div>
         <div className="order-total">
           <span className="total-label">Total</span>
           <span className="total-value">{formatPrice(order.total_amount)}</span>
         </div>
+      </div>
+
+      <div style={{ padding: '10px 16px', borderTop: '1px solid #F3F4F6',
+                    display: 'flex', justifyContent: 'flex-end' }}>
+        <Link to={`/orders/${order.order_id}`}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4,
+                       fontSize: 13, fontWeight: 500, color: '#0E766E' }}>
+          View details &amp; invoice <FiArrowRight size={13} />
+        </Link>
       </div>
     </div>
   );

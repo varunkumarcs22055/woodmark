@@ -24,6 +24,22 @@ class IsDealer(BasePermission):
         )
 
 
+class IsActiveDealer(BasePermission):
+    """
+    Stricter version: also rejects blocked dealers. Use on every B2B endpoint.
+    """
+    message = 'Active dealer account required.'
+
+    def has_permission(self, request, view):
+        u = request.user
+        return bool(
+            u and u.is_authenticated and
+            u.role == 'dealer' and
+            u.dealer_status == 'active' and
+            not getattr(u, 'is_blocked', False)
+        )
+
+
 class IsAdminOrDealer(BasePermission):
     message = 'Admin or active dealer account required.'
 

@@ -16,6 +16,11 @@ requests>=2.31,<3.0
 
 # Production server
 gunicorn>=22.0,<23.0
+whitenoise>=6.6,<7.0
+
+# MySQL/MariaDB driver (pure-Python; avoids Render build needing libmysql headers)
+PyMySQL>=1.1,<2.0
+cryptography>=42.0,<43.0
 
 # JWT authentication
 djangorestframework-simplejwt>=5.3,<6.0
@@ -34,3 +39,7 @@ Pillow>=10.0,<11.0
 # Cloudinary — product image + video hosting
 cloudinary==1.41.0
 django-cloudinary-storage==0.3.0
+
+# Reports / exports
+reportlab>=4.0,<5.0
+openpyxl>=3.1,<4.0

@@ -5,6 +5,7 @@ import logging
 
 import razorpay
 from django.conf import settings
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
@@ -68,7 +69,48 @@ def confirm_order_and_sync_erp(order, razorpay_order_id=None, razorpay_payment_i
     except Exception as e:
         logger.error(f'Failed to update discount units_sold for order {order.order_id}: {e}')
 
+    # Mirror dealer payments into the DealerPayment ledger so the dealer's
+    # "Recent Payments" panel shows gateway-confirmed payments (Razorpay /
+    # simulated success), not only admin-recorded credit reconciliations.
+    _record_dealer_payment_for_order(order, method='razorpay',
+                                     reference=razorpay_payment_id or '')
+
     return payment
+
+
+def _record_dealer_payment_for_order(order, *, method, reference=''):
+    """
+    Best-effort ledger write for dealer-attributed orders. Idempotent: a
+    DealerPayment row keyed on the order's invoice (or reference fallback)
+    is only created once per order.
+    """
+    user = getattr(order, 'user', None)
+    if not user or getattr(user, 'role', None) != 'dealer':
+        return
+    try:
+        from dealer_credit.models import DealerPayment
+        invoice = getattr(order, 'invoice', None)
+        # Dedupe — don't double-write if a payment row already exists for
+        # this invoice or this order_id reference.
+        ref = reference or order.order_id
+        already = DealerPayment.objects.filter(
+            dealer=user, reference=ref,
+        ).exists()
+        if already:
+            return
+        DealerPayment.objects.create(
+            dealer=user,
+            invoice=invoice if invoice is not None else None,
+            amount=order.total_amount,
+            method=method if method in dict(DealerPayment.METHOD_CHOICES) else 'razorpay',
+            reference=ref,
+            note=f'Auto-recorded from order {order.order_id} ({method})',
+            received_at=timezone.now(),
+        )
+    except Exception:
+        logger.exception(
+            'Failed to mirror DealerPayment for order %s', order.order_id,
+        )
 
 
 class CreateRazorpayOrderView(APIView):

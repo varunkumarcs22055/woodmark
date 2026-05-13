@@ -6,9 +6,10 @@
   right: 0;
   z-index: 1100;
   height: var(--announcement-height);
-  background: var(--color-brand);
+  background: var(--gradient-brand);
   display: flex;
   align-items: center;
+  color: #fff;
 }
 
 .announcement-bar--dealer {
@@ -84,6 +85,8 @@
   align-items: center;
   height: 100%;
   gap: var(--space-4);
+  min-width: 0;          /* allow flex children to shrink instead of overflowing */
+  max-width: 100%;
 }
 
 /* ─── Brand ──────────────────────────────────────────────────────────── */
@@ -113,25 +116,36 @@
 .navbar-nav {
   display: flex;
   align-items: stretch;
-  flex: 1;
-  gap: 1.5rem;
-  /* Reduce column gap for more natural look */
+  flex: 1 1 auto;
+  min-width: 0;            /* essential — without this the flex row pushes
+                              the right-side actions off the viewport */
+  gap: 0.4rem;
+  /* If the menu is still wider than the available row, scroll horizontally
+     instead of overflowing the page. The scroll bar is hidden but pointer
+     and keyboard scroll still work, and the items always remain reachable. */
+  overflow-x: auto;
+  overflow-y: visible;     /* mega-menu dropdowns must escape vertically */
+  scrollbar-width: none;   /* Firefox */
+  -ms-overflow-style: none;
 }
+.navbar-nav::-webkit-scrollbar { display: none; }
 
 .nav-item {
   position: static;
   /* mega menu is full-width via .navbar */
   display: flex;
   align-items: stretch;
+  flex-shrink: 0;            /* keep each label intact; let the row scroll */
 }
 
 .nav-trigger {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 0 14px;
+  padding: 0 12px;
   height: var(--nav-height);
   font-size: var(--text-sm);
+  white-space: nowrap;       /* labels never wrap */
   font-weight: 600;
   color: var(--color-text-secondary);
   background: none;
@@ -541,11 +555,34 @@
   width: 84%;
   max-width: 340px;
   background: var(--color-white);
-  z-index: 1100;
+  z-index: 1101;
   overflow-y: auto;
   animation: slideInLeft 0.28s ease-out;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 12px 40px -10px rgba(17, 24, 39, 0.35);
+}
+
+.mobile-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 1100;
+  animation: fadeIn 200ms ease-out;
+}
+
+.mobile-drawer-close {
+  /* Ensure it's never pushed off screen by logo wrapping */
+  position: relative !important;
+  z-index: 10;
+  margin-left: var(--space-4);
+  flex-shrink: 0;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @keyframes slideInLeft {
@@ -690,7 +727,9 @@
 }
 
 /* ─── Responsive ─────────────────────────────────────────────────────── */
-@media (max-width: 1150px) {
+/* Long Featherlite-style labels don't fit comfortably below ~1280px.
+   Below that we surface the mobile drawer so nothing spills off-screen. */
+@media (max-width: 1280px) {
   .navbar-nav {
     display: none;
   }

@@ -114,6 +114,16 @@ const cartReducer = (state, action) => {
       break;
     }
 
+    case 'UPDATE_PRODUCT_DATA': {
+      const { productId, product } = action.payload;
+      const slim = slimProduct(product);
+      newState = state.map((item) =>
+        item.product.id === productId ? { ...item, product: slim } : item
+      );
+      break;
+    }
+
+
     case 'CLEAR_CART':
       newState = [];
       break;
@@ -139,8 +149,35 @@ export function CartProvider({ children }) {
   );
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
+  /**
+   * Dealer/B2B optimization: when quantity changes, we re-fetch the product
+   * from the API with `?qty=N` so the backend pricing engine can re-resolve
+   * tiered discounts, ladder pricing, and negotiated overrides.
+   */
+  const refreshPrice = async (productId, quantity) => {
+    const item = cartItems.find(it => it.product.id === productId);
+    if (!item) return;
+
+    try {
+      const { fetchProducts } = await import('../api');
+      const data = await fetchProducts({ id: productId, qty: quantity });
+      const updatedProduct = data.results?.find(p => p.id === productId) || data.results?.[0];
+
+      if (updatedProduct) {
+        dispatch({
+          type: 'UPDATE_PRODUCT_DATA',
+          payload: { productId, product: updatedProduct }
+        });
+      }
+    } catch (err) {
+      console.error('Failed to refresh cart price:', err);
+    }
+  };
+
   const addToCart = (product, quantity = 1) => {
     dispatch({ type: 'ADD_ITEM', payload: { product, quantity } });
+    // If quantity > 1, refresh immediately to get tiered price
+    if (quantity > 1) refreshPrice(product.id, quantity);
   };
 
   const removeFromCart = (productId) => {
@@ -149,11 +186,13 @@ export function CartProvider({ children }) {
 
   const updateQuantity = (productId, quantity) => {
     dispatch({ type: 'UPDATE_QUANTITY', payload: { productId, quantity } });
+    refreshPrice(productId, quantity);
   };
 
   const clearCart = () => {
     dispatch({ type: 'CLEAR_CART' });
   };
+
 
   return (
     <CartContext.Provider

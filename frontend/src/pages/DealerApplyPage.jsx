@@ -68,8 +68,10 @@ export default function DealerApplyPage() {
     const errs = {};
     if (!form.dealer_company_name.trim())
       errs.dealer_company_name = 'Company name is required';
-    if (form.dealer_gst_number && !/^[0-9A-Z]{15}$/.test(form.dealer_gst_number))
-      errs.dealer_gst_number = 'GST must be 15 alphanumeric characters';
+    // Indian GSTIN structure: 2-digit state + 10-char PAN + entity digit + Z + checksum.
+    if (form.dealer_gst_number &&
+        !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(form.dealer_gst_number))
+      errs.dealer_gst_number = 'Invalid GSTIN. Format: 22AAAAA0000A1Z5';
     if (!form.monthly_volume)
       errs.monthly_volume = 'Please pick an expected volume range';
     if (!form.business_address.trim() || form.business_address.trim().length < 20)

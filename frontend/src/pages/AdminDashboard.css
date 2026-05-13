@@ -19,6 +19,8 @@
   bottom: 0;
   z-index: 1100;
   transition: transform 0.3s ease;
+  /* Children manage their own scrolling; the shell never spills. */
+  overflow: hidden;
 }
 
 @media (max-width: 900px) {
@@ -36,6 +38,8 @@
   justify-content: space-between;
   padding: var(--space-5) var(--space-6);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  gap: var(--space-2);      /* prevent elements from touching */
 }
 
 .admin-sidebar__logo {
@@ -52,6 +56,7 @@
   cursor: pointer;
   display: none;
   padding: 4px;
+  flex-shrink: 0;           /* never squeeze the close button */
 }
 
 @media (max-width: 900px) {
@@ -59,10 +64,22 @@
 }
 
 .admin-nav {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;        /* required so flex child can shrink → scroll kicks in */
+  overflow-y: auto;     /* nav links scroll, footer stays pinned */
+  overscroll-behavior: contain;
   padding: var(--space-4) 0;
   display: flex;
   flex-direction: column;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.18) transparent;
+}
+.admin-nav::-webkit-scrollbar {
+  width: 6px;
+}
+.admin-nav::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 3px;
 }
 
 .admin-nav__item {
@@ -93,6 +110,8 @@
 .admin-sidebar__footer {
   padding: var(--space-4) var(--space-6);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;       /* never get squeezed off-screen */
+  background: #1A1A1A;  /* opaque so scrolled nav doesn't bleed under it */
 }
 
 .admin-user {
@@ -191,4 +210,30 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
   z-index: 1099;
+}
+
+/* ─── Overview Enhancements ────────────────────────────────────────── */
+.admin-card {
+  transition: box-shadow 0.3s ease;
+}
+.admin-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+.admin-card__header h3 {
+  font-size: 1.1rem;
+  color: #111827;
+}
+.admin-stats-grid {
+  gap: var(--space-5);
+}
+.admin-stat-card {
+  border: none;
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+.admin-stat-card__value {
+  font-size: 1.8rem;
+  margin-top: 8px;
 }

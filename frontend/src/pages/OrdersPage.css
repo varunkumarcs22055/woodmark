@@ -1,19 +1,48 @@
-/* OrdersPage Styles */
-.orders-page { padding: var(--space-xl) 0 var(--space-3xl); min-height: 60vh; }
+/* ─── OrdersPage — modern hub layout ─────────────────────────────── */
+.orders-page {
+  padding: 40px 0 80px;
+  min-height: 60vh;
+  background: #FAFAF7;
+}
 
-.orders-header { margin-bottom: var(--space-xl); }
-.orders-header p { color: var(--color-text-secondary); margin-top: var(--space-sm); }
+.orders-header {
+  position: relative;
+  padding: 28px 28px 26px;
+  margin-bottom: 28px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(14, 118, 110, 0.10), transparent 55%),
+    radial-gradient(circle at 100% 100%, rgba(249, 115, 22, 0.06), transparent 55%),
+    linear-gradient(180deg, #FFFFFF 0%, #F8FAFA 100%);
+  border: 1px solid #E6E6DF;
+  overflow: hidden;
+}
+.orders-header h1 {
+  margin: 0 0 6px;
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  letter-spacing: -0.01em;
+  color: #111827;
+}
+.orders-header p {
+  margin: 0;
+  color: #6B7280;
+  font-size: 14.5px;
+  line-height: 1.5;
+  max-width: 56ch;
+}
 
+/* ─── Guest email lookup form ────────────────────────────────────── */
 .orders-search {
   display: flex;
-  gap: var(--space-md);
-  margin-bottom: var(--space-2xl);
-  max-width: 600px;
+  gap: 10px;
+  margin-bottom: 24px;
+  max-width: 620px;
 }
 
 .orders-search-input-wrap {
   position: relative;
   flex: 1;
+  min-width: 0;
 }
 
 .orders-search-icon {
@@ -21,51 +50,78 @@
   left: 14px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--color-text-muted);
+  color: #9CA3AF;
 }
 
-.orders-email-input { padding-left: 40px !important; }
+.orders-email-input {
+  padding-left: 40px !important;
+  height: 42px;
+  border-radius: 10px !important;
+}
 
-.orders-list { display: flex; flex-direction: column; gap: var(--space-lg); }
+/* ─── Sign-in nudge banner ───────────────────────────────────────── */
+.orders-signin-nudge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  margin-bottom: 22px;
+  background: linear-gradient(135deg, #F0FDFA, #FFFFFF);
+  border: 1px solid #B3E1D8;
+  border-radius: 12px;
+  font-size: 13.5px;
+  color: #134e4a;
+  flex-wrap: wrap;
+}
+.orders-signin-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #0E766E;
+  font-weight: 700;
+  text-decoration: none;
+}
+.orders-signin-link:hover { text-decoration: underline; }
 
+/* ─── Results list ───────────────────────────────────────────────── */
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ─── Empty state ────────────────────────────────────────────────── */
 .orders-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: var(--space-3xl) var(--space-xl);
-  gap: var(--space-md);
+  padding: 64px 24px;
+  gap: 10px;
+  background: #fff;
+  border: 1px dashed #E5E7EB;
+  border-radius: 14px;
 }
+.orders-empty-icon { color: #D1D5DB; }
+.orders-empty h3 { margin: 4px 0 0; color: #111827; font-size: 1.15rem; }
+.orders-empty p { margin: 0; color: #6B7280; font-size: 14px; }
 
-.orders-empty-icon { color: var(--color-text-muted); }
-.orders-empty p { color: var(--color-text-secondary); }
+/* ─── Skeleton tiles while loading ───────────────────────────────── */
+.orders-loading .skeleton {
+  border-radius: 14px;
+  background: linear-gradient(90deg, #F3F4F6 25%, #E5E7EB 50%, #F3F4F6 75%);
+  background-size: 200% 100%;
+  animation: orders-skeleton 1.4s ease-in-out infinite;
+}
+@keyframes orders-skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
 
 @media (max-width: 600px) {
+  .orders-page { padding: 24px 0 60px; }
+  .orders-header { padding: 22px 18px; }
   .orders-search { flex-direction: column; }
-}
-
-/* ─── Sign-in nudge for guests ───────────────────────────────────────── */
-.orders-signin-nudge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  margin-bottom: var(--space-6);
-  background: var(--color-brand-pale);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-}
-
-.orders-signin-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--color-brand);
-  font-weight: 700;
-}
-
-.orders-signin-link:hover {
-  text-decoration: underline;
+  .orders-signin-nudge { flex-direction: column; align-items: flex-start; }
 }

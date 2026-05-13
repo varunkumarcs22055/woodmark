@@ -13,7 +13,7 @@
  * (sofas, tables, chairs, beds, storage, desks, dining-sets, outdoor).
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   FiSearch,
@@ -27,9 +27,12 @@ import {
   FiPackage,
   FiSettings,
   FiTrendingUp,
+  FiUserCheck,
 } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { fetchNavTags, fetchContentBlocks } from '../api';
+import { useSettings } from '../context/SettingsContext';
 import './Navbar.css';
 
 /* ─── Catalog navigation
@@ -38,6 +41,35 @@ import './Navbar.css';
  * actually returns products: sofas, tables, chairs, beds, storage, desks,
  * dining-sets, outdoor.
  */
+/**
+ * Convert backend nav-tags response into NAV_ITEMS-shaped data.
+ *
+ * Backend returns:
+ *   [{ category: {slug,name}|null, tags: [{slug,label,nav_order}, …] }, …]
+ *
+ * Each category becomes one mega-menu dropdown; tags are children that
+ * navigate to /?category=<cat>&tag=<tag-slug> so the storefront filters
+ * by both. Null-category groups are surfaced under a "Featured" header.
+ */
+const navTagsToNavItems = (groups) =>
+  (groups || [])
+    .filter((g) => g.tags && g.tags.length > 0)
+    .map((g, gi) => ({
+      label: g.category?.name || 'Featured',
+      key: `dyn-${g.category?.slug || 'featured'}-${gi}`,
+      columns: [{
+        heading: g.category?.name || 'Featured',
+        items: g.tags.map((t) => ({
+          label: t.label,
+          slug: g.category?.slug || '',
+          tag: t.slug,
+        })),
+      }],
+    }));
+
+/* Static fallback — used when backend returns no nav-tags so the bar isn't
+ * empty on a fresh database. Replace each label/slug with real ones via the
+ * Tag admin once you've added keywords. */
 const NAV_ITEMS = [
   {
     label: 'Prestino Director Suit Series',
@@ -158,6 +190,7 @@ const SEARCH_SUGGESTIONS = ['Sofas', 'Dining Tables', 'Beds', 'Office Chairs', '
 export default function Navbar() {
   const { cartCount } = useCart();
   const { user, logout } = useAuth();
+  const { settings } = useSettings();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -168,6 +201,54 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [accountOpen, setAccountOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  const freeShippingText = settings.free_shipping_threshold
+    ? `Free shipping on orders above ${new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 0,
+      }).format(settings.free_shipping_threshold)}`
+    : 'Free shipping on all orders';
+  const [contentBlocks, setContentBlocks] = useState({});
+  // The client-curated NAV_ITEMS is the canonical source. Dynamic tag groups
+  // from `/api/products/nav-tags/` are *appended* — they never replace the
+  // hand-tuned menu. A dynamic group is dropped if its label already exists
+  // in the static menu (case-insensitive) so we don't duplicate columns.
+  const [dynamicNav, setDynamicNav] = useState([]);
+  useEffect(() => {
+    fetchNavTags()
+      .then((groups) => setDynamicNav(navTagsToNavItems(groups)))
+      .catch(() => setDynamicNav([]));
+  }, []);
+
+  useEffect(() => {
+    fetchContentBlocks(['announcement_bar', 'nav_menu'])
+      .then((rows) => {
+        const map = {};
+        (rows || []).forEach((b) => { map[b.key] = b; });
+        setContentBlocks(map);
+      })
+      .catch(() => setContentBlocks({}));
+  }, []);
+
+  const navItems = useMemo(() => {
+    const override = contentBlocks.nav_menu?.data_json?.groups;
+    if (Array.isArray(override) && override.length > 0) {
+      return override.map((g, idx) => {
+        const columns = Array.isArray(g.columns) && g.columns.length > 0
+          ? g.columns
+          : [{ heading: g.heading || g.label || 'Menu', items: g.items || [] }];
+        return {
+          label: g.label || g.heading || `Menu ${idx + 1}`,
+          key: g.key || `cms-${idx}`,
+          columns,
+        };
+      });
+    }
+    const staticLabels = new Set(NAV_ITEMS.map((i) => i.label.toLowerCase()));
+    const extras = dynamicNav.filter((i) => !staticLabels.has(i.label.toLowerCase()));
+    return [...NAV_ITEMS, ...extras];
+  }, [contentBlocks.nav_menu, dynamicNav]);
 
   const searchRef = useRef(null);
   const menuTimer = useRef(null);
@@ -201,6 +282,20 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', onClick);
   }, [accountOpen]);
 
+  // ESC closes the mobile drawer + locks page scroll while it's open so the
+  // user can't scroll the body behind the drawer.
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setMobileOpen(false); };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [mobileOpen]);
+
   const openMenu = (key) => {
     clearTimeout(menuTimer.current);
     setActiveMenu(key);
@@ -210,8 +305,17 @@ export default function Navbar() {
     menuTimer.current = setTimeout(() => setActiveMenu(null), 150);
   };
 
-  const goTo = (slug) => {
-    navigate(slug ? `/?category=${encodeURIComponent(slug)}` : '/');
+  // `child` is one mega-menu link: { slug, tag? } where slug = category slug,
+  // tag = optional Tag.slug (set when the link comes from /api/products/nav-tags/).
+  const goTo = (child) => {
+    // Backward-compat: callers may pass a bare string for legacy NAV_ITEMS.
+    const slug = typeof child === 'string' ? child : child?.slug;
+    const tag = typeof child === 'string' ? null : child?.tag;
+    const params = new URLSearchParams();
+    if (slug) params.set('category', slug);
+    if (tag) params.set('tag', tag);
+    const qs = params.toString();
+    navigate(qs ? `/?${qs}` : '/');
     setActiveMenu(null);
     setMobileOpen(false);
   };
@@ -259,11 +363,13 @@ export default function Navbar() {
         <div className="announcement-bar">
           <div className="announcement-inner container">
             <span className="announcement-text">
-              🎉 Free shipping on orders above ₹2,999 &nbsp;·&nbsp; Trusted by 1 Lakh+ happy homes
+              {contentBlocks.announcement_bar?.data_json?.text
+                || contentBlocks.announcement_bar?.body_md?.trim()
+                || `🎉 ${freeShippingText} · Trusted by 1 Lakh+ happy homes`}
             </span>
             <div className="announcement-right">
               <FiPhone size={12} />
-              <span>1800-123-4567</span>
+              <span>{contentBlocks.announcement_bar?.data_json?.phone || '1800-123-4567'}</span>
             </div>
           </div>
         </div>
@@ -287,7 +393,7 @@ export default function Navbar() {
 
           {/* Desktop Nav */}
           <div className="navbar-nav">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               // If a column has many items, fan it across 3 sub-columns for layout
               const shouldSplit =
                 item.columns.length === 1 && item.columns[0].items.length > 6;
@@ -327,7 +433,7 @@ export default function Navbar() {
                               <button
                                 key={child.label}
                                 className="mega-link"
-                                onClick={() => goTo(child.slug)}
+                                onClick={() => goTo(child)}
                               >
                                 {child.label}
                               </button>
@@ -395,6 +501,11 @@ export default function Navbar() {
                       <Link to="/orders" className="account-menu__link" onClick={() => setAccountOpen(false)}>
                         <FiPackage size={16} /> My Orders
                       </Link>
+                      {user.role === 'user' && (
+                        <Link to="/account" className="account-menu__link" onClick={() => setAccountOpen(false)}>
+                          <FiUserCheck size={16} /> My Account
+                        </Link>
+                      )}
                       {user.role === 'admin' && (
                         <Link
                           to="/admin-dashboard"
@@ -481,7 +592,7 @@ export default function Navbar() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="search-form-input"
                 />
-                <button type="submit" className="btn-primary search-submit">
+                <button type="submit" className="btn-primary search-submit" id="search-btn-desktop">
                   Search
                 </button>
                 <button
@@ -489,6 +600,7 @@ export default function Navbar() {
                   className="search-close-btn"
                   onClick={() => setSearchOpen(false)}
                   aria-label="Close search"
+                  id="search-close-btn"
                 >
                   <FiX size={20} />
                 </button>
@@ -512,19 +624,25 @@ export default function Navbar() {
         )}
       </nav>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer + backdrop */}
       {mobileOpen && (
-        <div className="mobile-drawer">
-          <div className="mobile-drawer-header">
-            <Link to="/" className="navbar-brand" onClick={() => setMobileOpen(false)}>
-              <span className="brand-text">FurniShop</span>
-            </Link>
-            <button onClick={() => setMobileOpen(false)} aria-label="Close menu">
-              <FiX size={22} />
-            </button>
-          </div>
-          <div className="mobile-drawer-body">
-            {NAV_ITEMS.map((item) => (
+        <>
+          <div className="mobile-drawer-backdrop"
+               onClick={() => setMobileOpen(false)}
+               aria-hidden="true" />
+          <div className="mobile-drawer" role="dialog" aria-modal="true"
+               aria-label="Site navigation">
+            <div className="mobile-drawer-header">
+              <Link to="/" className="navbar-brand" onClick={() => setMobileOpen(false)}>
+                <span className="brand-text">FurniShop</span>
+              </Link>
+              <button onClick={() => setMobileOpen(false)} aria-label="Close menu"
+                      className="mobile-drawer-close">
+                <FiX size={22} />
+              </button>
+            </div>
+            <div className="mobile-drawer-body">
+            {navItems.map((item) => (
               <div key={item.key} className="mobile-nav-group">
                 <button
                   className={`mobile-nav-label mobile-accordion ${
@@ -551,7 +669,7 @@ export default function Navbar() {
                           <button
                             key={child.label}
                             className="mobile-nav-link"
-                            onClick={() => goTo(child.slug)}
+                            onClick={() => goTo(child)}
                           >
                             {child.label}
                           </button>
@@ -612,10 +730,10 @@ export default function Navbar() {
             <Link to="/cart" className="mobile-nav-label" onClick={() => setMobileOpen(false)}>
               Cart {cartCount > 0 && `(${cartCount})`}
             </Link>
+            </div>
           </div>
-        </div>
+        </>
       )}
-      {mobileOpen && <div className="mobile-overlay" onClick={() => setMobileOpen(false)} />}
     </>
   );
 }

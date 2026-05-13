@@ -1,3 +1,4 @@
+
 """
 Django settings for FurniShop e-commerce project.
 
@@ -23,7 +24,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security settings
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-me-in-production')
 DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = [h.strip() for h in os.getenv(
+    'ALLOWED_HOSTS', 'localhost,127.0.0.1'
+).split(',') if h.strip()]
+
+# Render injects RENDER_EXTERNAL_HOSTNAME at runtime; auto-allow it so the
+# admin never has to remember to update ALLOWED_HOSTS when Render renames a
+# service. Same trick most Render-deployed Django apps use.
+_render_host = os.getenv('RENDER_EXTERNAL_HOSTNAME')
+if _render_host and _render_host not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(_render_host)
 
 # ---------------------------------------------------------------------------
 # Application definition
@@ -56,10 +66,27 @@ INSTALLED_APPS = [
     'payments',
     'discounts',
     'store_settings',
+    'audit',
+    'inventory',
+    'cms',
+    'notifications',
+    'media_lib',
+    'invoices',
+    'reviews',
+    'wishlist',
+    'dealer_pricing',
+    'dealer_credit',
+    'coupons',
+    'shipping',
+    'dealer_wallet',
+    'support',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # WhiteNoise serves Django admin static assets in production (after
+    # collectstatic). Must come right after SecurityMiddleware.
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',          # CORS — must be before CommonMiddleware
     'django.middleware.common.CommonMiddleware',
@@ -113,6 +140,24 @@ else:
         }
     }
 
+# Shared-hosting MariaDB (GoDaddy) does NOT have the `mysql.time_zone_name`
+# tables loaded. When Django uses `TruncMonth` / `TruncDate` / etc. with
+# `USE_TZ = True` and a named application TIME_ZONE different from the
+# connection timezone, the driver tries to do `CONVERT_TZ(... 'UTC' ...)`
+# and MySQL returns NULL → Django raises:
+#   "Database returned an invalid datetime value. Are time zone definitions
+#    for your database installed?"
+#
+# We tell Django the DB stores UTC for every MySQL/MariaDB connection so it
+# skips the named-timezone conversion at the SQL layer. Application code
+# still receives tz-aware datetimes (since USE_TZ stays True) and the
+# frontend renders in the user's local time. No data is rewritten.
+if DATABASES['default'].get('ENGINE', '').endswith('mysql'):
+    DATABASES['default']['TIME_ZONE'] = 'UTC'
+    opts = DATABASES['default'].setdefault('OPTIONS', {})
+    opts.setdefault('init_command',
+                    "SET sql_mode='STRICT_TRANS_TABLES', time_zone='+00:00'")
+
 # ---------------------------------------------------------------------------
 # Password validation
 # ---------------------------------------------------------------------------
@@ -132,10 +177,19 @@ USE_I18N = True
 USE_TZ = True
 
 # ---------------------------------------------------------------------------
-# Static files
+# Static files (served by WhiteNoise in prod, by Django dev server locally)
 # ---------------------------------------------------------------------------
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Compressed manifest storage — Django picks the right file when collectstatic
+# fingerprints assets, and WhiteNoise serves them with long cache headers.
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -172,13 +226,40 @@ SIMPLE_JWT = {
 }
 
 # ---------------------------------------------------------------------------
-# CORS Configuration — Allow React dev server
+# CORS Configuration
 # ---------------------------------------------------------------------------
-CORS_ALLOWED_ORIGINS = os.getenv(
-    'CORS_ALLOWED_ORIGINS', 'http://localhost:5173'
-).split(',')
+CORS_ALLOWED_ORIGINS = [o.strip() for o in os.getenv(
+    'CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173'
+).split(',') if o.strip()]
+
+# Vercel issues a fresh *-<hash>-<team>.vercel.app preview URL on every PR.
+# Allow any *.vercel.app origin so previews work without re-deploying the
+# backend. Production custom domain (when added) goes into CORS_ALLOWED_ORIGINS.
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r'^https://.+\.vercel\.app$',
+]
 
 CORS_ALLOW_CREDENTIALS = True  # Allow cookies/sessions for cart
+
+# CSRF must trust the frontend's origin for any cookie-bearing POSTs (admin).
+CSRF_TRUSTED_ORIGINS = [o for o in CORS_ALLOWED_ORIGINS if o.startswith('http')]
+if _render_host:
+    CSRF_TRUSTED_ORIGINS.append(f'https://{_render_host}')
+
+# ---------------------------------------------------------------------------
+# Production hardening — kicks in only when DEBUG=False
+# ---------------------------------------------------------------------------
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30   # 30 days
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = 'same-origin'
+    X_FRAME_OPTIONS = 'DENY'
 
 # ---------------------------------------------------------------------------
 # Session configuration (for session-based cart)
@@ -221,6 +302,25 @@ SOCIAL_AUTH_URL_NAMESPACE = 'social'
 LOGIN_URL = '/api/auth/login/'
 LOGIN_REDIRECT_URL = '/'
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+
+# ---------------------------------------------------------------------------
+# Email
+# ---------------------------------------------------------------------------
+# When SMTP isn't configured (dev / first deploy), use the console backend.
+# The default backend is SMTP on localhost:25, which blocks for ~30s when no
+# mail server is reachable — long enough to trip the frontend's 15s axios
+# timeout during order creation (which fires admin low-stock notifications).
+EMAIL_BACKEND = os.getenv(
+    'EMAIL_BACKEND',
+    'django.core.mail.backends.console.EmailBackend',
+)
+EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587') or 587)
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
+EMAIL_TIMEOUT = 5  # seconds — never let mail block a request
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@furnishop.local')
 
 # ---------------------------------------------------------------------------
 # ERP Integration

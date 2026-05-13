@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import User
+from .models import User, UserAddress
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -41,14 +41,16 @@ class UserLoginSerializer(serializers.Serializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(required=False, allow_blank=True)
+    dealer_tier_name = serializers.CharField(source='dealer_tier.name', read_only=True)
 
     class Meta:
         model = User
         fields = [
             'id', 'email', 'full_name', 'phone', 'role',
             'dealer_status', 'dealer_company_name', 'dealer_gst_number', 'date_joined',
+            'dealer_tier', 'dealer_tier_name',
         ]
-        read_only_fields = ['id', 'email', 'role', 'dealer_status', 'date_joined']
+        read_only_fields = ['id', 'email', 'role', 'dealer_status', 'date_joined', 'dealer_tier_name']
 
     def to_representation(self, obj):
         rep = super().to_representation(obj)
@@ -64,6 +66,18 @@ class UserProfileSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
+class UserAddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserAddress
+        fields = [
+            'id', 'full_name', 'phone', 'line1', 'line2', 'landmark',
+            'city', 'state', 'postal_code', 'country', 'address_type',
+            'is_default_shipping', 'is_default_billing',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
 class DealerApplicationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
     confirm_password = serializers.CharField(write_only=True)
@@ -75,6 +89,21 @@ class DealerApplicationSerializer(serializers.ModelSerializer):
             'email', 'password', 'confirm_password', 'full_name', 'phone',
             'dealer_company_name', 'dealer_gst_number',
         ]
+
+    # 15-char Indian GSTIN: 2-digit state + 10-char PAN + 1-digit entity
+    # + 1-char Z (default) + 1-char checksum.
+    GSTIN_REGEX = r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$'
+
+    def validate_dealer_gst_number(self, value):
+        import re
+        if not value:
+            return value  # blank allowed at registration; admin can require later
+        normalized = value.strip().upper()
+        if not re.match(self.GSTIN_REGEX, normalized):
+            raise serializers.ValidationError(
+                'Invalid GSTIN format. Expected 15 chars like 22AAAAA0000A1Z5.'
+            )
+        return normalized
 
     def validate(self, data):
         if data['password'] != data.pop('confirm_password'):
@@ -103,9 +132,44 @@ class DealerApplicationSerializer(serializers.ModelSerializer):
 class AdminDealerApprovalSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['dealer_status']
+        fields = ['dealer_status', 'dealer_tier']
 
     def validate_dealer_status(self, value):
-        if value not in ('active', 'rejected'):
+        if value and value not in ('active', 'rejected'):
             raise serializers.ValidationError("dealer_status must be 'active' or 'rejected'.")
         return value
+
+
+class EmailOTPRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class EmailOTPVerifySerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    code = serializers.CharField(min_length=6, max_length=6)
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    new_password = serializers.CharField(validators=[validate_password])
+    confirm_password = serializers.CharField()
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError({'confirm_password': 'Passwords do not match.'})
+        return data
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField()
+    new_password = serializers.CharField(validators=[validate_password])
+    confirm_password = serializers.CharField()
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError({'confirm_password': 'Passwords do not match.'})
+        return data

@@ -1,4 +1,5 @@
 import logging
+from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -7,11 +8,14 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from django.contrib.auth import authenticate
 from django.shortcuts import redirect as django_redirect
-from .models import User
+from .models import User, PasswordResetToken, EmailOTP, UserAddress
 from .serializers import (
     UserRegistrationSerializer, UserLoginSerializer,
     UserProfileSerializer, DealerApplicationSerializer,
     AdminDealerApprovalSerializer,
+    PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
+    EmailOTPRequestSerializer, EmailOTPVerifySerializer,
+    UserAddressSerializer, ChangePasswordSerializer,
 )
 from .permissions import IsAdminRole
 
@@ -61,6 +65,11 @@ class LoginView(APIView):
             return Response({'detail': 'Invalid email or password.'}, status=status.HTTP_401_UNAUTHORIZED)
         if not user.is_active:
             return Response({'detail': 'Account is disabled.'}, status=status.HTTP_401_UNAUTHORIZED)
+        if getattr(user, 'is_blocked', False):
+            return Response(
+                {'code': 'user_blocked', 'detail': 'Your account has been blocked. Contact support.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         tokens = get_tokens_for_user(user)
         return Response({
@@ -97,6 +106,63 @@ class UserProfileView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        if not user.check_password(serializer.validated_data['old_password']):
+            return Response({'old_password': 'Current password is incorrect.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        user.set_password(serializer.validated_data['new_password'])
+        user.save(update_fields=['password'])
+        return Response({'detail': 'Password updated.'})
+
+
+class UserAddressListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = UserAddress.objects.filter(user=request.user)
+        return Response(UserAddressSerializer(qs, many=True).data)
+
+    def post(self, request):
+        serializer = UserAddressSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserAddressDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, request, pk):
+        try:
+            return UserAddress.objects.get(pk=pk, user=request.user)
+        except UserAddress.DoesNotExist:
+            return None
+
+    def patch(self, request, pk):
+        obj = self.get_object(request, pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = UserAddressSerializer(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        obj = self.get_object(request, pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class DealerApplicationView(APIView):
     permission_classes = [AllowAny]
 
@@ -105,6 +171,24 @@ class DealerApplicationView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             logger.info(f'New dealer application from {user.email} ({user.dealer_company_name})')
+            
+            # Notify Admin
+            try:
+                from django.core.mail import send_mail
+                send_mail(
+                    'New Dealer Application Received',
+                    f'A new dealer application has been submitted by {user.full_name}.\n\n'
+                    f'Company: {user.dealer_company_name}\n'
+                    f'Email: {user.email}\n'
+                    f'GST: {user.dealer_gst_number}\n\n'
+                    f'Review it here: {request.build_absolute_uri("/")}admin-dashboard/dealers/',
+                    'no-reply@furnishop.in',
+                    [settings.DEFAULT_FROM_EMAIL], # Or a dedicated admin email
+                    fail_silently=True
+                )
+            except Exception as e:
+                logger.error(f"Failed to notify admin of dealer application: {e}")
+
             return Response({
                 'detail': 'Application submitted. You will be notified once approved.',
                 'email': user.email,
@@ -133,6 +217,17 @@ class DealerApprovalView(APIView):
             logger.info(f'Dealer {dealer.email} {action} by admin {request.user.email}')
             return Response(UserProfileSerializer(dealer).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DealerTierListView(APIView):
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        from dealer_pricing.models import DealerTier
+        from dealer_pricing.serializers import DealerTierSerializer
+        tiers = DealerTier.objects.filter(is_active=True).order_by('sort_order')
+        serializer = DealerTierSerializer(tiers, many=True)
+        return Response(serializer.data)
 
 
 class GoogleLoginRedirectView(APIView):
@@ -218,3 +313,189 @@ class UserListView(APIView):
             qs = qs.filter(dealer_status=dealer_status)
         serializer = UserProfileSerializer(qs, many=True)
         return Response(serializer.data)
+
+
+class EmailOTPRequestView(APIView):
+    """
+    POST /api/auth/otp/request/  body={email}
+
+    Issues a 6-digit code valid for 10 minutes. Like password-reset, the
+    response is constant whether the email is registered or not — so the
+    endpoint can't be used to enumerate accounts. Cooldown: 60s between
+    issues per user.
+    """
+    permission_classes = [AllowAny]
+    COOLDOWN_SECONDS = 60
+
+    def post(self, request):
+        serializer = EmailOTPRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email'].lower().strip()
+
+        user = User.objects.filter(email__iexact=email).first()
+        debug_payload = {}
+
+        if user is not None:
+            from django.utils import timezone as _tz
+            from datetime import timedelta as _td
+            recent = (EmailOTP.objects
+                      .filter(user=user, used_at__isnull=True,
+                              created_at__gte=_tz.now() - _td(seconds=self.COOLDOWN_SECONDS))
+                      .first())
+            if recent is None:
+                # Invalidate older outstanding codes so reuse is impossible.
+                EmailOTP.objects.filter(user=user, used_at__isnull=True).update(used_at=_tz.now())
+                otp = EmailOTP.issue(user, purpose='login')
+                try:
+                    from services.notifications import notify
+                    notify(
+                        user=user,
+                        kind='login_otp',
+                        title='Your FurniShop login code',
+                        body=(
+                            f'Hi {user.full_name},\n\n'
+                            f'Your one-time login code is: {otp.code}\n'
+                            f'It expires in 10 minutes. Do not share it with anyone.'
+                        ),
+                        channels=['inapp', 'email', 'sms'],
+                    )
+                except Exception:
+                    logger.exception('notify() failed for OTP of %s', user.pk)
+                logger.info('Login OTP issued for %s', user.email)
+                if settings.DEBUG:
+                    debug_payload = {'debug_code': otp.code}
+
+        return Response({
+            'detail': 'If that email is registered, a login code has been sent.',
+            'expires_in_minutes': 10,
+            **debug_payload,
+        })
+
+
+class EmailOTPVerifyView(APIView):
+    """
+    POST /api/auth/otp/verify/  body={email, code}
+
+    Returns JWTs on success, exactly like /login/. Wrong codes increment the
+    `attempts` counter; after 5 attempts the row is locked and a fresh code
+    must be requested.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = EmailOTPVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email'].lower().strip()
+        code = serializer.validated_data['code'].strip()
+
+        user = User.objects.filter(email__iexact=email).first()
+        if user is None:
+            return Response({'detail': 'Invalid code or email.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        otp = (EmailOTP.objects
+               .filter(user=user, used_at__isnull=True, purpose='login')
+               .order_by('-created_at').first())
+
+        if otp is None or not otp.is_valid:
+            return Response({'detail': 'Code expired or already used. Request a new one.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if otp.code != code:
+            otp.attempts += 1
+            otp.save(update_fields=['attempts'])
+            return Response({'detail': 'Invalid code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not user.is_active or getattr(user, 'is_blocked', False):
+            return Response({'detail': 'Account disabled or blocked.'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        otp.consume()
+        tokens = get_tokens_for_user(user)
+        logger.info('OTP login for %s', user.email)
+        return Response({**tokens, 'user': UserProfileSerializer(user).data})
+
+
+class PasswordResetRequestView(APIView):
+    """
+    POST /api/auth/password-reset/request/  body={email}
+
+    Always returns 200 with the same body so the endpoint can't be used to
+    enumerate registered emails. The token is delivered out-of-band: in
+    DEBUG we echo it in the response and log it; in prod the notify()
+    pipeline emails it.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email'].lower().strip()
+
+        user = User.objects.filter(email__iexact=email).first()
+        debug_payload = {}
+
+        if user is not None:
+            # Invalidate any outstanding tokens for this user before issuing
+            # a new one so an old leaked link can't race against the new one.
+            from django.utils import timezone as _tz
+            PasswordResetToken.objects.filter(
+                user=user, used_at__isnull=True
+            ).update(used_at=_tz.now())
+
+            token_obj = PasswordResetToken.issue(user)
+            reset_url = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={token_obj.token}"
+
+            try:
+                from services.notifications import notify
+                notify(
+                    user=user,
+                    kind='password_reset',
+                    title='Reset your FurniShop password',
+                    body=(
+                        f"Hi {user.full_name},\n\n"
+                        f"Use the link below to reset your password. "
+                        f"It expires in 1 hour.\n\n{reset_url}\n\n"
+                        f"If you didn't request this, you can ignore this email."
+                    ),
+                    channels=['inapp', 'email'],
+                )
+            except Exception:
+                logger.exception('notify() failed for password reset of %s', user.pk)
+
+            logger.info('Password reset token issued for %s', user.email)
+
+            if settings.DEBUG:
+                debug_payload = {'debug_token': token_obj.token, 'debug_reset_url': reset_url}
+
+        return Response({
+            'detail': 'If an account exists for that email, a reset link has been sent.',
+            **debug_payload,
+        })
+
+
+class PasswordResetConfirmView(APIView):
+    """
+    POST /api/auth/password-reset/confirm/  body={token, new_password, confirm_password}
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        token_value = serializer.validated_data['token']
+        new_password = serializer.validated_data['new_password']
+
+        token_obj = PasswordResetToken.objects.select_related('user').filter(token=token_value).first()
+        if token_obj is None or not token_obj.is_valid:
+            return Response(
+                {'detail': 'This reset link is invalid or has expired. Request a new one.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = token_obj.user
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+        token_obj.consume()
+
+        logger.info('Password reset completed for %s', user.email)
+        return Response({'detail': 'Password updated. You can now log in with your new password.'})

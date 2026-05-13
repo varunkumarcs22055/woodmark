@@ -1,0 +1,67 @@
+# Render Blueprint — one-click recreate of the FurniShop backend service.
+#
+# How to use:
+#   1. Push this repo to GitHub.
+#   2. In Render → New → Blueprint → pick this repo.
+#   3. Render reads this file, creates the web service, prompts for the
+#      secret env vars listed below (`sync: false`).
+#   4. After first deploy, copy the *.onrender.com URL and set it as
+#      `VITE_API_BASE_URL` on Vercel (with /api appended).
+#
+# Plan = `free` is fine to start; switch to `starter` when traffic grows.
+
+services:
+  - type: web
+    name: furnishop-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn core.wsgi:application --workers 2 --timeout 60 --bind 0.0.0.0:$PORT"
+    healthCheckPath: /api/products/
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: DEBUG
+        value: "False"
+      # Secrets — set in the Render dashboard, never committed.
+      - key: SECRET_KEY
+        generateValue: true              # Render auto-generates a strong secret
+      - key: DATABASE_URL
+        sync: false                       # Set to your GoDaddy MariaDB URL
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"            # Auto-host injected at runtime too
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false                       # Set to your Vercel URL once known
+      # Optional integrations — leave blank in Render UI to disable
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: ERP_API_URL
+        sync: false
+      - key: ERP_API_KEY
+        sync: false
+      # Email — defaults to console backend (logs only). Override to enable SMTP.
+      - key: EMAIL_BACKEND
+        value: "django.core.mail.backends.console.EmailBackend"
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        value: "no-reply@furnishop.local"
+      # Frontend redirect target (used by OAuth callback)
+      - key: FRONTEND_URL
+        sync: false

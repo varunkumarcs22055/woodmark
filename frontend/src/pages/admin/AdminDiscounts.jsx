@@ -26,7 +26,10 @@ export default function AdminDiscounts() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [mode, setMode] = useState('percent'); // percent | flat
   const [value, setValue] = useState('');
+  const [minQty, setMinQty] = useState('1');
   const [countLimit, setCountLimit] = useState('');
+  const [startsAt, setStartsAt] = useState('');     // datetime-local "" = no start gate
+  const [endsAt, setEndsAt] = useState('');         // datetime-local "" = never expires
   const [saving, setSaving] = useState(false);
 
   const loadDiscounts = async () => {
@@ -65,8 +68,33 @@ export default function AdminDiscounts() {
     setProductSearch('');
     setProductOptions([]);
     setValue('');
+    setMinQty('1');
     setCountLimit('');
+    setStartsAt('');
+    setEndsAt('');
     setMode('percent');
+  };
+
+  // Format a Date as the local datetime-local input wants ("YYYY-MM-DDTHH:mm")
+  // — `toISOString` gives UTC and breaks the displayed value.
+  const toLocalInput = (date) => {
+    const pad = (n) => String(n).padStart(2, '0');
+    return (
+      `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+      `T${pad(date.getHours())}:${pad(date.getMinutes())}`
+    );
+  };
+
+  // Quick-pick presets so admins don't have to do mental date math.
+  const quickPickEnds = (label) => {
+    const now = new Date();
+    if (label === 'never') { setEndsAt(''); return; }
+    const map = { '1h': 1, '6h': 6, '12h': 12, '24h': 24, '3d': 72, '7d': 168, '30d': 720 };
+    const hours = map[label] ?? 0;
+    if (hours > 0) {
+      const ends = new Date(now.getTime() + hours * 3600 * 1000);
+      setEndsAt(toLocalInput(ends));
+    }
   };
 
   const handleSave = async (e) => {
@@ -75,8 +103,22 @@ export default function AdminDiscounts() {
       toast.error('Please select a product');
       return;
     }
-    if (!value || parseFloat(value) <= 0) {
+    const numericValue = Number.parseFloat(value);
+    if (!Number.isFinite(numericValue) || numericValue <= 0) {
       toast.error('Enter a valid discount value');
+      return;
+    }
+    const numericMinQty = Number.parseInt(minQty, 10);
+    if (!Number.isFinite(numericMinQty) || numericMinQty < 1) {
+      toast.error('Min quantity must be at least 1');
+      return;
+    }
+    if (startsAt && endsAt && new Date(endsAt) <= new Date(startsAt)) {
+      toast.error('End time must be after start time.');
+      return;
+    }
+    if (endsAt && new Date(endsAt) <= new Date()) {
+      toast.error('End time is in the past — pick a future moment.');
       return;
     }
     setSaving(true);
@@ -85,18 +127,30 @@ export default function AdminDiscounts() {
         product: selectedProduct.id,
         discount_type: tab,
         mode,
-        value: parseFloat(value),
-        count_limit: countLimit ? parseInt(countLimit, 10) : null,
-        is_active: true,
+        value: numericValue,
+        min_quantity: numericMinQty,
+        count_limit: countLimit ? Number.parseInt(countLimit, 10) : null,
+        // datetime-local has no timezone — convert to ISO so the backend
+        // stores it as UTC. Empty strings stay null (= no gate).
+        starts_at: startsAt ? new Date(startsAt).toISOString() : null,
+        ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+        active: true,
       });
-      toast.success('Discount created!');
+      toast.success(
+        numericMinQty > 1
+          ? `Tier added: ${numericValue}${mode === 'percent' ? '%' : '₹'} off on ${numericMinQty}+ units`
+          : 'Discount created.'
+      );
       resetForm();
       await loadDiscounts();
     } catch (err) {
-      const msg = err.response?.data?.detail
-        || err.response?.data?.product?.[0]
-        || 'Failed to create discount';
-      toast.error(msg);
+      const data = err.response?.data || {};
+      const msg =
+        data.detail ||
+        data.non_field_errors?.[0] ||
+        Object.values(data).flat()[0] ||
+        'Failed to create discount';
+      toast.error(typeof msg === 'string' ? msg : 'Failed to create discount');
     } finally {
       setSaving(false);
     }
@@ -121,6 +175,34 @@ export default function AdminDiscounts() {
     if (left <= 0) return <span className="status-badge status-badge--cancelled">Exhausted</span>;
     if (left <= 10) return <span className="status-badge status-badge--shipped">{left} left</span>;
     return <span className="status-badge status-badge--confirmed">{left} left</span>;
+  };
+
+  const renderWindowBadge = (startsAtISO, endsAtISO) => {
+    const now = Date.now();
+    const start = startsAtISO ? new Date(startsAtISO).getTime() : null;
+    const end = endsAtISO ? new Date(endsAtISO).getTime() : null;
+
+    if (start && now < start) {
+      const hrs = Math.ceil((start - now) / 3_600_000);
+      return <span className="status-badge status-badge--shipped">starts in {hrs}h</span>;
+    }
+    if (end && now > end) {
+      return <span className="status-badge status-badge--cancelled">expired</span>;
+    }
+    if (end) {
+      const ms = end - now;
+      const days = Math.floor(ms / 86_400_000);
+      const hrs = Math.floor((ms % 86_400_000) / 3_600_000);
+      const mins = Math.floor((ms % 3_600_000) / 60_000);
+      const label = days >= 1 ? `${days}d ${hrs}h left`
+                  : hrs >= 1   ? `${hrs}h ${mins}m left`
+                                : `${mins}m left`;
+      const cls = days < 1 ? 'status-badge--cancelled'
+                : days < 3 ? 'status-badge--shipped'
+                            : 'status-badge--confirmed';
+      return <span className={`status-badge ${cls}`}>⏱ {label}</span>;
+    }
+    return <span className="status-badge status-badge--shipped">No expiry</span>;
   };
 
   return (
@@ -214,12 +296,65 @@ export default function AdminDiscounts() {
             </div>
 
             <div className="admin-field">
+              <label>Min Quantity (tier)</label>
+              <input type="number" min="1" step="1" value={minQty}
+                onChange={(e) => setMinQty(e.target.value)}
+                placeholder="1 = always · 5 = on 5+ units" required />
+            </div>
+
+            <div className="admin-field">
               <label>Count Limit</label>
               <input type="number" min="0" value={countLimit}
                 onChange={(e) => setCountLimit(e.target.value)}
                 placeholder="Blank = unlimited" />
             </div>
+
+            <div className="admin-field">
+              <label>Starts at (optional)</label>
+              <input
+                type="datetime-local"
+                value={startsAt}
+                onChange={(e) => setStartsAt(e.target.value)}
+              />
+            </div>
+
+            <div className="admin-field">
+              <label>Ends at (optional)</label>
+              <input
+                type="datetime-local"
+                value={endsAt}
+                onChange={(e) => setEndsAt(e.target.value)}
+              />
+              <div className="admin-quickpicks">
+                {[
+                  ['1h', '1 hr'],
+                  ['6h', '6 hrs'],
+                  ['12h', '12 hrs'],
+                  ['24h', '24 hrs'],
+                  ['3d', '3 days'],
+                  ['7d', '7 days'],
+                  ['30d', '30 days'],
+                  ['never', 'No expiry'],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className="admin-quickpick"
+                    onClick={() => quickPickEnds(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
+
+          <p className="admin-meta-line" style={{ marginTop: 8 }}>
+            Add multiple rows for the same product with increasing min-quantity values to build a
+            volume ladder (e.g. <code>2 → 20%</code>, <code>5 → 30%</code>, <code>10 → 40%</code>).
+            The cart picks the highest tier the buyer qualifies for. Set <strong>Ends at</strong> to
+            make a limited-time offer that surfaces on the storefront's Limited Time Offers strip.
+          </p>
 
           <button type="submit" className="btn-primary" disabled={saving}>
             <FiTag size={14} /> {saving ? 'Saving…' : 'Save Discount'}
@@ -241,31 +376,44 @@ export default function AdminDiscounts() {
             <thead>
               <tr>
                 <th>Product</th>
+                <th>Min Qty</th>
                 <th>Mode</th>
                 <th>Value</th>
                 <th>Limit</th>
                 <th>Sold</th>
+                <th>Window</th>
                 <th>Remaining</th>
                 <th style={{ width: 60 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {discounts.map((d) => (
-                <tr key={d.id}>
-                  <td><strong>{d.product_name || `#${d.product}`}</strong></td>
-                  <td>{d.mode === 'percent' ? '%' : '₹'}</td>
-                  <td>{d.mode === 'percent' ? `${d.value}%` : formatPrice(d.value)}</td>
-                  <td>{d.count_limit ?? '∞'}</td>
-                  <td>{d.units_sold || 0}</td>
-                  <td>{renderUnitsBadge(d.count_limit, d.units_sold)}</td>
-                  <td>
-                    <button className="admin-icon-btn admin-icon-btn--danger"
-                      onClick={() => handleDelete(d.id, d.product_name)} aria-label="Delete">
-                      <FiTrash2 size={14} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {[...discounts]
+                .sort((a, b) => {
+                  const an = (a.product_name || '').localeCompare(b.product_name || '');
+                  return an !== 0 ? an : (a.min_quantity || 1) - (b.min_quantity || 1);
+                })
+                .map((d) => (
+                  <tr key={d.id}>
+                    <td><strong>{d.product_name || `#${d.product}`}</strong></td>
+                    <td>
+                      {(d.min_quantity || 1) === 1
+                        ? <span className="admin-meta-line">any</span>
+                        : <strong>{d.min_quantity}+</strong>}
+                    </td>
+                    <td>{d.mode === 'percent' ? '%' : '₹'}</td>
+                    <td>{d.mode === 'percent' ? `${d.value}%` : formatPrice(d.value)}</td>
+                    <td>{d.count_limit ?? '∞'}</td>
+                    <td>{d.units_sold || 0}</td>
+                    <td>{renderWindowBadge(d.starts_at, d.ends_at)}</td>
+                    <td>{renderUnitsBadge(d.count_limit, d.units_sold)}</td>
+                    <td>
+                      <button className="admin-icon-btn admin-icon-btn--danger"
+                        onClick={() => handleDelete(d.id, d.product_name)} aria-label="Delete">
+                        <FiTrash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         )}

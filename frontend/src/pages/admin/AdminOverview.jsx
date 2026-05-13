@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  FiPackage, FiShoppingBag, FiClock, FiAlertTriangle, FiTrendingUp,
+  FiPackage, FiShoppingBag, FiClock, FiAlertTriangle, FiTrendingUp, FiUsers,
 } from 'react-icons/fi';
 import { fetchAllOrders, fetchProducts, fetchUsers } from '../../api';
 import { formatPrice, formatDate } from '../../utils/format';
@@ -81,6 +81,7 @@ export default function AdminOverview() {
           ) : recentOrders.length === 0 ? (
             <p className="admin-empty">No recent orders</p>
           ) : (
+          <div className="admin-table-wrapper">
             <table className="admin-table admin-table--compact">
               <thead>
                 <tr><th>Order ID</th><th>Customer</th><th>Total</th><th>Status</th><th>Date</th></tr>
@@ -97,6 +98,7 @@ export default function AdminOverview() {
                 ))}
               </tbody>
             </table>
+          </div>
           )}
         </section>
 
@@ -110,6 +112,7 @@ export default function AdminOverview() {
           ) : lowStock.length === 0 ? (
             <p className="admin-empty">All products well-stocked ✓</p>
           ) : (
+          <div className="admin-table-wrapper">
             <table className="admin-table admin-table--compact">
               <thead>
                 <tr><th>Product</th><th>Category</th><th>Stock</th></tr>
@@ -117,7 +120,7 @@ export default function AdminOverview() {
               <tbody>
                 {lowStock.map((p) => (
                   <tr key={p.id}>
-                    <td>{p.name}</td>
+                    <td style={{ minWidth: 0, wordBreak: 'break-word' }}>{p.name}</td>
                     <td>{p.category_name}</td>
                     <td>
                       <span className={`status-badge ${p.stock === 0 ? 'status-badge--cancelled' : 'status-badge--shipped'}`}>
@@ -128,6 +131,7 @@ export default function AdminOverview() {
                 ))}
               </tbody>
             </table>
+          </div>
           )}
         </section>
       </div>
@@ -151,15 +155,4 @@ function StatusBadge({ status }) {
   return <span className={cls}>{status}</span>;
 }
 
-// Local re-import to avoid touching outer file
-function FiUsers(props) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
-}
+

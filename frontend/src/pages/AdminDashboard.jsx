@@ -5,30 +5,51 @@
 import { useState } from 'react';
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import {
-  FiGrid, FiPackage, FiTag, FiShoppingBag,
-  FiUsers, FiRefreshCw, FiLogOut, FiMenu, FiX, FiSettings,
+  FiGrid, FiPackage, FiTag, FiShoppingBag, FiLayers,
+  FiUsers, FiUser, FiRefreshCw, FiLogOut, FiMenu, FiX, FiSettings,
+  FiArchive, FiFileText, FiFile, FiMessageSquare, FiStar, FiMail, FiActivity,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 
 import AdminOverview from './admin/AdminOverview';
 import AdminProducts from './admin/AdminProducts';
+import AdminCategories from './admin/AdminCategories';
+import AdminInventory from './admin/AdminInventory';
 import AdminDiscounts from './admin/AdminDiscounts';
+import AdminCoupons from './admin/AdminCoupons';
 import AdminOrders from './admin/AdminOrders';
+import AdminInvoices from './admin/AdminInvoices';
+import AdminCustomers from './admin/AdminCustomers';
 import AdminDealers from './admin/AdminDealers';
+import AdminCMS from './admin/AdminCMS';
 import AdminERP from './admin/AdminERP';
+import AdminSupport from './admin/AdminSupport';
+import AdminAuditLogs from './admin/AdminAuditLogs';
 import AdminSettings from './admin/AdminSettings';
+import AdminReviews from './admin/AdminReviews';
+import AdminNewsletter from './admin/AdminNewsletter';
 
 import './AdminDashboard.css';
 import './admin/AdminPanel.css';
 
 const NAV_ITEMS = [
-  { path: '',          label: 'Overview',  icon: <FiGrid /> },
-  { path: 'products',  label: 'Products',  icon: <FiPackage /> },
-  { path: 'discounts', label: 'Discounts', icon: <FiTag /> },
-  { path: 'orders',    label: 'Orders',    icon: <FiShoppingBag /> },
-  { path: 'dealers',   label: 'Dealers',   icon: <FiUsers /> },
-  { path: 'erp',       label: 'ERP Status',icon: <FiRefreshCw /> },
-  { path: 'settings',  label: 'Settings',  icon: <FiSettings /> },
+  { path: '',           label: 'Overview',   icon: <FiGrid /> },
+  { path: 'products',   label: 'Products',   icon: <FiPackage /> },
+  { path: 'categories', label: 'Categories', icon: <FiLayers /> },
+  { path: 'inventory',  label: 'Inventory',  icon: <FiArchive /> },
+  { path: 'discounts',  label: 'Discounts',  icon: <FiTag /> },
+  { path: 'coupons',    label: 'Coupons',    icon: <FiTag /> },
+  { path: 'orders',     label: 'Orders',     icon: <FiShoppingBag /> },
+  { path: 'invoices',   label: 'Invoices',   icon: <FiFile /> },
+  { path: 'customers',  label: 'Customers',  icon: <FiUser /> },
+  { path: 'reviews',    label: 'Reviews',    icon: <FiStar /> },
+  { path: 'dealers',    label: 'Dealers',    icon: <FiUsers /> },
+  { path: 'cms',        label: 'Content',    icon: <FiFileText /> },
+  { path: 'newsletter', label: 'Newsletter', icon: <FiMail /> },
+  { path: 'support',    label: 'Support',    icon: <FiMessageSquare /> },
+  { path: 'audit',      label: 'Audit Logs', icon: <FiActivity /> },
+  { path: 'erp',        label: 'ERP Status', icon: <FiRefreshCw /> },
+  { path: 'settings',   label: 'Settings',   icon: <FiSettings /> },
 ];
 
 export default function AdminDashboard() {
@@ -99,9 +120,19 @@ export default function AdminDashboard() {
           <Routes>
             <Route index element={<AdminOverview />} />
             <Route path="products" element={<AdminProducts />} />
+            <Route path="categories" element={<AdminCategories />} />
+            <Route path="inventory" element={<AdminInventory />} />
             <Route path="discounts" element={<AdminDiscounts />} />
+            <Route path="coupons" element={<AdminCoupons />} />
             <Route path="orders" element={<AdminOrders />} />
+            <Route path="invoices" element={<AdminInvoices />} />
+            <Route path="customers" element={<AdminCustomers />} />
+            <Route path="reviews" element={<AdminReviews />} />
             <Route path="dealers" element={<AdminDealers />} />
+            <Route path="cms" element={<AdminCMS />} />
+            <Route path="newsletter" element={<AdminNewsletter />} />
+            <Route path="support" element={<AdminSupport />} />
+            <Route path="audit" element={<AdminAuditLogs />} />
             <Route path="erp" element={<AdminERP />} />
             <Route path="settings" element={<AdminSettings />} />
           </Routes>

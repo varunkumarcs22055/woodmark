@@ -2,6 +2,7 @@
  * DealerOrders — dealer's order history with status chips + summary cards.
  */
 import { useEffect, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { FiSearch } from 'react-icons/fi';
 import { fetchOrders } from '../../api';
 import OrderCard from '../../components/OrderCard';
@@ -82,7 +83,9 @@ export default function DealerOrders() {
       ) : (
         <div className="dealer-orders__list">
           {filtered.map((o) => (
-            <OrderCard key={o.order_id} order={o} />
+            <Link key={o.order_id} to={o.order_id} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <OrderCard order={o} />
+            </Link>
           ))}
         </div>
       )}

@@ -10,6 +10,16 @@
 .hero-bg {
   position: absolute;
   inset: 0;
+  z-index: 0;
+}
+
+/* The Swiper rotates background images only; the hero text and search bar
+   sit ABOVE it in a separate, stable DOM subtree so they never unmount. */
+.hero-bg-swiper,
+.hero-bg-swiper .swiper-wrapper,
+.hero-bg-swiper .swiper-slide {
+  width: 100%;
+  height: 100%;
 }
 
 .hero-bg-img {
@@ -19,15 +29,35 @@
   object-position: center 30%;
 }
 
+/* Pagination dots: nudge above the bottom edge so they don't collide with
+   the next section. The previous full-content swiper put them at the very
+   bottom of the slide, which on short viewports overlapped the search bar. */
+.hero-bg-swiper .swiper-pagination {
+  bottom: 14px !important;
+}
+.hero-bg-swiper .swiper-pagination-bullet {
+  background: rgba(255, 255, 255, 0.55);
+  opacity: 1;
+}
+.hero-bg-swiper .swiper-pagination-bullet-active {
+  background: #ffffff;
+}
+
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    105deg,
-    rgba(10, 10, 10, 0.75) 0%,
-    rgba(10, 10, 10, 0.5) 50%,
-    rgba(10, 10, 10, 0.15) 100%
-  );
+  /* Navy gradient overlay matching the FurnoTech brand mockups —
+     deep on the left where the title/search live, fades to the right
+     so the background image stays visible. A subtle warm-orange glow
+     in the corner ties the page back to the accent palette. */
+  background:
+    radial-gradient(circle at 90% 0%, rgba(249, 115, 22, 0.18), transparent 50%),
+    linear-gradient(
+      105deg,
+      rgba(21, 41, 75, 0.86) 0%,
+      rgba(30, 58, 107, 0.62) 55%,
+      rgba(30, 58, 107, 0.18) 100%
+    );
 }
 
 .hero-content {
@@ -51,18 +81,17 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(0, 115, 106, 0.6);
+  color: #fff;
+  background: var(--gradient-accent);
   padding: 5px 14px;
   border-radius: var(--radius-full);
   margin-bottom: var(--space-4);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 6px 18px -8px rgba(249, 115, 22, 0.55);
 }
 
 .hero-eyebrow::before {
   content: "✦";
-  color: #a8e6df;
+  color: #FED7AA;
 }
 
 .hero-title {
@@ -75,7 +104,12 @@
 }
 
 .hero-title-accent {
-  color: #a8e6df;
+  color: #F97316;
+  /* Subtle text gradient when supported, falls back to solid orange */
+  background: linear-gradient(120deg, #F97316 0%, #FB923C 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .hero-desc {
@@ -480,10 +514,18 @@
     var(--color-brand) 60%,
     #00a693 100%
   );
-  border-radius: var(--radius-2xl);
-  padding: var(--space-10) var(--space-12);
+  border-radius: 20px;
+  padding: 48px 56px;
   overflow: hidden;
   position: relative;
+  box-shadow: 0 18px 36px -16px rgba(0, 115, 106, 0.45);
+}
+.promo-banner::after {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(circle at 80% 20%, rgba(255,255,255,0.15), transparent 60%);
+  pointer-events: none;
 }
 
 .promo-banner-content {
@@ -585,15 +627,21 @@
 
 /* ─── Products Section ───────────────────────────────────────────────── */
 .products-section {
-  padding: 0 0 var(--space-20);
+  padding: 56px 24px 80px;
 }
 
 .products-section-header {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: var(--space-6);
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #EFEFEA;
 }
+.products-section-header > div { flex: 1 1 240px; }
+.products-section-header h2 { margin: 0; }
 
 .products-section-actions {
   display: flex;
@@ -844,4 +892,37 @@
   .category-chips {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* ─── Limited Time Offers ──────────────────────────────────────────── */
+.lto-section {
+  margin: 32px auto;
+}
+.lto-card-wrap {
+  position: relative;
+}
+.lto-countdown {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #1f2937;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+.lto-countdown--urgent {
+  background: #b91c1c;
+  animation: lto-pulse 1.5s ease-in-out infinite;
+}
+@keyframes lto-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.05); }
 }

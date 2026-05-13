@@ -21,6 +21,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import {
   createOrder, simulatePayment, createRazorpayOrder, verifyPayment,
+  validateCoupon, estimateShipping,
 } from '../api';
 import { formatPrice } from '../utils/format';
 import './CheckoutPage.css';
@@ -48,21 +49,47 @@ const loadRazorpayScript = () =>
 export default function CheckoutPage() {
   const { cartItems, cartTotal, cartCount, clearCart } = useCart();
   const { user } = useAuth();
-  const { gst_percent, free_shipping_threshold, standard_shipping_fee } = useSettings();
+  const { settings } = useSettings();
+  const { gst_percent, free_shipping_threshold, standard_shipping_fee } = settings;
+
   const navigate = useNavigate();
 
   const [step, setStep] = useState('form'); // form | processing | success | error
   const [createdOrder, setCreatedOrder] = useState(null);
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState({
     user_name: user?.full_name || '',
     user_email: user?.email || '',
     phone: user?.phone || '',
     address: '',
+    pincode: '',
   });
 
+  // Pay-now incentive: 'immediate' earns extra 5% off; 'cod' / 'credit' don't.
+  // Dealers also see 'credit' if their account allows it. Backend re-derives
+  // from payment_method when payment_type is omitted.
+  const [paymentType, setPaymentType] = useState('immediate');
+  const EARLY_DISCOUNT_PCT = 5;
+
+  // Coupon state
+  const [couponInput, setCouponInput] = useState('');
+  const [couponState, setCouponState] = useState({
+    code: '', discount: 0, free_shipping: false, message: '',
+  });
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  // Shipping estimate state (computed when pincode is entered)
+  const [shipEstimate, setShipEstimate] = useState(null);
+  const [shipLoading, setShipLoading] = useState(false);
+
+  // Dealer specific state
+  const [dealerCredit, setDealerCredit] = useState(null);
+  const [dealerWallet, setDealerWallet] = useState(null);
+
   // Re-prefill if user logs in mid-flow
+
   useEffect(() => {
     if (user && step === 'form') {
       setForm((f) => ({
@@ -77,7 +104,16 @@ export default function CheckoutPage() {
   // Preload Razorpay SDK in production so the modal opens instantly
   useEffect(() => {
     if (!DEV_MODE) loadRazorpayScript();
-  }, []);
+
+    // Fetch dealer info if applicable
+    if (user?.role === 'dealer') {
+      import('../api').then(({ fetchDealerCredit, fetchDealerWallet }) => {
+        fetchDealerCredit().then(setDealerCredit).catch(() => {});
+        fetchDealerWallet().then(setDealerWallet).catch(() => {});
+      });
+    }
+  }, [user]);
+
 
   // Guard: empty cart → bounce back to /cart (only while on the form step)
   useEffect(() => {
@@ -93,11 +129,69 @@ export default function CheckoutPage() {
   );
   const savings = originalTotal - subtotal;
   const gstPercent = parseFloat(gst_percent);
-  const gstAmount = Math.round(subtotal * gstPercent) / 100;
+
+  const couponDiscount = parseFloat(couponState.discount) || 0;
+  const afterCoupon = Math.max(subtotal - couponDiscount, 0);
+  // Mirror backend math: pay-now discount applies AFTER coupon, BEFORE GST.
+  const earlyPayDiscount = paymentType === 'immediate'
+    ? Math.round(afterCoupon * EARLY_DISCOUNT_PCT) / 100
+    : 0;
+  const adjustedSubtotal = Math.max(afterCoupon - earlyPayDiscount, 0);
+  const gstAmount = Math.round(adjustedSubtotal * gstPercent) / 100;
+
   const freeThreshold = parseFloat(free_shipping_threshold);
   const shippingFee = parseFloat(standard_shipping_fee);
-  const shipping = subtotal >= freeThreshold ? 0 : shippingFee;
-  const grandTotal = subtotal + gstAmount + shipping;
+  const baseShipping = subtotal >= freeThreshold ? 0 : shippingFee;
+  // Pincode-aware shipping wins over the flat fallback once an estimate exists
+  const pincodeShipping = shipEstimate ? parseFloat(shipEstimate.fee) : null;
+  const shipping = couponState.free_shipping
+    ? 0
+    : (pincodeShipping ?? baseShipping);
+
+  const grandTotal = adjustedSubtotal + gstAmount + shipping;
+
+  const handleApplyCoupon = async () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    setCouponLoading(true);
+    try {
+      const res = await validateCoupon(code, subtotal);
+      setCouponState({
+        code: res.code || code,
+        discount: parseFloat(res.discount) || 0,
+        free_shipping: !!res.free_shipping,
+        message: res.message,
+      });
+      toast.success(res.message);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Invalid or inapplicable coupon.';
+      setCouponState({ code: '', discount: 0, free_shipping: false, message: msg });
+      toast.error(msg);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleClearCoupon = () => {
+    setCouponInput('');
+    setCouponState({ code: '', discount: 0, free_shipping: false, message: '' });
+  };
+
+  // Auto-estimate shipping when pincode is 6 digits
+  useEffect(() => {
+    const pin = (form.pincode || '').trim();
+    if (!/^\d{6}$/.test(pin)) {
+      setShipEstimate(null);
+      return undefined;
+    }
+    let live = true;
+    setShipLoading(true);
+    estimateShipping({ pincode: pin, subtotal })
+      .then((r) => { if (live) setShipEstimate(r); })
+      .catch(() => { if (live) setShipEstimate(null); })
+      .finally(() => { if (live) setShipLoading(false); });
+    return () => { live = false; };
+  }, [form.pincode, subtotal]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -124,12 +218,14 @@ export default function CheckoutPage() {
   // ─── Main flow ──────────────────────────────────────────────────
   const handleCheckout = async (e) => {
     e.preventDefault();
+    if (submitting) return; // guard against double-submits / impatient clickers
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
     }
     setErrors({});
+    setSubmitting(true);
     setStep('processing');
 
     // Step 1 — create order
@@ -139,37 +235,61 @@ export default function CheckoutPage() {
         product_id: item.product.id,
         quantity: item.quantity,
       }));
-      order = await createOrder({ ...form, items });
+      const orderPayload = { ...form, items, payment_type: paymentType };
+      // Map UI choice → backend payment_method so the right pay path runs.
+      if (paymentType === 'cod') orderPayload.payment_method = 'cod';
+      else if (paymentType === 'credit') orderPayload.payment_method = 'credit';
+      else if (paymentType === 'wallet') orderPayload.payment_method = 'wallet';
+      else orderPayload.payment_method = 'razorpay';
+
+      if (couponState.code) orderPayload.coupon_code = couponState.code;
+      order = await createOrder(orderPayload);
       setCreatedOrder(order);
+      // Clear the cart the moment the order is committed. Any subsequent
+      // payment failure is recoverable from "My Orders" → "Pay now" — but
+      // leaving items in the cart tempts the buyer to re-checkout and
+      // create duplicates. Order is the source of truth from here on.
+      clearCart();
     } catch (err) {
+      const status = err.response?.status;
       const msg =
         err.response?.data?.items?.[0] ||
         err.response?.data?.detail ||
-        'Failed to create order. Please try again.';
+        (err.code === 'ECONNABORTED'
+          ? 'The server is taking longer than usual. Your order may have been placed — please check My Orders before retrying.'
+          : status >= 500
+            ? 'Server error while creating the order. Please try again in a moment.'
+            : 'Failed to create order. Please review your details and try again.');
       toast.error(msg);
       setStep('form');
+      setSubmitting(false);
       return;
     }
 
-    // Step 2A — DEV: simulated payment
-    if (DEV_MODE) {
+    // Step 2A — DEV or B2B payments: simulated/direct payment
+    if (DEV_MODE || paymentType === 'credit' || paymentType === 'wallet') {
       try {
         const result = await simulatePayment(order.order_id);
-        clearCart();
         setCreatedOrder({ ...order, erp_order_id: result.erp_order_id });
         setStep('success');
       } catch {
-        toast.error('Payment simulation failed.');
-        setStep('form');
+        // Order is committed already; payment is the failing step. Show success
+        // with a "Pay later from My Orders" hint instead of a hard error.
+        toast.error('Payment could not be confirmed. Your order is saved — pay later from My Orders.');
+        setStep('success');
+      } finally {
+        setSubmitting(false);
       }
       return;
     }
+
 
     // Step 2B — PROD: real Razorpay
     const ok = await loadRazorpayScript();
     if (!ok) {
       toast.error('Payment gateway failed to load. Please refresh and try again.');
       setStep('form');
+      setSubmitting(false);
       return;
     }
 
@@ -179,6 +299,7 @@ export default function CheckoutPage() {
     } catch {
       toast.error('Failed to initialize payment. Please try again.');
       setStep('form');
+      setSubmitting(false);
       return;
     }
 
@@ -200,6 +321,7 @@ export default function CheckoutPage() {
         ondismiss: () => {
           toast.error('Payment cancelled. Your order is saved — you can pay later from My Orders.');
           setStep('form');
+          setSubmitting(false);
         },
       },
       handler: async (response) => {
@@ -210,12 +332,13 @@ export default function CheckoutPage() {
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,
           });
-          clearCart();
           setCreatedOrder({ ...order, erp_order_id: verifyResult.erp_order_id });
           setStep('success');
         } catch {
           toast.error('Payment verification failed. Please contact support.');
           setStep('error');
+        } finally {
+          setSubmitting(false);
         }
       },
     };
@@ -224,6 +347,7 @@ export default function CheckoutPage() {
     rzp.on('payment.failed', (resp) => {
       toast.error(`Payment failed: ${resp.error?.description || 'Unknown error'}`);
       setStep('form');
+      setSubmitting(false);
     });
     rzp.open();
   };
@@ -354,15 +478,114 @@ export default function CheckoutPage() {
             <textarea
               className="form-input" id="address" name="address"
               value={form.address} onChange={handleChange}
-              placeholder="House/flat number, street, area, city, state, PIN code"
-              rows={4} autoComplete="street-address"
+              placeholder="House/flat number, street, area, city, state"
+              rows={3} autoComplete="street-address"
             />
             {errors.address && <span className="form-error">{errors.address}</span>}
           </div>
 
-          <button type="submit" className="btn-primary pay-btn checkout-pay-btn" id="pay-now-btn">
+          <div className="form-group">
+            <label className="form-label" htmlFor="pincode">PIN code</label>
+            <input
+              className="form-input" id="pincode" name="pincode"
+              type="text" inputMode="numeric" maxLength={6}
+              value={form.pincode}
+              onChange={(e) => setForm({ ...form, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+              placeholder="6-digit PIN code"
+              autoComplete="postal-code"
+            />
+            {shipEstimate && !shipEstimate.cod_available && (
+              <span className="form-error" style={{ color: '#92400E' }}>
+                Note: COD is not available for this PIN code.
+              </span>
+            )}
+          </div>
+
+          <h3 style={{ marginTop: 24 }}>Payment</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+            <label style={paymentTileStyle(paymentType === 'immediate')}>
+              <input type="radio" name="paymentType" value="immediate"
+                     checked={paymentType === 'immediate'}
+                     onChange={() => setPaymentType('immediate')}
+                     style={{ marginRight: 6 }} />
+              <div>
+                <strong>Pay Now</strong>
+                <div style={{ color: '#16A34A', fontSize: 12, fontWeight: 600 }}>
+                  Save extra {EARLY_DISCOUNT_PCT}%
+                </div>
+                <div style={{ color: '#6B7280', fontSize: 11 }}>UPI / card / net banking</div>
+              </div>
+            </label>
+            <label style={paymentTileStyle(paymentType === 'cod')}>
+              <input type="radio" name="paymentType" value="cod"
+                     checked={paymentType === 'cod'}
+                     onChange={() => setPaymentType('cod')}
+                     style={{ marginRight: 6 }}
+                     disabled={shipEstimate && !shipEstimate.cod_available} />
+              <div>
+                <strong>Cash on Delivery</strong>
+                <div style={{ color: '#6B7280', fontSize: 12 }}>No extra discount</div>
+                {shipEstimate && !shipEstimate.cod_available && (
+                   <div style={{ color: '#92400E', fontSize: 11 }}>Not available for this PIN</div>
+                )}
+              </div>
+            </label>
+
+            {user?.role === 'dealer' && (
+              <>
+                <label style={paymentTileStyle(paymentType === 'credit')}>
+                  <input type="radio" name="paymentType" value="credit"
+                         checked={paymentType === 'credit'}
+                         onChange={() => setPaymentType('credit')}
+                         style={{ marginRight: 6 }}
+                         disabled={!dealerCredit?.is_active || (parseFloat(dealerCredit?.credit_limit || 0) - parseFloat(dealerCredit?.amount_used || 0)) < grandTotal} />
+                  <div>
+                    <strong>Dealer Credit</strong>
+                    <div style={{ color: '#6B7280', fontSize: 11 }}>
+                      Limit: {formatPrice(parseFloat(dealerCredit?.credit_limit || 0) - parseFloat(dealerCredit?.amount_used || 0))}
+                    </div>
+                    {!dealerCredit?.is_active && <div style={{ color: '#92400E', fontSize: 10 }}>Credit inactive</div>}
+                  </div>
+                </label>
+                <label style={paymentTileStyle(paymentType === 'wallet')}>
+                  <input type="radio" name="paymentType" value="wallet"
+                         checked={paymentType === 'wallet'}
+                         onChange={() => setPaymentType('wallet')}
+                         style={{ marginRight: 6 }}
+                         disabled={!dealerWallet?.is_active || parseFloat(dealerWallet?.balance || 0) < grandTotal} />
+                  <div>
+                    <strong>Dealer Wallet</strong>
+                    <div style={{ color: '#6B7280', fontSize: 11 }}>
+                      Balance: {formatPrice(dealerWallet?.balance || 0)}
+                    </div>
+                    {!dealerWallet?.is_active && <div style={{ color: '#92400E', fontSize: 10 }}>Wallet inactive</div>}
+                  </div>
+                </label>
+              </>
+            )}
+          </div>
+
+
+          <button
+            type="submit"
+            className="btn-primary pay-btn checkout-pay-btn"
+            id="pay-now-btn"
+            disabled={submitting}
+            aria-busy={submitting}
+          >
             <FiLock size={16} />
-            {DEV_MODE ? `Pay Now (Simulated) — ${formatPrice(grandTotal)}` : `Pay Securely — ${formatPrice(grandTotal)}`}
+            {submitting
+              ? 'Processing — please wait…'
+              : paymentType === 'cod'
+                ? `Place COD Order — ${formatPrice(grandTotal)}`
+                : paymentType === 'credit'
+                  ? `Pay via Credit — ${formatPrice(grandTotal)}`
+                  : paymentType === 'wallet'
+                    ? `Pay via Wallet — ${formatPrice(grandTotal)}`
+                    : DEV_MODE
+                      ? `Pay Now (Simulated) — ${formatPrice(grandTotal)}`
+                      : `Pay Securely — ${formatPrice(grandTotal)}`}
+
           </button>
 
           <p className="checkout-razorpay-badge">
@@ -405,12 +628,67 @@ export default function CheckoutPage() {
                 <span>−{formatPrice(savings)}</span>
               </div>
             )}
+
+            {/* Coupon */}
+            <div style={{ display: 'flex', gap: 6, alignItems: 'stretch', marginTop: 8 }}>
+              <input
+                type="text"
+                placeholder="Coupon code"
+                value={couponInput}
+                onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                disabled={!!couponState.code || couponLoading}
+                style={{ flex: 1, padding: '8px 10px', border: '1px solid #D1D5DB',
+                         borderRadius: 6, textTransform: 'uppercase' }}
+              />
+              {couponState.code ? (
+                <button type="button" onClick={handleClearCoupon}
+                        style={{ padding: '0 12px', borderRadius: 6, border: '1px solid #D1D5DB',
+                                 background: '#F3F4F6', cursor: 'pointer' }}>
+                  Remove
+                </button>
+              ) : (
+                <button type="button" onClick={handleApplyCoupon}
+                        disabled={!couponInput.trim() || couponLoading}
+                        style={{ padding: '0 12px', borderRadius: 6, border: 0,
+                                 background: '#111827', color: '#fff',
+                                 cursor: couponLoading ? 'progress' : 'pointer' }}>
+                  {couponLoading ? '…' : 'Apply'}
+                </button>
+              )}
+            </div>
+            {couponState.code && couponState.discount > 0 && (
+              <div className="checkout-summary__row checkout-summary__row--savings">
+                <span>Coupon ({couponState.code})</span>
+                <span>−{formatPrice(couponState.discount)}</span>
+              </div>
+            )}
+            {earlyPayDiscount > 0 && (
+              <div className="checkout-summary__row checkout-summary__row--savings">
+                <span>Pay-Now Discount ({EARLY_DISCOUNT_PCT}%)</span>
+                <span>−{formatPrice(earlyPayDiscount)}</span>
+              </div>
+            )}
+
             <div className="checkout-summary__row">
               <span>GST ({gstPercent}%)</span>
               <span>{formatPrice(gstAmount)}</span>
             </div>
             <div className="checkout-summary__row">
-              <span>Shipping</span>
+              <span>
+                Shipping
+                {shipEstimate?.zone_name && (
+                  <small style={{ display: 'block', color: '#6B7280', fontSize: 11 }}>
+                    {shipEstimate.zone_name}
+                    {shipEstimate.etd_days_min &&
+                      ` · ${shipEstimate.etd_days_min}-${shipEstimate.etd_days_max} days`}
+                  </small>
+                )}
+                {shipLoading && (
+                  <small style={{ display: 'block', color: '#6B7280', fontSize: 11 }}>
+                    Checking pincode…
+                  </small>
+                )}
+              </span>
               <span style={{ color: shipping === 0 ? 'var(--color-success)' : 'inherit' }}>
                 {shipping === 0 ? 'FREE' : formatPrice(shipping)}
               </span>
@@ -426,3 +704,11 @@ export default function CheckoutPage() {
     </div>
   );
 }
+
+const paymentTileStyle = (active) => ({
+  display: 'flex', alignItems: 'flex-start', gap: 6,
+  padding: 12, borderRadius: 8,
+  border: `2px solid ${active ? '#0E766E' : '#E5E7EB'}`,
+  background: active ? '#F0FDFA' : '#fff',
+  cursor: 'pointer',
+});

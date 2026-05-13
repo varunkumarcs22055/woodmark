@@ -1,0 +1,243 @@
+/* ─── Best Sellers — dedicated page ───────────────────────── */
+.bestsellers-page {
+  background: #FAFAF7;
+  min-height: 80vh;
+  padding-bottom: 80px;
+}
+
+/* Hero */
+.bs-hero {
+  position: relative;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(14,118,110,0.10), transparent 55%),
+    radial-gradient(circle at 85% 100%, rgba(220,38,38,0.07), transparent 55%),
+    linear-gradient(180deg, #FFFFFF 0%, #FAFAF7 100%);
+  border-bottom: 1px solid #EFEFEA;
+  overflow: hidden;
+}
+.bs-hero__inner {
+  padding: 28px 24px 36px;
+}
+.bs-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #0E766E;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 18px;
+}
+.bs-back:hover { text-decoration: underline; }
+
+.bs-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(14,118,110,0.10);
+  color: #0E766E;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.bs-title {
+  margin: 12px 0 8px;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #111827;
+}
+.bs-sub {
+  margin: 0 0 20px;
+  max-width: 620px;
+  color: #6B7280;
+  font-size: 15px;
+  line-height: 1.55;
+}
+.bs-windows {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #F3F4F6;
+  border: 1px solid #E5E7EB;
+}
+.bs-window {
+  padding: 7px 16px;
+  border: 0;
+  background: transparent;
+  color: #6B7280;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+.bs-window:hover { color: #111827; }
+.bs-window--active {
+  background: #111827;
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(17,24,39,0.18);
+}
+
+/* Body */
+.bs-body {
+  padding: 32px 24px;
+}
+
+/* Champion (#1) */
+.bs-champion {
+  margin-bottom: 36px;
+}
+.bs-champion__crown {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #FBBF24, #F59E0B);
+  color: #78350F;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.bs-champion__card {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  align-items: stretch;
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-radius: 20px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 4px 24px -8px rgba(17,24,39,0.10);
+  transition: transform 220ms cubic-bezier(0.2,0.8,0.2,1), box-shadow 220ms;
+}
+.bs-champion__card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px -10px rgba(17,24,39,0.16);
+}
+.bs-champion__card img {
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  object-fit: cover;
+  background: #F3F4F6;
+}
+.bs-champion__copy {
+  padding: 32px 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+.bs-champion__copy h2 {
+  margin: 0;
+  font-size: clamp(1.4rem, 2.4vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #111827;
+}
+.bs-brand {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.bs-units {
+  margin: 4px 0 8px;
+  color: #374151;
+  font-size: 14px;
+}
+.bs-cta {
+  margin-top: 4px;
+  color: #0E766E;
+  font-size: 14px;
+  font-weight: 600;
+}
+@media (max-width: 760px) {
+  .bs-champion__card { grid-template-columns: 1fr; }
+  .bs-champion__card img { min-height: 220px; max-height: 260px; }
+  .bs-champion__copy { padding: 22px 24px; }
+}
+
+/* Rank pills */
+.bs-rank-pill {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: #111827;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  box-shadow: 0 4px 10px rgba(17,24,39,0.18);
+  pointer-events: none;
+}
+/* The product card's own badge column starts at top:12 left:12 too. Drop
+   it below the rank pill so they don't visually fight. */
+.bs-tile .product-card-badges {
+  top: 44px;
+}
+.bs-rank-pill--gold {
+  background: linear-gradient(135deg, #FBBF24, #F59E0B);
+  color: #78350F;
+  position: relative; /* sits inside champion copy column */
+  align-self: flex-start;
+}
+.bs-rank-pill--silver {
+  background: linear-gradient(135deg, #D1D5DB, #9CA3AF);
+  color: #1F2937;
+}
+
+/* Grid */
+.bs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 22px;
+}
+.bs-tile {
+  position: relative;
+}
+.bs-units-chip {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 3;
+  padding: 3px 9px;
+  border-radius: 10px;
+  background: rgba(17,24,39,0.85);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(4px);
+}
+
+/* Empty */
+.bs-empty {
+  padding: 64px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: #6B7280;
+}
+.bs-empty svg { color: #D1D5DB; }
+.bs-empty h3 { margin: 4px 0 2px; color: #111827; font-size: 1.2rem; }
+.bs-empty p { margin: 0 0 12px; }

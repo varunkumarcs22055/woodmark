@@ -2,8 +2,11 @@
  * Footer — Livspace-style footer with full column layout.
  */
 
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FiFacebook, FiInstagram, FiTwitter, FiYoutube } from 'react-icons/fi';
+import toast from 'react-hot-toast';
+import { subscribeNewsletter, fetchContentBlock } from '../api';
 import './Footer.css';
 
 const FOOTER_LINKS = [
@@ -31,16 +34,55 @@ const FOOTER_LINKS = [
   {
     heading: 'Help & Support',
     links: [
-      { label: 'FAQ', to: '/' },
-      { label: 'Shipping Policy', to: '/' },
-      { label: 'Return Policy', to: '/' },
-      { label: 'Contact Us', to: '/' },
-      { label: 'Privacy Policy', to: '/' },
+      { label: 'FAQ', to: '/faq' },
+      { label: 'Shipping Policy', to: '/shipping-policy' },
+      { label: 'Return Policy', to: '/return-policy' },
+      { label: 'Contact Us', to: '/contact' },
+      { label: 'Open Support Ticket', to: '/support' },
+      { label: 'Privacy Policy', to: '/privacy-policy' },
     ],
   },
 ];
 
 export default function Footer() {
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterSent, setNewsletterSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [newsletterContent, setNewsletterContent] = useState(null);
+
+  useEffect(() => {
+    fetchContentBlock('newsletter_footer')
+      .then((block) => setNewsletterContent(block))
+      .catch(() => setNewsletterContent(null));
+  }, []);
+
+  const newsletterData = newsletterContent?.data_json || {};
+  const newsletterHeading = newsletterData.heading || 'Newsletter';
+  const newsletterDesc = newsletterData.desc
+    || newsletterContent?.body_md
+    || 'Get exclusive offers, style tips, and new arrivals directly in your inbox.';
+  const newsletterNote = newsletterData.note || 'No spam. Unsubscribe anytime.';
+  const handleNewsletter = async (e) => {
+    e.preventDefault();
+    const v = newsletterEmail.trim();
+    if (!/\S+@\S+\.\S+/.test(v)) {
+      toast.error('Enter a valid email address.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await subscribeNewsletter(v);
+      toast.success(`Subscribed — we'll send offers to ${v}.`);
+      setNewsletterSent(true);
+      setNewsletterEmail('');
+      setTimeout(() => setNewsletterSent(false), 5000);
+    } catch {
+      toast.error('Could not subscribe. Please try again later.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <footer className="footer" id="main-footer">
       {/* Top section */}
@@ -92,26 +134,26 @@ export default function Footer() {
 
             {/* Newsletter column */}
             <div className="footer-col">
-              <h4 className="footer-col-heading">Newsletter</h4>
-              <p className="footer-newsletter-desc">
-                Get exclusive offers, style tips, and new arrivals directly in your inbox.
-              </p>
-              <form
-                className="footer-newsletter-form"
-                onSubmit={(e) => e.preventDefault()}
-              >
+              <h4 className="footer-col-heading">{newsletterHeading}</h4>
+              <p className="footer-newsletter-desc">{newsletterDesc}</p>
+              <form className="footer-newsletter-form" onSubmit={handleNewsletter}>
                 <input
                   type="email"
                   placeholder="Your email address"
                   className="footer-newsletter-input"
                   id="newsletter-email"
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  required
                 />
                 <button type="submit" className="footer-newsletter-btn">
-                  Subscribe
+                  {newsletterSent ? '✓ Subscribed' : 'Subscribe'}
                 </button>
               </form>
               <p className="footer-newsletter-note">
-                No spam. Unsubscribe anytime.
+                {newsletterSent
+                  ? 'Thanks — check your inbox for our welcome email.'
+                  : newsletterNote}
               </p>
             </div>
           </div>

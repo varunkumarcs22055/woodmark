@@ -1,5 +1,11 @@
 /**
  * AdminOrders — filterable order table + side drawer with status update + ERP retry.
+ *
+ * Production notes:
+ * - Backend mutation endpoints key on the integer PK (`order.id`), not the
+ *   human-readable `order_id` ("ORD-XXXX"). Always pass `o.id` to mutations.
+ * - State transitions follow a forward-only graph; the backend enforces the
+ *   same graph in OrderStatusUpdateSerializer so the UI cannot bypass it.
  */
 import { useEffect, useState, useMemo } from 'react';
 import { FiSearch, FiX, FiRefreshCw } from 'react-icons/fi';
@@ -8,6 +14,17 @@ import { fetchAllOrders, updateOrderStatus, retryErpSync } from '../../api';
 import { formatPrice, formatDateTime } from '../../utils/format';
 
 const STATUS_OPTIONS = ['CREATED', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+
+// Allowed forward transitions. Mirrors backend OrderStatusUpdateSerializer.
+const TRANSITIONS = {
+  CREATED:   ['CONFIRMED', 'CANCELLED'],
+  CONFIRMED: ['SHIPPED', 'CANCELLED'],
+  SHIPPED:   ['DELIVERED'],
+  DELIVERED: [],
+  CANCELLED: [],
+};
+
+const TERMINAL = new Set(['DELIVERED', 'CANCELLED']);
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
@@ -41,26 +58,42 @@ export default function AdminOrders() {
     });
   }, [orders, filterStatus, filterPayment, search]);
 
-  const handleStatusChange = async (orderId, newStatus) => {
+  const handleStatusChange = async (order, newStatus) => {
+    if (newStatus === order.order_status) return;
+    const allowed = TRANSITIONS[order.order_status] || [];
+    if (!allowed.includes(newStatus)) {
+      toast.error(`Cannot move from ${order.order_status} to ${newStatus}.`);
+      return;
+    }
+    if (
+      TERMINAL.has(newStatus) &&
+      !window.confirm(`Move ${order.order_id} to ${newStatus}? This cannot be undone.`)
+    ) {
+      return;
+    }
     try {
-      await updateOrderStatus(orderId, newStatus);
+      const updated = await updateOrderStatus(order.id, newStatus);
       toast.success(`Order moved to ${newStatus}`);
-      await loadOrders();
-      if (drawerOrder?.order_id === orderId) {
-        setDrawerOrder({ ...drawerOrder, order_status: newStatus });
+      setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, ...updated } : o)));
+      if (drawerOrder?.id === order.id) {
+        setDrawerOrder({ ...drawerOrder, ...updated });
       }
-    } catch {
-      toast.error('Failed to update status');
+    } catch (err) {
+      const msg =
+        err.response?.data?.order_status?.[0] ||
+        err.response?.data?.detail ||
+        'Failed to update status';
+      toast.error(msg);
     }
   };
 
-  const handleErpRetry = async (orderId) => {
+  const handleErpRetry = async (order) => {
     try {
-      const r = await retryErpSync(orderId);
+      const r = await retryErpSync(order.id);
       toast.success(`ERP synced (${r.erp_order_id || 'OK'})`);
       await loadOrders();
-    } catch {
-      toast.error('ERP retry failed');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'ERP retry failed');
     }
   };
 
@@ -194,11 +227,20 @@ function OrderDrawer({ order, onClose, onStatusChange, onErpRetry }) {
 
           <section className="admin-drawer__section">
             <h4>Status</h4>
-            <select value={order.order_status}
-              onChange={(e) => onStatusChange(order.order_id, e.target.value)}
-              className="admin-drawer__select">
-              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+            <select
+              value={order.order_status}
+              onChange={(e) => onStatusChange(order, e.target.value)}
+              className="admin-drawer__select"
+              disabled={TERMINAL.has(order.order_status)}
+            >
+              <option value={order.order_status}>{order.order_status} (current)</option>
+              {(TRANSITIONS[order.order_status] || []).map((s) => (
+                <option key={s} value={s}>→ {s}</option>
+              ))}
             </select>
+            {TERMINAL.has(order.order_status) && (
+              <span className="admin-meta-line">Terminal state — no further transitions.</span>
+            )}
           </section>
 
           <section className="admin-drawer__section">
@@ -208,7 +250,7 @@ function OrderDrawer({ order, onClose, onStatusChange, onErpRetry }) {
             ) : (
               <>
                 <p>Not yet synced to ERP.</p>
-                <button className="btn-outline" onClick={() => onErpRetry(order.order_id)}>
+                <button className="btn-outline" onClick={() => onErpRetry(order)}>
                   <FiRefreshCw size={14} /> Retry ERP Sync
                 </button>
               </>

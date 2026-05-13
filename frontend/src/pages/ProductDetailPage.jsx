@@ -217,6 +217,11 @@ export default function ProductDetailPage() {
   // baselinePrice is the 1-unit price from the backend (accounts for dealer tier/negotiated).
   const baselinePrice = parseFloat(product.effective_price ?? product.price);
 
+  // Quantity discount tiers come from the detail serializer as `discount_tiers`.
+  // Default to an empty array so `.filter` / `.sort` below never blow up if the
+  // field is missing (e.g. older API versions, network truncation).
+  const tiers = Array.isArray(product.discount_tiers) ? product.discount_tiers : [];
+
   // We only show a "better" tier if it actually beats the baseline or if quantity > 1.
   const activeTier = quantity > 1
     ? (tiers

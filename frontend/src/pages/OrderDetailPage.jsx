@@ -202,7 +202,7 @@ export default function OrderDetailPage() {
       )}
 
       {/* Invoice actions — only when an invoice exists */}
-      {order.invoice_id && (
+      {order.invoice_id ? (
         <section style={invoiceCardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between',
                         alignItems: 'flex-start', flexWrap: 'wrap', gap: 14 }}>
@@ -223,6 +223,40 @@ export default function OrderDetailPage() {
                 <FiDownload /> Download PDF
               </button>
             </div>
+          </div>
+        </section>
+      ) : (
+        // When an order is created but unpaid, the invoice is generated only
+        // after payment success. Surface that clearly so the buyer doesn't
+        // wonder where their invoice is.
+        <section style={{
+          ...cardStyle,
+          background: 'linear-gradient(135deg, #FFFBEB 0%, #FFFFFF 100%)',
+          borderColor: '#FDE68A',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12,
+                        flexWrap: 'wrap', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <FiFileText size={22} style={{ color: '#92400E', marginTop: 2 }} />
+              <div>
+                <strong style={{ display: 'block', color: '#78350F', fontSize: 15 }}>
+                  Invoice pending
+                </strong>
+                <p style={{ margin: '2px 0 0', color: '#92400E', fontSize: 13.5, lineHeight: 1.5 }}>
+                  {order.payment_status === 'SUCCESS'
+                    ? 'Your payment was received — the tax invoice is being generated and will appear here shortly.'
+                    : 'A GST invoice is created automatically once payment is confirmed. Pay this order to receive your invoice.'}
+                </p>
+              </div>
+            </div>
+            {order.payment_status !== 'SUCCESS' && (
+              <Link to="/checkout" state={{ pendingOrderId: order.order_id }}
+                    className="btn-primary"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6,
+                             padding: '8px 16px', fontSize: 13, fontWeight: 600 }}>
+                Pay now
+              </Link>
+            )}
           </div>
         </section>
       )}

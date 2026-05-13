@@ -20,6 +20,9 @@ import {
 } from '../../api';
 import { formatPrice } from '../../utils/format';
 import ConfirmModal from '../../components/ConfirmModal';
+import Pagination from '../../components/Pagination';
+
+const PAGE_SIZE = 20;
 
 const MATERIALS = ['wood', 'metal', 'fabric', 'leather', 'glass', 'plastic', 'marble', 'rattan'];
 
@@ -55,6 +58,8 @@ const PRODUCT_TABS = [
 
 export default function AdminProducts() {
   const [products, setProducts] = useState([]);
+  const [count, setCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -77,8 +82,13 @@ export default function AdminProducts() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const data = await fetchProducts({ page_size: 100 });
-      setProducts(Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []);
+      const params = { page, page_size: PAGE_SIZE };
+      if (search) params.search = search;
+      if (filterCategory) params.category = filterCategory;
+      const data = await fetchProducts(params);
+      const list = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [];
+      setProducts(list);
+      setCount(typeof data?.count === 'number' ? data.count : list.length);
     } catch {
       toast.error('Failed to load products');
     } finally {
@@ -86,10 +96,16 @@ export default function AdminProducts() {
     }
   };
 
+  useEffect(() => { loadProducts(); /* eslint-disable-next-line */ }, [page]);
   useEffect(() => {
-    loadProducts();
     fetchCategories().then((d) => setCategories(Array.isArray(d) ? d : Array.isArray(d?.results) ? d.results : [])).catch(() => {});
   }, []);
+  // Debounced search + immediate filter reload
+  useEffect(() => {
+    const t = setTimeout(() => { if (page !== 1) setPage(1); else loadProducts(); }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line
+  }, [search, filterCategory]);
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
@@ -438,6 +454,7 @@ export default function AdminProducts() {
             </tbody>
           </table>
         )}
+        <Pagination page={page} count={count} pageSize={PAGE_SIZE} onChange={setPage} />
       </div>
 
       {/* Modal */}

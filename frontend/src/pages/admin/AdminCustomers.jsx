@@ -13,9 +13,14 @@ import {
   fetchCustomers, fetchCustomerDetail, updateCustomer,
 } from '../../api';
 import { formatPrice, formatDate, formatDateTime } from '../../utils/format';
+import Pagination from '../../components/Pagination';
+
+const PAGE_SIZE = 20;
 
 export default function AdminCustomers() {
   const [rows, setRows] = useState([]);
+  const [count, setCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('');
@@ -25,12 +30,14 @@ export default function AdminCustomers() {
   const load = async () => {
     setLoading(true);
     try {
-      const params = {};
+      const params = { page, page_size: PAGE_SIZE };
       if (search) params.search = search;
       if (role) params.role = role;
       if (blocked) params.is_blocked = blocked;
       const data = await fetchCustomers(params);
-      setRows(Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []);
+      const list = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [];
+      setRows(list);
+      setCount(typeof data?.count === 'number' ? data.count : list.length);
     } catch {
       toast.error('Failed to load customers');
     } finally {
@@ -38,8 +45,9 @@ export default function AdminCustomers() {
     }
   };
 
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [page]);
   useEffect(() => {
-    const t = setTimeout(load, 300);
+    const t = setTimeout(() => { if (page !== 1) setPage(1); else load(); }, 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, role, blocked]);
@@ -160,6 +168,7 @@ export default function AdminCustomers() {
             </tbody>
           </table>
         )}
+        <Pagination page={page} count={count} pageSize={PAGE_SIZE} onChange={setPage} />
       </div>
 
       {drawer && (

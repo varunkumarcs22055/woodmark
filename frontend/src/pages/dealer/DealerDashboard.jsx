@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import {
   FiHome, FiShoppingBag, FiUser, FiLogOut, FiTrendingUp, FiMenu, FiX,
-  FiExternalLink, FiCreditCard, FiUploadCloud, FiMessageSquare,
+  FiExternalLink, FiCreditCard, FiUploadCloud, FiMessageSquare, FiFileText,
 } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -20,6 +20,7 @@ import DealerOverview from './DealerOverview';
 import DealerOrders from './DealerOrders';
 import DealerOrderDetail from './DealerOrderDetail';
 import DealerWallet from './DealerWallet';
+import DealerInvoices from './DealerInvoices';
 import DealerBulkUpload from './DealerBulkUpload';
 import DealerSupport from './DealerSupport';
 import DealerProfile from './DealerProfile';
@@ -28,12 +29,13 @@ import DealerRejectedScreen from './DealerRejectedScreen';
 import './DealerDashboard.css';
 
 const NAV_ITEMS = [
-  { path: '',        label: 'Overview',    icon: <FiHome /> },
-  { path: 'orders',  label: 'My Orders',   icon: <FiShoppingBag /> },
-  { path: 'bulk',    label: 'Bulk Upload', icon: <FiUploadCloud /> },
-  { path: 'wallet',  label: 'Wallet',      icon: <FiCreditCard /> },
-  { path: 'support', label: 'Support',     icon: <FiMessageSquare /> },
-  { path: 'profile', label: 'Account',     icon: <FiUser /> },
+  { path: '',         label: 'Overview',    icon: <FiHome /> },
+  { path: 'orders',   label: 'My Orders',   icon: <FiShoppingBag /> },
+  { path: 'invoices', label: 'Invoices',    icon: <FiFileText /> },
+  { path: 'bulk',     label: 'Bulk Upload', icon: <FiUploadCloud /> },
+  { path: 'wallet',   label: 'Wallet',      icon: <FiCreditCard /> },
+  { path: 'support',  label: 'Support',     icon: <FiMessageSquare /> },
+  { path: 'profile',  label: 'Account',     icon: <FiUser /> },
 ];
 
 export default function DealerDashboard() {
@@ -132,6 +134,7 @@ export default function DealerDashboard() {
             <Route index element={<DealerOverview />} />
             <Route path="orders" element={<DealerOrders />} />
             <Route path="orders/:orderId" element={<DealerOrderDetail />} />
+            <Route path="invoices" element={<DealerInvoices />} />
             <Route path="bulk" element={<DealerBulkUpload />} />
             <Route path="wallet" element={<DealerWallet />} />
             <Route path="support" element={<DealerSupport />} />

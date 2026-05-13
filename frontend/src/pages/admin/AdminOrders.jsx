@@ -12,6 +12,9 @@ import { FiSearch, FiX, FiRefreshCw } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { fetchAllOrders, updateOrderStatus, retryErpSync } from '../../api';
 import { formatPrice, formatDateTime } from '../../utils/format';
+import Pagination from '../../components/Pagination';
+
+const PAGE_SIZE = 20;
 
 const STATUS_OPTIONS = ['CREATED', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 
@@ -28,6 +31,8 @@ const TERMINAL = new Set(['DELIVERED', 'CANCELLED']);
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
+  const [count, setCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
@@ -37,8 +42,14 @@ export default function AdminOrders() {
   const loadOrders = async () => {
     setLoading(true);
     try {
-      const data = await fetchAllOrders({ page_size: 100 });
-      setOrders(Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []);
+      const params = { page, page_size: PAGE_SIZE };
+      if (filterStatus !== 'ALL') params.order_status = filterStatus;
+      if (filterPayment !== 'ALL') params.payment_status = filterPayment;
+      if (search) params.search = search;
+      const data = await fetchAllOrders(params);
+      const list = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [];
+      setOrders(list);
+      setCount(typeof data?.count === 'number' ? data.count : list.length);
     } catch {
       toast.error('Failed to load orders');
     } finally {
@@ -46,7 +57,15 @@ export default function AdminOrders() {
     }
   };
 
-  useEffect(() => { loadOrders(); }, []);
+  useEffect(() => { loadOrders(); /* eslint-disable-next-line */ }, [page, filterStatus, filterPayment]);
+  // Debounced re-fetch when search changes
+  useEffect(() => {
+    const t = setTimeout(() => { if (page !== 1) setPage(1); else loadOrders(); }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line
+  }, [search]);
+  // Reset to page 1 when filters change
+  useEffect(() => { if (page !== 1) setPage(1); /* eslint-disable-next-line */ }, [filterStatus, filterPayment]);
 
   const filtered = useMemo(() => {
     return orders.filter((o) => {
@@ -173,6 +192,7 @@ export default function AdminOrders() {
             </tbody>
           </table>
         )}
+        <Pagination page={page} count={count} pageSize={PAGE_SIZE} onChange={setPage} />
       </div>
 
       {drawerOrder && (

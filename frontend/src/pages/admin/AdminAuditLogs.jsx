@@ -11,6 +11,9 @@ import { FiSearch, FiActivity, FiUser, FiRefreshCw } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { fetchAuditLogs } from '../../api';
 import { formatDateTime } from '../../utils/format';
+import Pagination from '../../components/Pagination';
+
+const PAGE_SIZE = 30;
 
 const ACTION_TONE = {
   create: { bg: '#D1FAE5', fg: '#047857' },
@@ -34,6 +37,8 @@ const ACTION_FILTERS = ['ALL', 'create', 'update', 'delete', 'block', 'unblock',
 
 export default function AdminAuditLogs() {
   const [rows, setRows] = useState([]);
+  const [count, setCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [action, setAction] = useState('ALL');
   const [targetType, setTargetType] = useState('');
@@ -44,25 +49,27 @@ export default function AdminAuditLogs() {
   const load = async () => {
     setLoading(true);
     try {
-      const params = { page_size: 100 };
+      const params = { page, page_size: PAGE_SIZE };
       if (action !== 'ALL') params.action = action;
       if (targetType) params.target_type = targetType;
       if (dateFrom) params.from = dateFrom;
       if (dateTo) params.to = dateTo;
       const data = await fetchAuditLogs(params);
-      // `data.results || data` collapses to the dict when results is an
-      // empty array (falsy in ||). Use an explicit Array check.
-      setRows(Array.isArray(data) ? data
-        : Array.isArray(data?.results) ? data.results : []);
+      const list = Array.isArray(data) ? data
+        : Array.isArray(data?.results) ? data.results : [];
+      setRows(list);
+      setCount(typeof data?.count === 'number' ? data.count : list.length);
     } catch {
       toast.error('Failed to load audit logs.');
       setRows([]);
+      setCount(0);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ },
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [page, action, targetType, dateFrom, dateTo]);
+  useEffect(() => { if (page !== 1) setPage(1); /* eslint-disable-next-line */ },
             [action, targetType, dateFrom, dateTo]);
 
   const filtered = useMemo(() => {
@@ -214,6 +221,7 @@ export default function AdminAuditLogs() {
             </tbody>
           </table>
         )}
+        <Pagination page={page} count={count} pageSize={PAGE_SIZE} onChange={setPage} />
       </div>
     </div>
   );

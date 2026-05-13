@@ -14,28 +14,34 @@ import {
   fetchInvoices, fetchInvoicePDFBlob, emailInvoice, regenerateInvoice,
 } from '../../api';
 import { formatPrice, formatDate } from '../../utils/format';
+import Pagination from '../../components/Pagination';
 
 const STATUSES = ['', 'PENDING', 'SUCCESS', 'FAILED', 'REFUNDED'];
+const PAGE_SIZE = 20;
 
 export default function AdminInvoices() {
   const [rows, setRows] = useState([]);
+  const [count, setCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [working, setWorking] = useState(null); // id currently being acted on
+  const [working, setWorking] = useState(null);
 
   const load = async () => {
     setLoading(true);
     try {
-      const params = {};
+      const params = { page, page_size: PAGE_SIZE };
       if (search) params.search = search;
       if (status) params.payment_status = status;
       if (from) params.from = from;
       if (to) params.to = to;
       const data = await fetchInvoices(params);
-      setRows(Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []);
+      const list = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [];
+      setRows(list);
+      setCount(typeof data?.count === 'number' ? data.count : list.length);
     } catch {
       toast.error('Failed to load invoices');
     } finally {
@@ -43,8 +49,9 @@ export default function AdminInvoices() {
     }
   };
 
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [page]);
   useEffect(() => {
-    const t = setTimeout(load, 300);
+    const t = setTimeout(() => { if (page !== 1) setPage(1); else load(); }, 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line
   }, [search, status, from, to]);
@@ -223,6 +230,7 @@ export default function AdminInvoices() {
             </tbody>
           </table>
         )}
+        <Pagination page={page} count={count} pageSize={PAGE_SIZE} onChange={setPage} />
       </div>
     </div>
   );

@@ -1,0 +1,70 @@
+/* ─── Reusable Pagination ───────────────────────────────────────────── */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 4px;
+  flex-wrap: wrap;
+}
+
+.pager__count {
+  font-size: 12.5px;
+  color: #6B7280;
+}
+
+.pager__buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pager__btn,
+.pager__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #E5E7EB;
+  background: #fff;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 140ms, color 140ms, border-color 140ms;
+  font-family: inherit;
+}
+
+.pager__btn:hover:not(:disabled),
+.pager__num:hover:not(.pager__num--active) {
+  background: #EEF2F8;
+  border-color: #1E3A6B;
+  color: #1E3A6B;
+}
+
+.pager__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pager__num--active {
+  background: #1E3A6B;
+  border-color: #1E3A6B;
+  color: #fff;
+  pointer-events: none;
+}
+
+.pager__ellipsis {
+  padding: 0 4px;
+  color: #9CA3AF;
+  font-weight: 700;
+  user-select: none;
+}
+
+@media (max-width: 600px) {
+  .pager { justify-content: center; }
+  .pager__count { width: 100%; text-align: center; }
+}

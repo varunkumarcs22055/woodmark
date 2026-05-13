@@ -78,7 +78,7 @@ export default function AdminProducts() {
     setLoading(true);
     try {
       const data = await fetchProducts({ page_size: 100 });
-      setProducts(data.results || data || []);
+      setProducts(Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []);
     } catch {
       toast.error('Failed to load products');
     } finally {
@@ -88,7 +88,7 @@ export default function AdminProducts() {
 
   useEffect(() => {
     loadProducts();
-    fetchCategories().then((d) => setCategories(d.results || d || [])).catch(() => {});
+    fetchCategories().then((d) => setCategories(Array.isArray(d) ? d : Array.isArray(d?.results) ? d.results : [])).catch(() => {});
   }, []);
 
   const filtered = useMemo(() => {

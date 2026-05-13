@@ -30,7 +30,7 @@ export default function AdminCustomers() {
       if (role) params.role = role;
       if (blocked) params.is_blocked = blocked;
       const data = await fetchCustomers(params);
-      setRows(data.results || data || []);
+      setRows(Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []);
     } catch {
       toast.error('Failed to load customers');
     } finally {

@@ -45,9 +45,14 @@ export default function AdminDealers() {
         fetchUsers({ role: 'dealer', dealer_status: 'active' }),
         fetchDealerTiers(),
       ]);
-      setPending(p.status === 'fulfilled' ? (p.value.results || p.value || []) : []);
-      setActive(a.status === 'fulfilled' ? (a.value.results || a.value || []) : []);
-      setTiers(t.status === 'fulfilled' ? t.value : []);
+      // Both list endpoints can return a plain array OR a paginated
+      // {count, results} dict. Normalize to an array so .map / .filter
+      // never blow up downstream (crash root-cause of the ErrorBoundary
+      // when opening this page in prod).
+      const toArr = (v) => (Array.isArray(v) ? v : Array.isArray(v?.results) ? v.results : []);
+      setPending(toArr(p.status === 'fulfilled' ? p.value : []));
+      setActive(toArr(a.status === 'fulfilled' ? a.value : []));
+      setTiers(toArr(t.status === 'fulfilled' ? t.value : []));
     } finally {
       setLoading(false);
     }
@@ -302,7 +307,7 @@ function TierManagementModal({ onClose }) {
     setLoading(true);
     try {
       const data = await fetchDealerTiers();
-      setTiers(data);
+      setTiers(Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []);
     } finally {
       setLoading(false);
     }

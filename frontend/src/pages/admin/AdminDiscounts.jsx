@@ -36,7 +36,7 @@ export default function AdminDiscounts() {
     setLoading(true);
     try {
       const data = await fetchDiscounts({ discount_type: tab });
-      setDiscounts(data.results || data || []);
+      setDiscounts(Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []);
     } catch {
       setDiscounts([]);
     } finally {
@@ -55,7 +55,7 @@ export default function AdminDiscounts() {
     const t = setTimeout(async () => {
       try {
         const data = await fetchProducts({ search: productSearch, page_size: 8 });
-        setProductOptions(data.results || data || []);
+        setProductOptions(Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []);
       } catch {
         setProductOptions([]);
       }

@@ -38,7 +38,7 @@ export default function AdminERP() {
     setLoading(true);
     try {
       const data = await fetchAllOrders({ page_size: 200 });
-      setOrders(data.results || data || []);
+      setOrders(Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []);
     } catch {
       toast.error('Failed to load orders');
     } finally {

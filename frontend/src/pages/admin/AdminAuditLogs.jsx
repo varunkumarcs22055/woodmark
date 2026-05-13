@@ -50,7 +50,10 @@ export default function AdminAuditLogs() {
       if (dateFrom) params.from = dateFrom;
       if (dateTo) params.to = dateTo;
       const data = await fetchAuditLogs(params);
-      setRows(data.results || data || []);
+      // `data.results || data` collapses to the dict when results is an
+      // empty array (falsy in ||). Use an explicit Array check.
+      setRows(Array.isArray(data) ? data
+        : Array.isArray(data?.results) ? data.results : []);
     } catch {
       toast.error('Failed to load audit logs.');
       setRows([]);

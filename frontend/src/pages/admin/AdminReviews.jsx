@@ -27,7 +27,7 @@ export default function AdminReviews() {
     try {
       const params = statusFilter === 'ALL' ? {} : { status: statusFilter };
       const data = await fetchAdminReviews(params);
-      setRows(data.results || data || []);
+      setRows(Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []);
     } catch {
       toast.error('Failed to load reviews');
       setRows([]);

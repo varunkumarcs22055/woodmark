@@ -30,7 +30,7 @@ export default function AdminCategories() {
     setLoading(true);
     try {
       const data = await fetchAdminCategories();
-      setRows(data.results || data || []);
+      setRows(Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []);
     } catch {
       toast.error('Failed to load categories');
     } finally {

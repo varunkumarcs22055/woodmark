@@ -26,7 +26,10 @@ export default function FilterSidebar({ filters, onFilterChange, mobileOpen, onC
 
   useEffect(() => {
     fetchCategories()
-      .then(data => setCategories(data))
+      .then(data => setCategories(
+        Array.isArray(data) ? data
+          : Array.isArray(data?.results) ? data.results : []
+      ))
       .catch(err => console.error('Failed to fetch categories:', err));
   }, []);
 

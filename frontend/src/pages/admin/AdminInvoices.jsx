@@ -35,7 +35,7 @@ export default function AdminInvoices() {
       if (from) params.from = from;
       if (to) params.to = to;
       const data = await fetchInvoices(params);
-      setRows(data.results || data || []);
+      setRows(Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []);
     } catch {
       toast.error('Failed to load invoices');
     } finally {

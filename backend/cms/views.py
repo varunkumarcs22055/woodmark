@@ -336,9 +336,50 @@ class AdminNewsletterSendView(APIView):
             status='queued',
         )
 
+        # ─── Actually dispatch the email ─────────────────────────────────
+        # Routes through django.core.mail, which is wired to Brevo's HTTP
+        # backend when BREVO_API_KEY is set in env (see core/settings.py).
+        # Per-recipient sends so Brevo's dashboard shows individual
+        # delivery / open / click status — Bcc would collapse that to one
+        # bulk row.
+        from django.conf import settings as dj_settings
+        from django.core.mail import EmailMultiAlternatives
+        import logging
+        log = logging.getLogger(__name__)
+
+        sent = 0
+        failed = []
+        clean_emails = [e for e in emails if e]
+        for to_email in clean_emails:
+            try:
+                msg = EmailMultiAlternatives(
+                    subject=subject,
+                    body=body,                     # plain-text / markdown fallback
+                    from_email=dj_settings.DEFAULT_FROM_EMAIL,
+                    to=[to_email],
+                )
+                # If admin pasted raw HTML / markdown, send it as the
+                # rich-text part too. Brevo + most clients render HTML
+                # when the part is attached.
+                msg.attach_alternative(body, 'text/html')
+                msg.send(fail_silently=False)
+                sent += 1
+            except Exception as exc:
+                failed.append({'email': to_email, 'error': str(exc)[:200]})
+                log.warning('Newsletter send to %s failed: %s', to_email, exc)
+
+        campaign.status = 'sent' if sent and not failed else (
+            'failed' if not sent else 'sent'   # partial fail still counts as sent
+        )
+        from django.utils import timezone
+        campaign.sent_at = timezone.now()
+        campaign.save(update_fields=['status', 'sent_at'])
+
         return Response({
             'success': True,
             'recipients_count': recipients_count,
+            'sent': sent,
+            'failed': failed,
             'campaign_id': campaign.id,
             'status': campaign.status,
         })

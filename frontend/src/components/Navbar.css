@@ -105,6 +105,28 @@
   align-items: center;
 }
 
+/* Primary logo — uses the printed image from /logo.png. Sized to the
+   navbar height so the lockup looks intentional, never stretched. */
+.brand-logo-img {
+  display: block;
+  height: 42px;
+  width: auto;
+  max-width: 200px;
+  object-fit: contain;
+}
+
+@media (max-width: 600px) {
+  .brand-logo-img { height: 36px; max-width: 160px; }
+}
+
+/* Fallback wordmark — only visible if /logo.png is missing (404).
+   Hidden by default; the inline JS onError flips display when needed. */
+.brand-logo--fallback {
+  display: none;
+  align-items: center;
+  gap: 10px;
+}
+
 .brand-text {
   font-size: var(--text-xl);
   font-weight: 800;

@@ -360,41 +360,36 @@ export default function Navbar() {
       {/* Main Navbar */}
       <nav className={`navbar ${scrolled ? 'scrolled' : ''}`}>
         <div className="navbar-inner container">
-          {/* Logo */}
+          {/* Logo — uses the printed image from /logo.png (the file lives
+              in frontend/public/logo.png, dropped in by the brand owner).
+              The image renders the full lockup (mark + wordmark + tagline)
+              from the official brand asset, so it always matches the
+              printed material exactly. */}
           <Link to="/" className="navbar-brand">
-            <div className="brand-logo">
+            <img
+              src="/logo.png"
+              alt="FurnoTech"
+              className="brand-logo-img"
+              onError={(e) => {
+                // If the user hasn't dropped logo.png in /public yet, fall
+                // back to the inline SVG wordmark so the navbar is never
+                // empty. The image element is hidden and we render the
+                // text alongside as a backup.
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.nextElementSibling.style.display = 'inline-flex';
+              }}
+            />
+            <span className="brand-logo brand-logo--fallback">
               <span className="brand-icon-wrap" aria-hidden="true">
-                {/* FurnoTech mark — orange "F" with a softened swirl-like
-                    counter, echoing the logo. SVG only so it stays crisp
-                    at every DPI and scales with text without an HTTP hit. */}
                 <svg width="34" height="34" viewBox="0 0 40 40" fill="none">
-                  <defs>
-                    <linearGradient id="ft-mark-grad" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-                      <stop offset="0" stopColor="#F09650" />
-                      <stop offset="1" stopColor="#C66416" />
-                    </linearGradient>
-                  </defs>
-                  {/* Outer dotted square — decorative grid like the logo */}
-                  <g fill="#C66416" opacity="0.55">
-                    <circle cx="3"  cy="3"  r="1.4" />
-                    <circle cx="11" cy="3"  r="1.4" />
-                    <circle cx="3"  cy="11" r="1.4" />
-                  </g>
-                  {/* "F" with rounded swirl bowl */}
-                  <path
-                    d="M14 6 H32 V12 H20 V18 H30 V24 H20 V34 H14 V6 Z"
-                    fill="url(#ft-mark-grad)"
-                  />
-                  {/* Swirl flourish at the F's foot */}
-                  <path
-                    d="M11 30 Q11 36 17 36 Q23 36 23 30"
-                    stroke="#C66416" strokeWidth="3" fill="none" strokeLinecap="round"
-                  />
+                  <rect width="40" height="40" rx="8" fill="var(--color-accent)" />
+                  <path d="M12 30 V10 H30 V14 H17 V18 H27 V22 H17 V30 Z" fill="#fff" />
                 </svg>
               </span>
               <span className="brand-text">
                 Furno<span className="brand-text__accent">Tech</span>
               </span>
+            </span>
             </div>
           </Link>
 

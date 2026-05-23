@@ -285,19 +285,21 @@ export default function Navbar() {
   //   search -> free-text keyword passed to /api/products/?search=
   //   tag    -> optional Tag.slug (CMS overrides may still use it)
   // Bare strings are treated as a category slug for backward compat.
-  const goTo = (child) => {
+  const buildHref = (child) => {
     if (typeof child === 'string') {
-      navigate(child ? `/?category=${encodeURIComponent(child)}` : '/');
-      setActiveMenu(null);
-      setMobileOpen(false);
-      return;
+      return child ? `/?category=${encodeURIComponent(child)}` : '/';
     }
+    if (!child) return '/';
     const params = new URLSearchParams();
-    if (child?.slug) params.set('category', child.slug);
-    if (child?.search) params.set('search', child.search);
-    if (child?.tag) params.set('tag', child.tag);
+    if (child.slug) params.set('category', child.slug);
+    if (child.search) params.set('search', child.search);
+    if (child.tag) params.set('tag', child.tag);
     const qs = params.toString();
-    navigate(qs ? `/?${qs}` : '/');
+    return qs ? `/?${qs}` : '/';
+  };
+
+  const goTo = (child) => {
+    navigate(buildHref(child));
     setActiveMenu(null);
     setMobileOpen(false);
   };
@@ -431,13 +433,14 @@ export default function Navbar() {
                           <div key={(col.heading || 'col') + colIdx} className="mega-col">
                             {col.heading && <p className="mega-col-title">{col.heading}</p>}
                             {col.items.map((child) => (
-                              <button
+                              <Link
                                 key={child.label}
+                                to={buildHref(child)}
                                 className="mega-link"
-                                onClick={() => goTo(child)}
+                                onClick={() => { setActiveMenu(null); setMobileOpen(false); }}
                               >
                                 {child.label}
-                              </button>
+                              </Link>
                             ))}
                           </div>
                         ))}
@@ -446,12 +449,13 @@ export default function Navbar() {
                         <span className="mega-footer-text">
                           Browse all <strong>{item.label}</strong>
                         </span>
-                        <button
+                        <Link
+                          to={buildHref(item.columns[0]?.items[0])}
                           className="mega-footer-btn"
-                          onClick={() => goTo(item.columns[0]?.items[0])}
+                          onClick={() => { setActiveMenu(null); setMobileOpen(false); }}
                         >
                           View Full Range →
-                        </button>
+                        </Link>
                       </div>
                     </div>
                   )}
@@ -672,13 +676,14 @@ export default function Navbar() {
                       <div key={col.heading} className="mobile-sub-group">
                         <p className="mobile-sub-heading">{col.heading}</p>
                         {col.items.map((child) => (
-                          <button
+                          <Link
                             key={child.label}
+                            to={buildHref(child)}
                             className="mobile-nav-link"
-                            onClick={() => goTo(child)}
+                            onClick={() => setMobileOpen(false)}
                           >
                             {child.label}
-                          </button>
+                          </Link>
                         ))}
                       </div>
                     ))}

@@ -77,7 +77,11 @@ def _hide_dealer_only_for(user):
 class ProductListView(generics.ListAPIView):
     serializer_class = ProductListSerializer
     filterset_class = ProductFilter
-    search_fields = ['name', 'description', 'color']
+    # Tag name + slug are included so navbar dropdown searches
+    # (?search=keyword) match products that admins have tagged with that
+    # keyword, not only products with the keyword in the name/description.
+    search_fields = ['name', 'description', 'color', 'tags__name', 'tags__slug',
+                     'sku', 'brand']
     ordering_fields = ['price', 'created_at', 'name', 'stock']
     ordering = ['-created_at']
     permission_classes = [AllowAny]

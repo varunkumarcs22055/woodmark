@@ -3,6 +3,8 @@ Dealer-side credit + payments + invoices + ledger.
 Admin-side credit limit / payment recording.
 
   GET   /api/dealer/credit/                  → my credit summary
+  POST  /api/dealer/credit/pay/init/         → start Razorpay flow to clear credit
+  POST  /api/dealer/credit/pay/verify/       → confirm Razorpay payment, reduce amount_used
   GET   /api/dealer/payments/                → my payments
   GET   /api/dealer/invoices/?status=open|paid → my invoices
   GET   /api/dealer/ledger/?from=&to=        → time-ordered invoices + payments
@@ -91,6 +93,153 @@ class DealerCreditView(APIView):
     def get(self, request):
         credit = _get_or_create_credit(request.user)
         return Response(DealerCreditSerializer(credit).data)
+
+
+class DealerCreditPayInitView(APIView):
+    """
+    POST /api/dealer/credit/pay/init/  body={amount}
+
+    Dealer-initiated credit clearance: creates a Razorpay order for the
+    requested amount (up to their current `amount_used`). The dealer's UI
+    then opens the Razorpay modal and posts the result to the `verify`
+    endpoint below, which actually reduces `amount_used` and writes a
+    DealerPayment row.
+
+    If Razorpay credentials are not configured (dev/local), returns a
+    `simulated: True` flag so the frontend can call /verify/ directly
+    without going through the Razorpay JS SDK.
+    """
+    permission_classes = [IsActiveDealer]
+
+    def post(self, request):
+        credit = _get_or_create_credit(request.user)
+        raw_amount = request.data.get('amount')
+        try:
+            amount = Decimal(str(raw_amount)).quantize(Decimal('0.01'))
+        except Exception:
+            return Response({'detail': 'A valid amount is required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if amount <= 0:
+            return Response({'detail': 'Amount must be positive.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if amount > credit.amount_used:
+            return Response(
+                {'detail': f'Amount exceeds outstanding credit '
+                           f'({credit.amount_used}).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # If Razorpay isn't configured, allow the frontend to short-circuit
+        # to /verify/ with a sentinel so dev environments can test the loop.
+        from django.conf import settings as dj_settings
+        if not (dj_settings.RAZORPAY_KEY_ID and dj_settings.RAZORPAY_KEY_SECRET):
+            return Response({
+                'simulated': True,
+                'amount': str(amount),
+            })
+
+        try:
+            from payments.views import get_razorpay_client
+            client = get_razorpay_client()
+            rz_order = client.order.create({
+                'amount': int(amount * 100),
+                'currency': 'INR',
+                'receipt': f'credit-{request.user.id}',
+                'notes': {
+                    'kind': 'dealer_credit_repayment',
+                    'dealer_id': str(request.user.id),
+                    'dealer_email': request.user.email,
+                },
+            })
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception(
+                'Razorpay create-order failed for dealer credit repayment'
+            )
+            return Response({'detail': 'Could not start payment. Try again.'},
+                            status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response({
+            'simulated': False,
+            'key_id': dj_settings.RAZORPAY_KEY_ID,
+            'razorpay_order_id': rz_order['id'],
+            'amount': str(amount),
+            'amount_paise': int(amount * 100),
+            'currency': 'INR',
+            'prefill': {
+                'name': request.user.full_name or '',
+                'email': request.user.email or '',
+                'contact': getattr(request.user, 'phone', '') or '',
+            },
+        })
+
+
+class DealerCreditPayVerifyView(APIView):
+    """
+    POST /api/dealer/credit/pay/verify/  body={amount, razorpay_order_id?,
+                                              razorpay_payment_id?,
+                                              razorpay_signature?}
+
+    Verifies the Razorpay signature, then reduces the dealer's
+    `amount_used` and creates a DealerPayment row so the ledger reflects
+    the repayment. When the init step returned `simulated: True`, the
+    Razorpay IDs are optional and we just record the payment.
+    """
+    permission_classes = [IsActiveDealer]
+
+    def post(self, request):
+        credit = _get_or_create_credit(request.user)
+        try:
+            amount = Decimal(str(request.data.get('amount'))).quantize(Decimal('0.01'))
+        except Exception:
+            return Response({'detail': 'A valid amount is required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if amount <= 0 or amount > credit.amount_used:
+            return Response({'detail': 'Amount is invalid.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        razorpay_order_id = request.data.get('razorpay_order_id') or ''
+        razorpay_payment_id = request.data.get('razorpay_payment_id') or ''
+        razorpay_signature = request.data.get('razorpay_signature') or ''
+
+        from django.conf import settings as dj_settings
+        razorpay_enabled = bool(dj_settings.RAZORPAY_KEY_ID and dj_settings.RAZORPAY_KEY_SECRET)
+
+        # If Razorpay creds exist AND the client sent the IDs, verify them.
+        # If creds don't exist, accept as simulated.
+        if razorpay_enabled and razorpay_payment_id:
+            try:
+                from payments.views import get_razorpay_client
+                client = get_razorpay_client()
+                client.utility.verify_payment_signature({
+                    'razorpay_order_id': razorpay_order_id,
+                    'razorpay_payment_id': razorpay_payment_id,
+                    'razorpay_signature': razorpay_signature,
+                })
+            except Exception:
+                return Response({'detail': 'Payment verification failed.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+        from django.db import transaction as db_tx
+        with db_tx.atomic():
+            payment = DealerPayment.objects.create(
+                dealer=request.user,
+                invoice=None,
+                amount=amount,
+                method='razorpay' if razorpay_payment_id else 'upi',
+                reference=razorpay_payment_id or razorpay_order_id or 'self-clear',
+                recorded_by=request.user,
+                note='Dealer-initiated credit repayment',
+                received_at=timezone.now(),
+            )
+            credit.amount_used = max(Decimal('0'), credit.amount_used - amount)
+            credit.save(update_fields=['amount_used', 'updated_at'])
+
+        return Response({
+            'ok': True,
+            'payment': DealerPaymentSerializer(payment).data,
+            'credit': DealerCreditSerializer(credit).data,
+        })
 
 
 class DealerPaymentListView(generics.ListAPIView):

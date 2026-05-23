@@ -65,19 +65,77 @@ def send_order_to_erp(order):
     for item in order.items.select_related('product').all():
         items.append({
             'product_id': item.product.id,
+            'product_sku': item.product.sku or '',
+            'hsn_code': getattr(item.product, 'hsn_code', '') or '',
             'product_name': item.product.name,
             'quantity': item.quantity,
             'price': float(item.price),
             'original_price': float(item.original_price),
+            'line_total': float(item.price) * item.quantity,
         })
+
+    # Pull the Razorpay/payment record so the ERP has full audit fields
+    # (Razorpay txn id, signature, gateway status). Optional — falls back to
+    # a sparse record when no Payment row exists yet (COD, simulated).
+    payment_block = {
+        'method': getattr(order, 'payment_method', '') or '',
+        'status': order.payment_status,
+        'razorpay_order_id': '',
+        'razorpay_payment_id': '',
+        'razorpay_signature': '',
+    }
+    try:
+        pay = getattr(order, 'payment', None)
+        if pay is not None:
+            payment_block.update({
+                'razorpay_order_id': pay.razorpay_order_id or '',
+                'razorpay_payment_id': pay.razorpay_payment_id or '',
+                'razorpay_signature': pay.razorpay_signature or '',
+                'gateway_amount': float(pay.amount or 0),
+            })
+    except Exception:
+        pass
+
+    # Invoice references — empty if the invoice hasn't been built yet.
+    invoice_block = {}
+    try:
+        inv = getattr(order, 'invoice', None)
+        if inv is not None:
+            invoice_block = {
+                'invoice_number': inv.invoice_number,
+                'invoice_date': inv.invoice_date.isoformat() if inv.invoice_date else '',
+                'subtotal': float(inv.subtotal or 0),
+                'discount_total': float(inv.discount_total or 0),
+                'coupon_code': inv.coupon_code or '',
+                'coupon_discount': float(inv.coupon_discount or 0),
+                'cgst_total': float(inv.cgst_total or 0),
+                'sgst_total': float(inv.sgst_total or 0),
+                'igst_total': float(inv.igst_total or 0),
+                'shipping_total': float(inv.shipping_total or 0),
+                'grand_total': float(inv.grand_total or 0),
+                'amount_paid': float(inv.amount_paid or 0),
+                'amount_due': float(inv.amount_due or 0),
+            }
+    except Exception:
+        pass
 
     payload = {
         'order_id': order.order_id,
+        'order_created_at': order.created_at.isoformat() if order.created_at else '',
         'customer_name': order.user_name,
         'customer_email': order.user_email,
         'phone': order.phone,
         'shipping_address': order.address,
+        # Top-level amount kept for backward-compat with the existing ERP
+        # integration contract; the granular breakdown lives in `invoice`.
         'amount': float(order.total_amount),
+        'subtotal': float(getattr(order, 'subtotal_amount', 0) or 0),
+        'shipping_amount': float(getattr(order, 'shipping_amount', 0) or 0),
+        'gst_amount': float(getattr(order, 'gst_amount', 0) or 0),
+        'coupon_code': getattr(order, 'coupon_code', '') or '',
+        'coupon_discount': float(getattr(order, 'coupon_discount', 0) or 0),
+        'payment': payment_block,
+        'invoice': invoice_block,
         'items': items,
     }
 

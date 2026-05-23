@@ -178,12 +178,24 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        from .disposable_emails import is_disposable_email
+
         serializer = UserLoginSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
+
+        # Block existing temp-mail accounts from logging in too. Registration
+        # already rejects these domains, but legacy rows may exist from before
+        # the policy or from registrations that bypassed it.
+        if is_disposable_email(email):
+            return Response(
+                {'detail': 'Disposable / temporary email addresses are not allowed. '
+                           'Please sign in with a real email account.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         user = authenticate(request, username=email, password=password)
         if user is None:
@@ -483,9 +495,20 @@ class EmailOTPRequestView(APIView):
     COOLDOWN_SECONDS = 60
 
     def post(self, request):
+        from .disposable_emails import is_disposable_email
+
         serializer = EmailOTPRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email'].lower().strip()
+
+        if is_disposable_email(email):
+            # Use the same constant-response shape as the success path so the
+            # endpoint still can't be used to probe for valid emails — we just
+            # never deliver the code.
+            return Response({
+                'detail': 'Disposable / temporary email addresses are not allowed.',
+                'expires_in_minutes': 10,
+            }, status=status.HTTP_403_FORBIDDEN)
 
         user = User.objects.filter(email__iexact=email).first()
         debug_payload = {}
@@ -538,10 +561,21 @@ class EmailOTPVerifyView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        from .disposable_emails import is_disposable_email
+
         serializer = EmailOTPVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email'].lower().strip()
         code = serializer.validated_data['code'].strip()
+
+        # Match the request endpoint — temp-mail addresses can't redeem an OTP
+        # even if they somehow got one (e.g. provider added to blocklist after
+        # the issue).
+        if is_disposable_email(email):
+            return Response(
+                {'detail': 'Disposable / temporary email addresses are not allowed.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         user = User.objects.filter(email__iexact=email).first()
         if user is None:

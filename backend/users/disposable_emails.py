@@ -76,6 +76,29 @@ DISPOSABLE_DOMAINS: frozenset[str] = frozenset({
     'whyspam.me',
     'yopmail.com', 'yopmail.fr', 'yopmail.net',
     'zetmail.com', 'zoemail.org', 'zomg.info',
+    # ─── Modern temp-mail services (2023–2026 wave) ──────────────────────
+    'mail.tm', 'mailtm.com', 'emailnator.com', 'tempmail.dev',
+    'tempmail.email', 'tempmail.io', 'tempmail.plus', 'tempmailo.com',
+    'tempmailbeast.com', 'tempmailgen.com', 'temp-mail.io',
+    'temporarymail.com', 'crazymailing.com', 'mailpoof.com',
+    'moakt.cc', 'moakt.ws', 'mohmal.in.net', 'mohmal.tech',
+    'internxt.com', 'fakermail.com', 'inboxes.com', 'flymail.tk',
+    'smailpro.com', 'mailcare.io', 'minutemail.com',
+    'snapmail.cc', 'tmpmail.org', 'tmpmail.net',
+    '1secmail.com', '1secmail.net', '1secmail.org',
+    'edu.poltekkesjogja.ac.id',  # known disposable from old leaks
+    'duck.com', 'duckduckgo.com',  # DuckDuckGo email aliasing — also disposable
+    'simplelogin.io', 'simplelogin.com',  # SimpleLogin aliases
+    'anonaddy.com', 'anonaddy.me',  # AnonAddy aliases
+    'relay.firefox.com',  # Firefox Relay
+    'kuvenu.com', 'fexpost.com', 'fexbox.org',
+    'tutuapp.bid', 'discardmail.com', 'discardmail.de',
+    'gufum.com', 'mailbox.in.ua', 'mailcuk.com',
+    'spamok.com', 'spamok.de', 'spamok.com.ua',
+    'rambler.ua',  # commonly used as throwaway
+    'inboxmail.world', 'crypto-mining.club',
+    'pokemail.net', 'spambox.org', 'spammy.click',
+    'wuuvo.com', 'edny.net', 'givmail.com',
 })
 
 

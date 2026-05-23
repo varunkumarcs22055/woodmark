@@ -616,6 +616,16 @@ export const fetchDealerDashboard = () =>
 export const fetchDealerCredit = () =>
   api.get('/dealer/credit/').then((r) => r.data);
 
+// Dealer self-clear credit (Razorpay). Returns either
+// { simulated: true, amount } for dev/local without Razorpay creds,
+// or { simulated: false, key_id, razorpay_order_id, amount_paise, ... }
+// so the frontend can open the Razorpay modal.
+export const initDealerCreditPay = (amount) =>
+  api.post('/dealer/credit/pay/init/', { amount }).then((r) => r.data);
+
+export const verifyDealerCreditPay = (payload) =>
+  api.post('/dealer/credit/pay/verify/', payload).then((r) => r.data);
+
 export const fetchDealerInvoices = (params = {}) =>
   api.get('/dealer/invoices/', { params }).then((r) => r.data);
 

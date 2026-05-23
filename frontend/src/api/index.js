@@ -136,10 +136,16 @@ const buildProductFormData = (data, mediaFiles) => {
   return fd;
 };
 
+// Setting Content-Type: 'multipart/form-data' manually strips the boundary
+// param, so DRF can't parse the body and request.FILES ends up empty.
+// Pass Content-Type as undefined to let axios/browser set it with the
+// auto-generated boundary, and bump the timeout because Cloudinary uploads
+// take longer than a JSON request.
 export const adminCreateProduct = (data, { mediaFiles = [] } = {}) => {
   if (mediaFiles.length > 0) {
     return api.post('/products/admin/', buildProductFormData(data, mediaFiles), {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: { 'Content-Type': undefined },
+      timeout: LONG_TIMEOUT_MS,
     }).then((r) => r.data);
   }
   return api.post('/products/admin/', data).then((r) => r.data);
@@ -148,7 +154,8 @@ export const adminCreateProduct = (data, { mediaFiles = [] } = {}) => {
 export const adminUpdateProduct = (id, data, { mediaFiles = [] } = {}) => {
   if (mediaFiles.length > 0) {
     return api.put(`/products/admin/${id}/`, buildProductFormData(data, mediaFiles), {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: { 'Content-Type': undefined },
+      timeout: LONG_TIMEOUT_MS,
     }).then((r) => r.data);
   }
   return api.put(`/products/admin/${id}/`, data).then((r) => r.data);

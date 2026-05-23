@@ -158,11 +158,15 @@ export default function ProductDetailPage() {
   const handleSubmitReview = async (payload) => {
     try {
       await createReview({ product: product.id, ...payload });
-      toast.success('Review submitted — pending moderation.');
-      // Refresh summary; the new review starts as pending so it won't show
-      // in the public list until an admin approves it.
-      const fresh = await fetchReviewSummary(product.id).catch(() => null);
+      toast.success('Thanks! Your review is now live.');
+      // Reviews are auto-approved, so refresh both the summary AND the list
+      // so the new review appears immediately under the form.
+      const [fresh, refreshedList] = await Promise.all([
+        fetchReviewSummary(product.id).catch(() => null),
+        fetchProductReviews(product.id).catch(() => ({ results: [] })),
+      ]);
       setReviewSummary(fresh);
+      setReviews(refreshedList.results || refreshedList || []);
     } catch (err) {
       const msg = err.response?.data?.detail
         || err.response?.data?.non_field_errors?.[0]
@@ -538,13 +542,27 @@ export default function ProductDetailPage() {
             <h2>{product.installation_required ? 'How to Assemble' : 'See it in Action'}</h2>
           </div>
           <div className="pd-video">
-            <iframe
-              src={product.youtube_embed_url}
-              title={`${product.name} video`}
-              loading="lazy"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
+            {/^https?:\/\/(www\.)?youtube\.com\/embed\//.test(product.youtube_embed_url) ? (
+              <iframe
+                src={product.youtube_embed_url}
+                title={`${product.name} video`}
+                loading="lazy"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            ) : (
+              <div className="pd-video__unavailable">
+                <FiPlayCircle size={36} />
+                <p>This video link can't be embedded here.</p>
+                <p>
+                  <a href={product.youtube_url || product.youtube_embed_url}
+                     target="_blank" rel="noreferrer noopener">
+                    Open it on YouTube →
+                  </a>
+                </p>
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -737,7 +755,7 @@ function ReviewsSection({ product, reviews, summary, canWrite, onSubmit }) {
               <div className="review-success">
                 <div className="review-success-icon">✓</div>
                 <h3>Thank you!</h3>
-                <p>Your review has been submitted and is pending moderation.</p>
+                <p>Your review is now live on this product.</p>
               </div>
             ) : (
               <form onSubmit={submit} className="review-form">

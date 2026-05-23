@@ -1,3 +1,5 @@
+import logging
+
 from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
@@ -15,6 +17,8 @@ from .serializers import (
     CategorySerializer, ProductWriteSerializer, TagSerializer,
 )
 from .filters import ProductFilter
+
+logger = logging.getLogger(__name__)
 
 
 class StockAlertSubscribeView(APIView):
@@ -648,6 +652,7 @@ class ProductAdminViewSet(APIView):
             # configured (e.g. local dev with no internet).
             from services import cloudinary as cdn
             file_value = f
+            uploaded_to_cdn = False
             if cdn.is_configured():
                 try:
                     eager = None if kind == 'video' else ('thumb', 'card')
@@ -655,9 +660,22 @@ class ProductAdminViewSet(APIView):
                     file_value = result['public_id']
                     if kind == 'video':
                         file_value = f"video/upload/{result['public_id']}"
+                    uploaded_to_cdn = True
                 except Exception:
+                    logger.exception(
+                        'Cloudinary upload failed for %s (product=%s, folder=%s) — '
+                        'falling back to CloudinaryField default upload.',
+                        f.name, product.slug, folder,
+                    )
                     f.seek(0)
                     file_value = f
+            else:
+                logger.warning(
+                    'Cloudinary not configured — media for product=%s will use '
+                    'whichever DEFAULT_FILE_STORAGE is active. Set '
+                    'CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET env vars to enable.',
+                    product.slug,
+                )
 
             ProductMedia.objects.create(
                 product=product,
@@ -665,6 +683,12 @@ class ProductAdminViewSet(APIView):
                 file=file_value,
                 is_primary=(i == 0 and not existing),
                 order=product.media.count(),
+            )
+            logger.info(
+                'ProductMedia attached: product=%s file=%s uploaded_to_cdn=%s',
+                product.slug,
+                file_value if isinstance(file_value, str) else getattr(f, 'name', '<file>'),
+                uploaded_to_cdn,
             )
         # Stash warnings so the view can return them.
         request._image_quality_warnings = quality_warnings

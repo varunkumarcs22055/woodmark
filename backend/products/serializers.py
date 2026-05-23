@@ -167,10 +167,24 @@ class ProductDetailSerializer(DiscountInfoMixin, serializers.ModelSerializer):
         url = (obj.youtube_url or '').strip()
         if not url:
             return ''
-        # Normalize watch?v= / youtu.be / shorts → /embed/
+        # Normalize every common YouTube URL shape into an /embed/ URL so the
+        # iframe loads reliably. Patterns covered:
+        #   https://www.youtube.com/watch?v=ID&t=10s
+        #   https://m.youtube.com/watch?v=ID
+        #   https://youtu.be/ID?si=...
+        #   https://www.youtube.com/embed/ID
+        #   https://www.youtube.com/shorts/ID
+        #   https://www.youtube.com/live/ID
         import re
-        m = re.search(r'(?:v=|youtu\.be/|/embed/|/shorts/)([A-Za-z0-9_-]{11})', url)
-        return f'https://www.youtube.com/embed/{m.group(1)}' if m else url
+        m = re.search(
+            r'(?:v=|youtu\.be/|/embed/|/shorts/|/live/|/v/)([A-Za-z0-9_-]{11})',
+            url,
+        )
+        if m:
+            return f'https://www.youtube.com/embed/{m.group(1)}?rel=0'
+        # Already an embed URL we can't reparse — return as-is, the iframe will
+        # try to load it.
+        return url
 
     def get_primary_image(self, obj):
         primary = obj.media.filter(is_primary=True).first() or obj.media.first()

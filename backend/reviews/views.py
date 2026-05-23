@@ -98,8 +98,9 @@ class ReviewCreateView(generics.CreateAPIView):
         ).exists():
             from rest_framework.exceptions import ValidationError
             raise ValidationError({'detail': 'You have already reviewed this product.'})
-        # `verified_purchase` is set inside Review.save() via the OrderItem lookup.
-        serializer.save(user=self.request.user)
+        # Auto-approve on submit so reviews show on the product immediately.
+        # Admins can still reject or delete from /admin-dashboard/reviews.
+        serializer.save(user=self.request.user, status='approved')
 
 
 class ReviewHelpfulView(APIView):

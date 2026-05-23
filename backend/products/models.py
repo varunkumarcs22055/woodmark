@@ -255,12 +255,34 @@ class ProductMedia(models.Model):
 
     @property
     def url(self):
-        if self.file:
-            try:
-                return self.file.url
-            except Exception:
-                return str(self.file)
-        return None
+        if not self.file:
+            return None
+        # Happy path: CloudinaryResource exposes .url
+        try:
+            return self.file.url
+        except AttributeError:
+            pass  # file is a bare string (public_id) — see below
+        except Exception:
+            return str(self.file)
+
+        # Field was just assigned a public_id string in this request and
+        # hasn't been re-read from the DB yet (so cloudinary-django hasn't
+        # wrapped it in a CloudinaryResource). Build the delivery URL
+        # ourselves so list/detail views never render an empty img src.
+        public_id = str(self.file)
+        try:
+            from services import cloudinary as cdn
+            if cdn.is_configured():
+                built = cdn.transform_url(
+                    public_id,
+                    resource_type='video' if self.kind == 'video' else 'image',
+                    secure=True,
+                )
+                if built:
+                    return built
+        except Exception:
+            pass
+        return public_id
 
     def __str__(self):
         return f'{self.product.name} — {self.kind} ({self.id})'

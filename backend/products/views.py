@@ -665,11 +665,13 @@ class ProductAdminViewSet(APIView):
             from services import cloudinary as cdn
             file_value = f
             uploaded_to_cdn = False
+            secure_url = ''  # Cloudinary returns this; we use it as a direct fallback
             if cdn.is_configured():
                 try:
                     eager = None if kind == 'video' else ('thumb', 'card')
                     result = cdn.upload(f, folder=folder, kind=kind, eager=eager)
                     file_value = result['public_id']
+                    secure_url = result.get('secure_url') or result.get('url') or ''
                     if kind == 'video':
                         file_value = f"video/upload/{result['public_id']}"
                     uploaded_to_cdn = True
@@ -689,31 +691,62 @@ class ProductAdminViewSet(APIView):
                     product.slug,
                 )
 
-            ProductMedia.objects.create(
+            media_row = ProductMedia.objects.create(
                 product=product,
                 kind=kind,
                 file=file_value,
                 is_primary=(i == 0 and not existing),
                 order=product.media.count(),
             )
+            # Re-read from DB so the CloudinaryField is now a CloudinaryResource
+            # (just-assigned string values don't expose .url until refresh).
+            media_row.refresh_from_db()
+
+            # Belt-and-suspenders: if the first uploaded image is the primary
+            # one AND Cloudinary gave us a secure_url, copy it onto the
+            # product's image_url right now so list views render correctly
+            # even if anything goes wrong with the CloudinaryField wrap.
+            if (media_row.is_primary and secure_url
+                    and (not product.image_url
+                         or not product.image_url.startswith(('http://', 'https://')))):
+                product.image_url = secure_url
+                product.save(update_fields=['image_url'])
+
             logger.info(
-                'ProductMedia attached: product=%s file=%s uploaded_to_cdn=%s',
-                product.slug,
-                file_value if isinstance(file_value, str) else getattr(f, 'name', '<file>'),
-                uploaded_to_cdn,
+                'ProductMedia attached: id=%s product=%s url=%s uploaded_to_cdn=%s',
+                media_row.id, product.slug,
+                (media_row.url or secure_url or '<none>')[:120], uploaded_to_cdn,
             )
         # Stash warnings so the view can return them.
         request._image_quality_warnings = quality_warnings
 
     def _sync_primary_image_url(self, product):
         """If image_url is empty, copy the primary (or first) media URL onto it
-        so list views — which still render image_url — show the uploaded image."""
+        so list views — which still render image_url — show the uploaded image.
+
+        We always refresh the media row from the DB before reading `.url` so
+        CloudinaryField has had a chance to wrap the raw public_id we just
+        stored into a CloudinaryResource (the wrapping only happens on read,
+        not on in-memory assignment in the same request)."""
         if product.image_url:
             return
         primary = product.media.filter(is_primary=True).first() or product.media.first()
-        if primary and primary.url:
-            product.image_url = primary.url
+        if not primary:
+            return
+        # Force a DB re-read so `file` is a CloudinaryResource, not a string
+        primary.refresh_from_db()
+        url = primary.url
+        if url and url.startswith(('http://', 'https://', '//')):
+            product.image_url = url
             product.save(update_fields=['image_url'])
+            logger.info('Synced image_url for product=%s to %s', product.slug, url[:80])
+        else:
+            logger.warning(
+                'Skipped image_url sync for product=%s — primary.url=%r is not '
+                'a full URL (likely Cloudinary returned only a public_id and '
+                'the SDK is misconfigured).',
+                product.slug, url,
+            )
 
 
 class ProductMediaDeleteView(APIView):

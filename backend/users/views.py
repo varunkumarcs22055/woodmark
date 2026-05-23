@@ -699,3 +699,141 @@ class PasswordResetConfirmView(APIView):
 
         logger.info('Password reset completed for %s', user.email)
         return Response({'detail': 'Password updated. You can now log in with your new password.'})
+
+
+class AdminUserListCreateView(APIView):
+    """
+    GET  /api/auth/admins/   → list all admin accounts (admin-only)
+    POST /api/auth/admins/   → create a new admin account, return its summary
+
+    Body for POST: { email, password, full_name?, phone? }
+    The new admin is active immediately (no OTP) since the inviting admin
+    already vouched for their identity — this matches typical SaaS admin
+    invite flows where the existing operator hands credentials over manually.
+    """
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        rows = (User.objects
+                .filter(role='admin')
+                .order_by('-date_joined')
+                .values('id', 'email', 'full_name', 'phone', 'is_active',
+                        'is_blocked', 'last_login', 'date_joined'))
+        return Response(list(rows))
+
+    def post(self, request):
+        from .disposable_emails import is_disposable_email
+
+        email = (request.data.get('email') or '').strip().lower()
+        password = request.data.get('password') or ''
+        full_name = (request.data.get('full_name') or '').strip()
+        phone = (request.data.get('phone') or '').strip()
+
+        if not email or '@' not in email:
+            return Response({'email': 'Valid email is required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if is_disposable_email(email):
+            return Response({'email': 'Disposable email addresses are not allowed.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if len(password) < 8:
+            return Response({'password': 'Password must be at least 8 characters.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if User.objects.filter(email__iexact=email).exists():
+            return Response({'email': 'A user with this email already exists.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.create(
+            email=email,
+            username=email,
+            full_name=full_name,
+            phone=phone,
+            role='admin',
+            is_active=True,
+            is_staff=True,
+            is_superuser=False,  # NOT a Django superuser; just role=admin
+        )
+        user.set_password(password)
+        user.save()
+
+        logger.info('Admin %s created new admin user %s', request.user.email, email)
+
+        # Send the new admin a courtesy email so they know how to log in.
+        try:
+            from services.notifications import notify
+            from django.conf import settings as dj_settings
+            site = (dj_settings.SITE_URL or '').rstrip('/')
+            notify(
+                user=user,
+                kind='admin_account_created',
+                title='You\'ve been added as an admin on FurnoTech',
+                body=(
+                    f'Hi {full_name or email},\n\n'
+                    f'{request.user.full_name or request.user.email} has added you '
+                    f'as an administrator on FurnoTech.\n\n'
+                    f'Sign in at {site or "your site"} with this email and the '
+                    f'password they shared with you.'
+                ),
+                channels=['inapp', 'email'],
+            )
+        except Exception:
+            logger.exception('Failed to notify new admin %s', email)
+
+        return Response({
+            'id': user.id,
+            'email': user.email,
+            'full_name': user.full_name,
+            'phone': user.phone,
+            'role': user.role,
+            'is_active': user.is_active,
+        }, status=status.HTTP_201_CREATED)
+
+
+class AdminUserDetailView(APIView):
+    """
+    PATCH /api/auth/admins/{id}/   → block/unblock, change name/phone
+    DELETE /api/auth/admins/{id}/  → demote (set role=user, NOT delete the row)
+
+    We never hard-delete admin rows so audit trails referencing them stay
+    intact. "Delete" here is a demotion to a regular user account.
+    """
+    permission_classes = [IsAdminRole]
+
+    def _get_admin(self, pk):
+        try:
+            return User.objects.get(pk=pk, role='admin')
+        except User.DoesNotExist:
+            return None
+
+    def patch(self, request, pk):
+        user = self._get_admin(pk)
+        if user is None:
+            return Response({'detail': 'Admin not found.'}, status=status.HTTP_404_NOT_FOUND)
+        # Don't let an admin lock themselves out via this endpoint.
+        if user.id == request.user.id and 'is_blocked' in request.data:
+            return Response({'detail': 'You cannot block your own account.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        for field in ('full_name', 'phone', 'is_active', 'is_blocked'):
+            if field in request.data:
+                setattr(user, field, request.data[field])
+        user.save()
+        return Response({
+            'id': user.id,
+            'email': user.email,
+            'full_name': user.full_name,
+            'phone': user.phone,
+            'is_active': user.is_active,
+            'is_blocked': user.is_blocked,
+        })
+
+    def delete(self, request, pk):
+        user = self._get_admin(pk)
+        if user is None:
+            return Response({'detail': 'Admin not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if user.id == request.user.id:
+            return Response({'detail': 'You cannot remove your own admin role.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        user.role = 'user'
+        user.is_staff = False
+        user.save(update_fields=['role', 'is_staff'])
+        logger.info('Admin %s demoted admin %s to user role', request.user.email, user.email)
+        return Response(status=status.HTTP_204_NO_CONTENT)

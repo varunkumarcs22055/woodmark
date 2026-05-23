@@ -385,6 +385,19 @@ export const fetchStoreSettings = () =>
 export const updateStoreSettings = (data) =>
   api.patch('/settings/', data).then((r) => r.data);
 
+// ─── Admin Users (Settings page) ────────────────────────────────────
+export const fetchAdminUsers = () =>
+  api.get('/auth/admins/').then((r) => r.data);
+
+export const createAdminUser = (payload) =>
+  api.post('/auth/admins/', payload).then((r) => r.data);
+
+export const updateAdminUser = (id, payload) =>
+  api.patch(`/auth/admins/${id}/`, payload).then((r) => r.data);
+
+export const deleteAdminUser = (id) =>
+  api.delete(`/auth/admins/${id}/`).then((r) => r.data);
+
 // ─── Product Media ───────────────────────────────────────────────────
 export const deleteProductMedia = (mediaId) =>
   api.delete(`/products/media/${mediaId}/`).then((r) => r.data);

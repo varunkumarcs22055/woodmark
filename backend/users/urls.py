@@ -27,4 +27,7 @@ urlpatterns = [
     path('password-reset/confirm/', views.PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     path('otp/request/', views.EmailOTPRequestView.as_view(), name='otp-request'),
     path('otp/verify/', views.EmailOTPVerifyView.as_view(), name='otp-verify'),
+    # Admin-only: list & create other admin accounts
+    path('admins/', views.AdminUserListCreateView.as_view(), name='admin-user-list'),
+    path('admins/<int:pk>/', views.AdminUserDetailView.as_view(), name='admin-user-detail'),
 ]

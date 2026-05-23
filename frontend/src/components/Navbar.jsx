@@ -280,9 +280,11 @@ export default function Navbar() {
     menuTimer.current = setTimeout(() => setActiveMenu(null), 150);
   };
 
-  // `child` is one mega-menu link: { slug, search?, tag? }
+  // `child` is one mega-menu link: { label, slug, search?, tag? }
+  //   label  -> the visible name (used as the search keyword so the URL
+  //             reflects exactly what the user clicked)
   //   slug   -> backend Category slug ('desks', 'chairs', ...)
-  //   search -> free-text keyword passed to /api/products/?search=
+  //   search -> optional override keyword (defaults to label)
   //   tag    -> optional Tag.slug (CMS overrides may still use it)
   // Bare strings are treated as a category slug for backward compat.
   const buildHref = (child) => {
@@ -292,7 +294,11 @@ export default function Navbar() {
     if (!child) return '/';
     const params = new URLSearchParams();
     if (child.slug) params.set('category', child.slug);
-    if (child.search) params.set('search', child.search);
+    // Default the search to the clicked label so the URL is self-describing.
+    // Explicit empty string (`search: ''`) suppresses it on items that should
+    // pull the entire category instead of narrowing.
+    const keyword = child.search !== undefined ? child.search : (child.label || '');
+    if (keyword) params.set('search', keyword);
     if (child.tag) params.set('tag', child.tag);
     const qs = params.toString();
     return qs ? `/?${qs}` : '/';

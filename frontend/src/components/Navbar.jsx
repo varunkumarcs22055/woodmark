@@ -367,7 +367,7 @@ export default function Navbar() {
               printed material exactly. */}
           <Link to="/" className="navbar-brand">
             <img
-              src="/logo.png"
+              src="/logo.webp"
               alt="FurnoTech"
               className="brand-logo-img"
               onError={(e) => {

@@ -180,7 +180,7 @@
 }
 
 .admin-search__btn:hover {
-  background: var(--color-brand-dark, #005c54);
+  background: var(--color-brand-dark, #1B1C42);
 }
 
 .admin-search__btn:active {
@@ -382,8 +382,8 @@ textarea.admin-input {
 }
 
 .admin-card .btn-primary:hover:not([disabled]) {
-  background: var(--color-brand-dark, #005c54);
-  border-color: var(--color-brand-dark, #005c54);
+  background: var(--color-brand-dark, #1B1C42);
+  border-color: var(--color-brand-dark, #1B1C42);
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 115, 106, 0.2),
               0 8px 18px -4px rgba(0, 115, 106, 0.32);
@@ -477,7 +477,7 @@ textarea.admin-input {
   transition: background 140ms ease, transform 100ms ease;
 }
 
-.admin-money-range__apply:hover { background: var(--color-brand-dark, #005c54); }
+.admin-money-range__apply:hover { background: var(--color-brand-dark, #1B1C42); }
 .admin-money-range__apply:active { transform: scale(0.97); }
 
 /* ─── Filter chips (quick pickers) ─────────────────────────────── */

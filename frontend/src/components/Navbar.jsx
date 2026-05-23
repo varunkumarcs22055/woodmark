@@ -363,13 +363,38 @@ export default function Navbar() {
           {/* Logo */}
           <Link to="/" className="navbar-brand">
             <div className="brand-logo">
-              <span className="brand-icon-wrap">
-                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                  <rect width="28" height="28" rx="6" fill="#00736A" />
-                  <path d="M7 20V12L14 7L21 12V20H16V15H12V20H7Z" fill="white" />
+              <span className="brand-icon-wrap" aria-hidden="true">
+                {/* FurnoTech mark — orange "F" with a softened swirl-like
+                    counter, echoing the logo. SVG only so it stays crisp
+                    at every DPI and scales with text without an HTTP hit. */}
+                <svg width="34" height="34" viewBox="0 0 40 40" fill="none">
+                  <defs>
+                    <linearGradient id="ft-mark-grad" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stopColor="#F09650" />
+                      <stop offset="1" stopColor="#C66416" />
+                    </linearGradient>
+                  </defs>
+                  {/* Outer dotted square — decorative grid like the logo */}
+                  <g fill="#C66416" opacity="0.55">
+                    <circle cx="3"  cy="3"  r="1.4" />
+                    <circle cx="11" cy="3"  r="1.4" />
+                    <circle cx="3"  cy="11" r="1.4" />
+                  </g>
+                  {/* "F" with rounded swirl bowl */}
+                  <path
+                    d="M14 6 H32 V12 H20 V18 H30 V24 H20 V34 H14 V6 Z"
+                    fill="url(#ft-mark-grad)"
+                  />
+                  {/* Swirl flourish at the F's foot */}
+                  <path
+                    d="M11 30 Q11 36 17 36 Q23 36 23 30"
+                    stroke="#C66416" strokeWidth="3" fill="none" strokeLinecap="round"
+                  />
                 </svg>
               </span>
-              <span className="brand-text">FurniShop</span>
+              <span className="brand-text">
+                Furno<span className="brand-text__accent">Tech</span>
+              </span>
             </div>
           </Link>
 
@@ -527,7 +552,7 @@ export default function Navbar() {
                     </>
                   ) : (
                     <>
-                      <p className="account-menu__greet">Welcome to FurniShop</p>
+                      <p className="account-menu__greet">Welcome to FurnoTech</p>
                       <Link to="/login" className="btn-primary account-menu__cta" onClick={() => setAccountOpen(false)}>
                         Sign In
                       </Link>
@@ -621,7 +646,7 @@ export default function Navbar() {
                aria-label="Site navigation">
             <div className="mobile-drawer-header">
               <Link to="/" className="navbar-brand" onClick={() => setMobileOpen(false)}>
-                <span className="brand-text">FurniShop</span>
+                <span className="brand-text">FurnoTech</span>
               </Link>
               <button onClick={() => setMobileOpen(false)} aria-label="Close menu"
                       className="mobile-drawer-close">

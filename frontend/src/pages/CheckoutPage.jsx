@@ -353,7 +353,7 @@ export default function CheckoutPage() {
       key: rzOrder.key_id,
       amount: rzOrder.amount,
       currency: rzOrder.currency,
-      name: 'FurniShop',
+      name: 'FurnoTech',
       description: `Order ${order.order_id}`,
       order_id: rzOrder.razorpay_order_id,
       prefill: rzOrder.prefill || {
@@ -362,7 +362,7 @@ export default function CheckoutPage() {
         contact: form.phone,
       },
       notes: { furnishop_order_id: order.order_id },
-      theme: { color: '#00736A' },
+      theme: { color: '#2D2E5F' },
       modal: {
         ondismiss: () => {
           toast.error('Payment cancelled. Your order is saved — you can pay later from My Orders.');
@@ -420,7 +420,7 @@ export default function CheckoutPage() {
             <FiCheckCircle size={64} />
           </div>
           <h2>Order Placed Successfully!</h2>
-          <p>Thank you for shopping with FurniShop.</p>
+          <p>Thank you for shopping with FurnoTech.</p>
 
           <div className="checkout-success__details">
             <div className="checkout-success__detail-row">

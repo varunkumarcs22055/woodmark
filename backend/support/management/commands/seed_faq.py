@@ -146,7 +146,7 @@ SEED = [
         'topic': 'Product & warranty',
         'question': 'Warranty claim',
         'answer': (
-            "All FurniShop products come with a 1-year manufacturer warranty "
+            "All FurnoTech products come with a 1-year manufacturer warranty "
             "against defects. Raise a ticket with: order ID, item, photo of "
             "the defect, and a short description. Our team responds in 24h."
         ),

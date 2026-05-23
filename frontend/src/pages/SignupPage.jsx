@@ -88,7 +88,7 @@ export default function SignupPage() {
       }
       // Legacy fallback — backend issued tokens directly (older builds).
       login({ access: data.access, refresh: data.refresh }, data.user);
-      toast.success('Account created! Welcome to FurniShop.');
+      toast.success('Account created! Welcome to FurnoTech.');
       navigate('/');
     } catch (err) {
       const serverErrors = err.response?.data || {};
@@ -118,7 +118,7 @@ export default function SignupPage() {
         />
         <div className="auth-page__overlay">
           <div className="auth-page__brand">
-            <h1>Join FurniShop</h1>
+            <h1>Join FurnoTech</h1>
             <blockquote>"Designed for the modern Indian home."</blockquote>
             <p>Free shipping on orders above ₹2,999 · 30-day easy returns.</p>
           </div>

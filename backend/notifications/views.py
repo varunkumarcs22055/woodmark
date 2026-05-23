@@ -204,7 +204,7 @@ class SubscriberCreateView(APIView):
                     '<div style="font-family:sans-serif;padding:24px;background:#f6f6f4">'
                     '<div style="max-width:480px;margin:auto;background:#fff;padding:28px;'
                     'border-radius:8px;border:1px solid #eee">'
-                    '<h2 style="color:#00736A;margin:0 0 12px">Welcome to FurniShop</h2>'
+                    '<h2 style="color:#00736A;margin:0 0 12px">Welcome to FurnoTech</h2>'
                     '<p>Thanks for subscribing. You\'ll be the first to hear about new '
                     'collections, dealer offers, and seasonal sales.</p>'
                     '<p style="margin-top:24px">'
@@ -217,8 +217,8 @@ class SubscriberCreateView(APIView):
                     'send any more.</p></div></div>'
                 )
                 msg = EmailMultiAlternatives(
-                    subject='Welcome to FurniShop',
-                    body='Thanks for subscribing to FurniShop. You\'ll be the first '
+                    subject='Welcome to FurnoTech',
+                    body='Thanks for subscribing to FurnoTech. You\'ll be the first '
                          'to hear about new collections, dealer offers, and seasonal '
                          'sales.\n\nBrowse: ' + settings.SITE_URL,
                     from_email=settings.DEFAULT_FROM_EMAIL,

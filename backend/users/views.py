@@ -89,21 +89,21 @@ class RegisterView(APIView):
             '<div style="max-width:480px;margin:auto;background:#fff;padding:28px;'
             'border-radius:8px;border:1px solid #eee">'
             '<h2 style="color:#00736A;margin:0 0 12px">Verify your email</h2>'
-            f'<p>Hi {user.full_name or "there"}, your FurniShop verification code is:</p>'
+            f'<p>Hi {user.full_name or "there"}, your FurnoTech verification code is:</p>'
             f'<div style="font-size:32px;font-weight:800;letter-spacing:8px;'
             f'background:#f6f6f4;text-align:center;padding:18px;border-radius:8px;'
             f'margin:18px 0;color:#00736A">{code}</div>'
             '<p>This code expires in 15 minutes. If you didn\'t sign up, '
             'you can ignore this email.</p>'
-            '<p style="color:#888;font-size:12px;margin-top:24px">- FurniShop</p>'
+            '<p style="color:#888;font-size:12px;margin-top:24px">- FurnoTech</p>'
             '</div></div>'
         )
         try:
             msg = EmailMultiAlternatives(
-                subject=f'Your FurniShop verification code: {code}',
+                subject=f'Your FurnoTech verification code: {code}',
                 body=(f'Hi {user.full_name or "there"},\n\n'
-                      f'Your FurniShop verification code is: {code}\n\n'
-                      f'It expires in 15 minutes.\n\n- FurniShop'),
+                      f'Your FurnoTech verification code is: {code}\n\n'
+                      f'It expires in 15 minutes.\n\n- FurnoTech'),
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 to=[user.email],
             )
@@ -486,7 +486,7 @@ class EmailOTPRequestView(APIView):
                     notify(
                         user=user,
                         kind='login_otp',
-                        title='Your FurniShop login code',
+                        title='Your FurnoTech login code',
                         body=(
                             f'Hi {user.full_name},\n\n'
                             f'Your one-time login code is: {otp.code}\n'
@@ -585,7 +585,7 @@ class PasswordResetRequestView(APIView):
                 notify(
                     user=user,
                     kind='password_reset',
-                    title='Reset your FurniShop password',
+                    title='Reset your FurnoTech password',
                     body=(
                         f"Hi {user.full_name},\n\n"
                         f"Use the link below to reset your password. "

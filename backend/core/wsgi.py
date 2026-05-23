@@ -1,4 +1,4 @@
-"""WSGI config for FurniShop project."""
+"""WSGI config for FurnoTech project."""
 
 import os
 from django.core.wsgi import get_wsgi_application

@@ -49,7 +49,7 @@ export default function BestSellersPage() {
           <h1 className="bs-title">Best Sellers</h1>
           <p className="bs-sub">
             Ranked live by units actually shipped. No editorial picks, no
-            promoted slots — just what the most FurniShop customers bought.
+            promoted slots — just what the most FurnoTech customers bought.
           </p>
 
           <div className="bs-windows">
@@ -97,7 +97,7 @@ export default function BestSellersPage() {
                     <p className="bs-units">
                       {top.units_sold_in_window > 0
                         ? `${top.units_sold_in_window.toLocaleString()} units sold in the last ${windowDays} days`
-                        : 'Top-rated by FurniShop customers'}
+                        : 'Top-rated by FurnoTech customers'}
                     </p>
                     <span className="bs-cta">View product →</span>
                   </div>

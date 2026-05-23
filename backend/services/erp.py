@@ -11,7 +11,7 @@ Configuration:
     ("your-erp-api.com") we skip the network call entirely and return a
     deterministic internal ERP id derived from the order. This is the
     correct behaviour for businesses that haven't onboarded an external
-    ERP yet — the order is treated as "self-fulfilled" by FurniShop and
+    ERP yet — the order is treated as "self-fulfilled" by FurnoTech and
     the admin dashboard never shows it as failed.
   * Set ERP_API_URL + ERP_API_KEY in `.env` once a real ERP is in place
     and outbound sync will resume automatically.

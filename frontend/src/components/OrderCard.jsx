@@ -8,7 +8,7 @@ import './OrderCard.css';
 
 const STATUS_DOT_COLORS = {
   CREATED: '#8A8A8A',
-  CONFIRMED: '#00736A',
+  CONFIRMED: '#2D2E5F',
   SHIPPED: '#1565C0',
   DELIVERED: '#2E7D32',
   CANCELLED: '#C62828',

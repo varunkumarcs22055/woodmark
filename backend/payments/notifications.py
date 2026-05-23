@@ -82,7 +82,7 @@ def _build_html(order, *, paid: bool) -> str:
 <html><body style="margin:0;padding:0;background:#f6f6f4;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;color:#222">
   <div style="max-width:560px;margin:24px auto;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e8e8e3">
     <div style="background:#00736A;color:#fff;padding:20px 24px">
-      <div style="font-size:20px;font-weight:700">FurniShop</div>
+      <div style="font-size:20px;font-weight:700">FurnoTech</div>
       <div style="opacity:.85;font-size:13px;margin-top:2px">Order #{escape(order.order_id)}</div>
     </div>
     <div style="padding:24px">
@@ -144,7 +144,7 @@ def _build_text(order, *, paid: bool) -> str:
         '',
         f'Track: {settings.SITE_URL.rstrip("/")}/orders',
         '',
-        '— FurniShop',
+        '— FurnoTech',
     ]
     return '\n'.join(lines)
 
@@ -164,7 +164,7 @@ def send_order_confirmation_sms(order) -> bool:
     from sms_campaigns.services import send_transactional_sms
     paid = (getattr(order, 'payment_status', '') == 'SUCCESS')
     method_label = 'paid' if paid else 'COD'
-    msg = (f'FurniShop: Order {order.order_id} confirmed ({method_label}). '
+    msg = (f'FurnoTech: Order {order.order_id} confirmed ({method_label}). '
            f'Total Rs.{order.total_amount}. Track at '
            f'{settings.SITE_URL.rstrip("/")}/orders')
     result = send_transactional_sms(phone, msg, name=order.user_name or '')
@@ -210,7 +210,7 @@ def send_order_status_email(order, *, new_status: str) -> bool:
         f'Hi {order.user_name or "there"},\n\n'
         f'Update on order #{order.order_id}: status is now {status_label}.\n\n'
         f'Track: {settings.SITE_URL.rstrip("/")}/orders\n\n'
-        f'— FurniShop'
+        f'— FurnoTech'
     )
     try:
         msg = EmailMultiAlternatives(

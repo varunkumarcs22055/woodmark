@@ -1,5 +1,5 @@
 """
-Root URL configuration for FurniShop.
+Root URL configuration for FurnoTech.
 
 All API endpoints are mounted under /api/.
 Django admin is available at /admin/.

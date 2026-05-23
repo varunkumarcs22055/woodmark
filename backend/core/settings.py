@@ -1,6 +1,6 @@
 
 """
-Django settings for FurniShop e-commerce project.
+Django settings for FurnoTech e-commerce project.
 
 Configured for:
 - Neon PostgreSQL via DATABASE_URL

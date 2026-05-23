@@ -140,7 +140,7 @@ export default function AdminNewsletter() {
                   className="newsletter-input"
                   value={form.subject} 
                   onChange={e => setForm({ ...form, subject: e.target.value })}
-                  placeholder="e.g. Exciting New Arrivals at FurniShop!"
+                  placeholder="e.g. Exciting New Arrivals at FurnoTech!"
                   required
                 />
               </div>

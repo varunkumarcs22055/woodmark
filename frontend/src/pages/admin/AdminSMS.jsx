@@ -745,7 +745,7 @@ function CampaignsTab() {
           Message body *
           <textarea className="admin-input" rows={4} value={form.message}
                     onChange={(e) => setForm({ ...form, message: e.target.value })}
-                    placeholder="Hi {name}, great offers at FurniShop! Visit now."
+                    placeholder="Hi {name}, great offers at FurnoTech! Visit now."
                     style={{ width: '100%' }} />
           <span className="admin-meta-line">Use {'{name}'} for personalisation. Max 1000 chars.</span>
         </label>

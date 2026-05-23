@@ -1,6 +1,6 @@
 /*
- * FurniShop — Livspace-Inspired Design System
- * Clean white aesthetic with teal brand color, luxury home goods feel
+ * FurnoTech — Design System
+ * Brand: deep indigo-navy (logo wordmark) + warm furniture-orange (logo mark)
  * Typography: Nunito Sans (body) + Playfair Display (headings)
  */
 
@@ -8,19 +8,23 @@
 
 /* ─── Design Tokens ─────────────────────────────────────────────────── */
 :root {
-  /* FurnoTech brand — deep navy primary + warm orange accent.
-     Every existing component that reads --color-brand-* flips automatically. */
-  --color-brand: #1E3A6B;          /* navy 800 — primary */
-  --color-brand-light: #2A4A7F;    /* navy 700 — hover/elevated */
-  --color-brand-dark: #15294B;     /* navy 900 — backdrops, hero */
-  --color-brand-pale: #EEF2F8;     /* near-white tint for soft surfaces */
-  --color-brand-50: rgba(30, 58, 107, 0.08);
+  /* Brand colours — sampled from the FurnoTech logo.
+     The wordmark "FurnoTech" is a deep indigo navy; the F mark is a warm
+     furniture orange. We keep navy as `--color-brand` (the primary surface
+     colour for headings + buttons in calm areas) and expose orange via
+     `--color-accent` for CTAs and highlight ribbons. */
+  --color-brand: #2D2E5F;          /* logo wordmark — indigo navy */
+  --color-brand-light: #3F4283;    /* hover state */
+  --color-brand-dark: #1B1C42;     /* hero backdrops, deep sections */
+  --color-brand-pale: #EFF0F7;     /* soft tint of brand */
+  --color-brand-50: rgba(45, 46, 95, 0.08);
 
-  /* Accent — orange complement, used on CTAs and highlight strips */
-  --color-accent: #F97316;         /* orange 500 */
-  --color-accent-light: #FB923C;
-  --color-accent-dark: #EA580C;
-  --color-accent-bg: #FFF7ED;
+  /* Accent — the logo's F-mark orange. Used on primary CTAs so the brand
+     mark colour is visible above the fold. */
+  --color-accent: #E47D2A;         /* logo orange */
+  --color-accent-light: #F09650;
+  --color-accent-dark: #C66416;
+  --color-accent-bg: #FDF2E6;
 
   /* Reusable gradients — hero, CTA cards, sidebars */
   --gradient-brand:

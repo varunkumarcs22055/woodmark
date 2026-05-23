@@ -404,7 +404,7 @@ export function ContactPage() {
           <FiMapPin size={20} />
           <div>
             <strong>Visit</strong>
-            <span>FurniShop Studios</span>
+            <span>FurnoTech Studios</span>
             <small>Mumbai, India · Showroom by appointment</small>
           </div>
         </div>

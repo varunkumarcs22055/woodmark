@@ -78,7 +78,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (!product) return undefined;
     const prevTitle = document.title;
-    document.title = product.meta_title || `${product.name} | FurniShop`;
+    document.title = product.meta_title || `${product.name} | FurnoTech`;
 
     let metaDesc = document.querySelector('meta[name="description"]');
     const prevDesc = metaDesc?.getAttribute('content') || null;
@@ -91,7 +91,7 @@ export default function ProductDetailPage() {
       'content',
       product.meta_description ||
         (product.description || '').slice(0, 160) ||
-        `Shop ${product.name} on FurniShop.`,
+        `Shop ${product.name} on FurnoTech.`,
     );
 
     const ldId = 'pd-jsonld';

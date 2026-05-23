@@ -40,7 +40,7 @@ function saveHistory(messages) {
 
 const GREETING = {
   role: 'bot',
-  text: "Hi! I'm FurniShop's assistant. Pick a topic below, or just type your question.",
+  text: "Hi! I'm FurnoTech's assistant. Pick a topic below, or just type your question.",
   ts: Date.now(),
 };
 
@@ -167,7 +167,7 @@ export default function SupportChatbot() {
           <header className="chatbot-header">
             <div className="chatbot-header__avatar"><FiCpu size={18} /></div>
             <div className="chatbot-header__title">
-              <strong>FurniShop Help</strong>
+              <strong>FurnoTech Help</strong>
               <span>Typical reply: instant</span>
             </div>
             <button

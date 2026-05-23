@@ -108,8 +108,17 @@
 .brand-text {
   font-size: var(--text-xl);
   font-weight: 800;
-  color: var(--color-text);
+  color: var(--color-brand);          /* indigo navy — matches logo wordmark */
   letter-spacing: -0.02em;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+/* "Tech" portion of the wordmark gets the orange accent so the visual
+   hierarchy matches the printed logo. */
+.brand-text__accent {
+  color: var(--color-accent);
+  font-weight: 800;
 }
 
 /* ─── Desktop Nav ────────────────────────────────────────────────────── */

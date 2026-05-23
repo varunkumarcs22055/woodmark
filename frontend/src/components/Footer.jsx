@@ -94,11 +94,11 @@ export default function Footer() {
               <Link to="/" className="footer-logo" id="footer-logo">
                 <div className="footer-logo-mark">
                   <svg width="32" height="32" viewBox="0 0 28 28" fill="none">
-                    <rect width="28" height="28" rx="6" fill="#00736A"/>
+                    <rect width="28" height="28" rx="6" fill="#2D2E5F"/>
                     <path d="M7 20V12L14 7L21 12V20H16V15H12V20H7Z" fill="white"/>
                   </svg>
                 </div>
-                <span className="footer-logo-text">FurniShop</span>
+                <span className="footer-logo-text">FurnoTech</span>
               </Link>
               <p className="footer-tagline">
                 Premium furniture &amp; home essentials — crafted for the Indian home. Trusted by over 1 lakh happy families.
@@ -164,7 +164,7 @@ export default function Footer() {
       <div className="footer-bottom">
         <div className="footer-bottom-inner container">
           <p className="footer-copyright">
-            © {new Date().getFullYear()} FurniShop. All rights reserved.
+            © {new Date().getFullYear()} FurnoTech. All rights reserved.
           </p>
           <div className="footer-payments">
             {['Visa', 'Mastercard', 'UPI', 'PayTM', 'Net Banking'].map(p => (

@@ -78,7 +78,7 @@
   gap: 10px;
   padding: 14px 16px;
   background: linear-gradient(135deg,
-    var(--color-brand-dark, #005c54), var(--color-brand) 60%, #00a693);
+    var(--color-brand-dark, #1B1C42), var(--color-brand) 60%, #5862A8);
   color: #fff;
 }
 
@@ -274,7 +274,7 @@
 }
 
 .chatbot-input button:hover:not([disabled]) {
-  background: var(--color-brand-dark, #005c54);
+  background: var(--color-brand-dark, #1B1C42);
 }
 
 .chatbot-input button:active:not([disabled]) { transform: scale(0.95); }

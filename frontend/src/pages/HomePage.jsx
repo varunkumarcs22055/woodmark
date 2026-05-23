@@ -54,7 +54,7 @@ const FEATURED_COLLECTIONS = [
     category: "beds",
     image: "/cat_bed.png",
     bg: "#F0FAF9",
-    accent: "#00736A",
+    accent: "#2D2E5F",
   },
   {
     title: "Living Room",

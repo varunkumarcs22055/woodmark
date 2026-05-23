@@ -169,7 +169,7 @@ export default function DealerApplyPage() {
         <div className="dealer-apply__header">
           <h1>Become a Dealer</h1>
           <p>
-            Join FurniShop's B2B network. Get exclusive trade pricing and bulk
+            Join FurnoTech's B2B network. Get exclusive trade pricing and bulk
             purchase benefits for your business.
           </p>
         </div>

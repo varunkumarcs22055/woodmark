@@ -208,7 +208,7 @@ DEFAULT_PAGES = [
             '- **Phone:** 1800-123-4567 (Mon-Sat, 9 AM - 6 PM)\n'
             '- **WhatsApp:** +91 98765 43210\n\n'
             '## Address\n'
-            'FurniShop HQ, Sector 62, Noida, UP - 201301\n'
+            'FurnoTech HQ, Sector 62, Noida, UP - 201301\n'
         ),
         'is_published': True,
     },

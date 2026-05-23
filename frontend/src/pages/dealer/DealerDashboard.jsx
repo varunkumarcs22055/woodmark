@@ -57,7 +57,7 @@ export default function DealerDashboard() {
       <aside className={`dealer-sidebar ${sidebarOpen ? 'dealer-sidebar--open' : ''}`}>
         <div className="dealer-sidebar__brand">
           <div>
-            <h2>FurniShop</h2>
+            <h2>FurnoTech</h2>
             <span className="dealer-sidebar__brand-tag">B2B Portal</span>
           </div>
           <button

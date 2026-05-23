@@ -1,4 +1,4 @@
-"""ASGI config for FurniShop project."""
+"""ASGI config for FurnoTech project."""
 
 import os
 from django.core.asgi import get_asgi_application

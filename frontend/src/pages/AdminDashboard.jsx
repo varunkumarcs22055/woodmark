@@ -75,7 +75,7 @@ export default function AdminDashboard() {
     <div className="admin-layout">
       <aside className={`admin-sidebar ${sidebarOpen ? 'admin-sidebar--open' : ''}`}>
         <div className="admin-sidebar__header">
-          <span className="admin-sidebar__logo">FurniShop Admin</span>
+          <span className="admin-sidebar__logo">FurnoTech Admin</span>
           <button
             className="admin-sidebar__close"
             onClick={() => setSidebarOpen(false)}

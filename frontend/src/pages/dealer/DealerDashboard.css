@@ -12,7 +12,7 @@
 
 /* ─── Sidebar ────────────────────────────────────────────────────── */
 .dealer-sidebar {
-  background: linear-gradient(180deg, #00736A 0%, #005A52 100%);
+  background: linear-gradient(180deg, #2D2E5F 0%, #1B1C42 100%);
   color: white;
   padding: var(--space-5) var(--space-4);
   display: flex;
@@ -383,7 +383,7 @@
 
 /* CTA banner — primary path for dealer is shopping the public catalog */
 .dealer-overview__cta {
-  background: linear-gradient(135deg, #00736A 0%, #00897F 60%, #0EA89B 100%);
+  background: linear-gradient(135deg, #2D2E5F 0%, #3F4283 60%, #5862A8 100%);
   color: white;
   border-radius: var(--radius-lg);
   padding: var(--space-6);

@@ -47,7 +47,7 @@ export default function ForgotPasswordPage() {
         />
         <div className="auth-page__overlay">
           <div className="auth-page__brand">
-            <h1>FurniShop</h1>
+            <h1>FurnoTech</h1>
             <blockquote>"Your home, your story."</blockquote>
           </div>
         </div>

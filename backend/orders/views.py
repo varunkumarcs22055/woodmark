@@ -41,7 +41,7 @@ def _notify_return_email(order, status_label, note=''):
             f'Hello {order.user_name},\n\n'
             f'Your return request for order {order.order_id} is now: {status_label}.\n'
             + (f'Note: {note}\n' if note else '')
-            + '\nThank you,\nFurniShop Support\n'
+            + '\nThank you,\nFurnoTech Support\n'
         )
         send_mail(subject, body, settings.DEFAULT_FROM_EMAIL,
                   [order.user_email], fail_silently=True)

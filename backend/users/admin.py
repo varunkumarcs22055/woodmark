@@ -12,13 +12,13 @@ class CustomUserAdmin(UserAdmin):
     list_editable = ('role', 'dealer_status')
 
     fieldsets = UserAdmin.fieldsets + (
-        ('FurniShop Fields', {
+        ('FurnoTech Fields', {
             'fields': ('role', 'phone', 'dealer_status', 'dealer_company_name', 'dealer_gst_number'),
         }),
     )
 
     add_fieldsets = UserAdmin.add_fieldsets + (
-        ('FurniShop Fields', {
+        ('FurnoTech Fields', {
             'fields': ('email', 'role', 'phone'),
         }),
     )

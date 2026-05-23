@@ -286,6 +286,36 @@
   padding-left: 10px;
 }
 
+/* Product variant — shows a small thumbnail beside the label.
+   The whole row is still one clickable button. */
+.mega-link--product {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px;
+}
+
+.mega-link--product:hover {
+  padding-left: 6px;       /* don't slide right when there's an image */
+}
+
+.mega-link-thumb {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  object-fit: cover;
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-2);
+}
+
+.mega-link-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Bottom footer bar inside mega menu */
 .mega-footer {
   display: flex;

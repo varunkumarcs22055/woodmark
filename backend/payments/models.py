@@ -16,6 +16,10 @@ class Payment(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     failure_reason = models.TextField(blank=True, null=True)
+    # Set when the order-confirmation email is successfully dispatched.
+    # Used as an idempotency guard so verify + webhook don't both fire one.
+    email_sent_at = models.DateTimeField(null=True, blank=True)
+    sms_sent_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

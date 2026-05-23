@@ -52,6 +52,7 @@ services:
       - key: ERP_API_KEY
         sync: false
       # Email — defaults to console backend (logs only). Override to enable SMTP.
+      # If BREVO_API_KEY is set, EMAIL_BACKEND auto-switches to anymail/brevo.
       - key: EMAIL_BACKEND
         value: "django.core.mail.backends.console.EmailBackend"
       - key: EMAIL_HOST
@@ -62,6 +63,26 @@ services:
         sync: false
       - key: DEFAULT_FROM_EMAIL
         value: "no-reply@furnishop.local"
+      # Brevo (transactional email API) — set this in Render UI to use Brevo
+      # instead of console / SMTP. core.settings auto-detects this var.
+      - key: BREVO_API_KEY
+        sync: false
+      # Used in confirmation emails / order links so they point at the prod site.
+      - key: SITE_URL
+        sync: false
+      # MSG91 (SMS gateway) — leave blank to use the simulated provider.
+      - key: MSG91_AUTH_KEY
+        sync: false
+      - key: MSG91_SENDER_ID
+        sync: false
+      - key: MSG91_ROUTE
+        value: "4"
+      - key: MSG91_DLT_TE_ID
+        sync: false
       # Frontend redirect target (used by OAuth callback)
       - key: FRONTEND_URL
+        sync: false
+      # Set "true" only on staging if you want Quick-Login / payment-simulate
+      # to work without DEBUG=True. Leave unset in production.
+      - key: ALLOW_DEV_LOGIN
         sync: false

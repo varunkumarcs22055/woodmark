@@ -468,6 +468,11 @@ export default function ProductDetailPage() {
                   : `${eta.etd_days_min}–${eta.etd_days_max} days`} for {eta.qty} unit{eta.qty > 1 ? 's' : ''}
                 {eta.zone?.zone_name && <> to <strong>{eta.zone.zone_name}</strong></>}
                 {eta.note && <span style={{ display: 'block', color: '#374151', fontSize: 12 }}>{eta.note}</span>}
+                {eta.zone?.message && (
+                  <span style={{ display: 'block', color: '#6B7280', fontSize: 12 }}>
+                    {eta.zone.message}
+                  </span>
+                )}
               </span>
               <input
                 type="text" inputMode="numeric" maxLength={6}

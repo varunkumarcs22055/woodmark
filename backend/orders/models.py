@@ -196,6 +196,7 @@ class Refund(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     gateway = models.CharField(max_length=10, choices=GATEWAY_CHOICES, default='manual')
     gateway_refund_id = models.CharField(max_length=100, blank=True)
+    gateway_payload = models.JSONField(default=dict, blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending', db_index=True)
     note = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

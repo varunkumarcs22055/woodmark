@@ -439,6 +439,11 @@ export function SupportPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(null); // ticket_number
+  const supportInboxLink = user?.role === 'admin'
+    ? '/admin-dashboard/support'
+    : user?.role === 'dealer'
+      ? '/dealer-dashboard/support'
+      : '/account/support';
 
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -490,7 +495,7 @@ export function SupportPage() {
         <div className="info-page__success">
           <strong>Reference:</strong> <code>{submitted}</code>
           <p>Keep this reference for follow-up. {user
-            ? <>Track progress in <Link to={user.role === 'admin' ? '/admin-dashboard/support' : '/dealer-dashboard/support'}>your account</Link>.</>
+            ? <>Track progress in <Link to={supportInboxLink}>your support inbox</Link>.</>
             : 'Our team replies within one business day.'}</p>
           <Link to="/" className="btn-outline">Back to homepage</Link>
         </div>

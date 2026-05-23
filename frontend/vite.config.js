@@ -16,4 +16,36 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          const normalizedId = id.replace(/\\/g, '/');
+          if (normalizedId.includes('node_modules')) {
+            if (
+              normalizedId.includes('/node_modules/react/') ||
+              normalizedId.includes('/node_modules/react-dom/') ||
+              normalizedId.includes('/node_modules/react-router-dom/')
+            ) {
+              return 'vendor-react';
+            }
+            if (normalizedId.includes('/node_modules/swiper/')) {
+              return 'vendor-swiper';
+            }
+            if (normalizedId.includes('/node_modules/react-icons/')) {
+              return 'vendor-icons';
+            }
+            return 'vendor';
+          }
+          if (normalizedId.includes('/pages/admin/')) {
+            return 'admin';
+          }
+          if (normalizedId.includes('/pages/dealer/')) {
+            return 'dealer';
+          }
+          return undefined;
+        },
+      },
+    },
+  },
 });

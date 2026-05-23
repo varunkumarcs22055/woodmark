@@ -17,6 +17,8 @@ from orders.models import Order
 from users.permissions import IsAdminRole
 from services.erp import send_order_to_erp
 from .models import Payment
+from .notifications import send_order_confirmation_email, send_order_confirmation_sms
+from .refunds import update_refund_from_webhook
 from .serializers import PaymentSerializer
 
 logger = logging.getLogger(__name__)
@@ -74,6 +76,16 @@ def confirm_order_and_sync_erp(order, razorpay_order_id=None, razorpay_payment_i
     # simulated success), not only admin-recorded credit reconciliations.
     _record_dealer_payment_for_order(order, method='razorpay',
                                      reference=razorpay_payment_id or '')
+
+    # Idempotent confirmation email + SMS — both fire on first verify or
+    # webhook, whichever wins the race. Per-channel guards (email_sent_at /
+    # sms_sent_at) ensure no double sends across retries.
+    if not payment.email_sent_at and send_order_confirmation_email(order):
+        payment.email_sent_at = timezone.now()
+        payment.save(update_fields=['email_sent_at'])
+    if not payment.sms_sent_at and send_order_confirmation_sms(order):
+        payment.sms_sent_at = timezone.now()
+        payment.save(update_fields=['sms_sent_at'])
 
     return payment
 
@@ -234,6 +246,11 @@ class RazorpayWebhookView(APIView):
         try:
             payload = json.loads(request.body)
             event = payload.get('event')
+
+            if event and event.startswith('refund.'):
+                refund_data = payload.get('payload', {}).get('refund', {}).get('entity', {})
+                update_refund_from_webhook(refund_data)
+                return Response({'status': 'ok'})
 
             if event != 'payment.captured':
                 return Response({'status': f'event {event} ignored'})

@@ -176,11 +176,23 @@ def create_invoice_from_order(order, *, force=False):
         sgst_total += sgst_amt
         igst_total += igst_amt
 
+    # Order-level coupon discount — applied AFTER per-line discounts and
+    # BEFORE tax in the displayed math, but our taxes are already computed
+    # off the post-line-discount subtotal (matches the Order's `subtotal_amount`
+    # which already reflects line discounts). Subtracting the coupon at the
+    # grand-total stage matches what was actually charged on the order.
+    coupon_discount = Decimal(str(getattr(order, 'coupon_discount', 0) or 0))
+    coupon_code = getattr(order, 'coupon_code', '') or ''
+
     grand_total = (subtotal + cgst_total + sgst_total + igst_total
-                   + Decimal(str(order.shipping_amount or 0)))
+                   + Decimal(str(order.shipping_amount or 0))
+                   - coupon_discount)
 
     invoice.subtotal = subtotal
-    invoice.discount_total = discount_total
+    # discount_total surfaces ALL savings on the PDF — line discounts + coupon.
+    invoice.discount_total = discount_total + coupon_discount
+    invoice.coupon_code = coupon_code
+    invoice.coupon_discount = coupon_discount
     invoice.cgst_total = cgst_total
     invoice.sgst_total = sgst_total
     invoice.igst_total = igst_total
@@ -198,8 +210,8 @@ def create_invoice_from_order(order, *, force=False):
         invoice.amount_due = Decimal('0')
 
     invoice.save(update_fields=[
-        'subtotal', 'discount_total', 'cgst_total', 'sgst_total',
-        'igst_total', 'grand_total',
+        'subtotal', 'discount_total', 'coupon_code', 'coupon_discount',
+        'cgst_total', 'sgst_total', 'igst_total', 'grand_total',
         'amount_paid', 'amount_due', 'payment_status',
     ])
 

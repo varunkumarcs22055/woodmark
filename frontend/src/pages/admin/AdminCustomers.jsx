@@ -7,6 +7,7 @@
  *   PATCH /api/admin/customers/{id}/         (toggle is_blocked, edit phone/name)
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { FiSearch, FiX, FiSlash, FiCheck, FiAlertTriangle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import {
@@ -60,6 +61,21 @@ export default function AdminCustomers() {
       toast.error('Failed to load customer detail');
     }
   };
+
+  // Deep-link: when navigated here with ?id=<userId> (e.g. from
+  // AdminWishlists -> View), auto-open that customer's drawer. We then
+  // strip the param so a Back nav doesn't re-trigger.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const id = searchParams.get('id');
+    if (!id) return;
+    openDrawer(id);
+    // Remove the param without leaving a history entry
+    const next = new URLSearchParams(searchParams);
+    next.delete('id');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleBlock = async (customer) => {
     const next = !customer.is_blocked;

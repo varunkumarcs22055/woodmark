@@ -265,6 +265,33 @@
   }
 }
 
+/* ─── Form rows (multi-column inputs) ───────────────────────────────── */
+.checkout-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.checkout-form .form-row--3 {
+  grid-template-columns: 1fr 2fr;  /* House/Flat narrower, Street wider */
+}
+
+@media (min-width: 720px) {
+  .checkout-form .form-row--3:has(.form-group:nth-child(3)) {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+.checkout-form .form-group--span-2 { grid-column: span 1; }
+
+@media (max-width: 600px) {
+  .checkout-form .form-row,
+  .checkout-form .form-row--3 {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ─── Form errors ─────────────────────────────────────────────────────── */
 .checkout-form .form-group--error .form-input {
   border-color: var(--color-error);

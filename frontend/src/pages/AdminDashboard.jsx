@@ -7,7 +7,8 @@ import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import {
   FiGrid, FiPackage, FiTag, FiShoppingBag, FiLayers,
   FiUsers, FiUser, FiRefreshCw, FiLogOut, FiMenu, FiX, FiSettings,
-  FiArchive, FiFileText, FiFile, FiMessageSquare, FiStar, FiMail, FiActivity,
+  FiArchive, FiFileText, FiFile, FiMessageSquare, FiStar, FiMail, FiActivity, FiTruck,
+  FiSmartphone, FiHeart,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 
@@ -28,6 +29,9 @@ import AdminAuditLogs from './admin/AdminAuditLogs';
 import AdminSettings from './admin/AdminSettings';
 import AdminReviews from './admin/AdminReviews';
 import AdminNewsletter from './admin/AdminNewsletter';
+import AdminShipping from './admin/AdminShipping';
+import AdminSMS from './admin/AdminSMS';
+import AdminWishlists from './admin/AdminWishlists';
 
 import './AdminDashboard.css';
 import './admin/AdminPanel.css';
@@ -37,15 +41,18 @@ const NAV_ITEMS = [
   { path: 'products',   label: 'Products',   icon: <FiPackage /> },
   { path: 'categories', label: 'Categories', icon: <FiLayers /> },
   { path: 'inventory',  label: 'Inventory',  icon: <FiArchive /> },
+  { path: 'shipping',   label: 'Shipping',   icon: <FiTruck /> },
   { path: 'discounts',  label: 'Discounts',  icon: <FiTag /> },
   { path: 'coupons',    label: 'Coupons',    icon: <FiTag /> },
   { path: 'orders',     label: 'Orders',     icon: <FiShoppingBag /> },
   { path: 'invoices',   label: 'Invoices',   icon: <FiFile /> },
   { path: 'customers',  label: 'Customers',  icon: <FiUser /> },
   { path: 'reviews',    label: 'Reviews',    icon: <FiStar /> },
+  { path: 'wishlists',  label: 'Wishlists',  icon: <FiHeart /> },
   { path: 'dealers',    label: 'Dealers',    icon: <FiUsers /> },
   { path: 'cms',        label: 'Content',    icon: <FiFileText /> },
   { path: 'newsletter', label: 'Newsletter', icon: <FiMail /> },
+  { path: 'sms',        label: 'SMS Campaigns', icon: <FiSmartphone /> },
   { path: 'support',    label: 'Support',    icon: <FiMessageSquare /> },
   { path: 'audit',      label: 'Audit Logs', icon: <FiActivity /> },
   { path: 'erp',        label: 'ERP Status', icon: <FiRefreshCw /> },
@@ -122,15 +129,18 @@ export default function AdminDashboard() {
             <Route path="products" element={<AdminProducts />} />
             <Route path="categories" element={<AdminCategories />} />
             <Route path="inventory" element={<AdminInventory />} />
+            <Route path="shipping" element={<AdminShipping />} />
             <Route path="discounts" element={<AdminDiscounts />} />
             <Route path="coupons" element={<AdminCoupons />} />
             <Route path="orders" element={<AdminOrders />} />
             <Route path="invoices" element={<AdminInvoices />} />
             <Route path="customers" element={<AdminCustomers />} />
             <Route path="reviews" element={<AdminReviews />} />
+            <Route path="wishlists" element={<AdminWishlists />} />
             <Route path="dealers" element={<AdminDealers />} />
             <Route path="cms" element={<AdminCMS />} />
             <Route path="newsletter" element={<AdminNewsletter />} />
+            <Route path="sms" element={<AdminSMS />} />
             <Route path="support" element={<AdminSupport />} />
             <Route path="audit" element={<AdminAuditLogs />} />
             <Route path="erp" element={<AdminERP />} />

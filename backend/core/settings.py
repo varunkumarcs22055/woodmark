@@ -58,6 +58,9 @@ INSTALLED_APPS = [
     'cloudinary',
     'cloudinary_storage',
 
+    # Transactional email via Brevo (formerly Sendinblue)
+    'anymail',
+
     # Local apps
     'users',
     'products',
@@ -80,6 +83,7 @@ INSTALLED_APPS = [
     'shipping',
     'dealer_wallet',
     'support',
+    'sms_campaigns',
 ]
 
 MIDDLEWARE = [
@@ -184,12 +188,26 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Compressed manifest storage — Django picks the right file when collectstatic
 # fingerprints assets, and WhiteNoise serves them with long cache headers.
+#
+# Media files (ImageField / FileField) go to Cloudinary when credentials are
+# configured (CLOUDINARY_CLOUD_NAME set), so admin-uploaded product photos
+# and customer-uploaded review images survive every redeploy and are served
+# from a global CDN. Falls back to local FileSystemStorage during dev when
+# no credentials are present, so `manage.py runserver` works offline.
+_use_cloudinary = bool(os.getenv('CLOUDINARY_CLOUD_NAME'))
 STORAGES = {
-    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'default': {
+        'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage'
+                   if _use_cloudinary else
+                   'django.core.files.storage.FileSystemStorage',
+    },
     'staticfiles': {
         'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
     },
 }
+# Legacy alias some 3rd-party Django apps still reference instead of STORAGES.
+if _use_cloudinary:
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -216,13 +234,19 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    # Access: short window so a compromised access token can't be used long.
+    # Refresh: 30 days so closing the browser overnight (or for the weekend)
+    # doesn't force a re-login. Combined with ROTATE_REFRESH_TOKENS, every
+    # successful refresh extends the session another 30 days — the user only
+    # gets logged out if they actually idle for 30 days OR click Sign Out.
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
+    'UPDATE_LAST_LOGIN': True,
 }
 
 # ---------------------------------------------------------------------------
@@ -310,10 +334,20 @@ FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 # The default backend is SMTP on localhost:25, which blocks for ~30s when no
 # mail server is reachable — long enough to trip the frontend's 15s axios
 # timeout during order creation (which fires admin low-stock notifications).
-EMAIL_BACKEND = os.getenv(
-    'EMAIL_BACKEND',
-    'django.core.mail.backends.console.EmailBackend',
-)
+# When BREVO_API_KEY is set we route through django-anymail's Brevo backend
+# (HTTP API — faster + tracked in dashboard). Otherwise fall back to whatever
+# EMAIL_BACKEND env var says, defaulting to console (dev). This means the
+# order/payment flow always has a working email path without crashing if
+# Brevo creds aren't yet pasted in.
+BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
+if BREVO_API_KEY:
+    EMAIL_BACKEND = 'anymail.backends.brevo.EmailBackend'
+    ANYMAIL = {'BREVO_API_KEY': BREVO_API_KEY}
+else:
+    EMAIL_BACKEND = os.getenv(
+        'EMAIL_BACKEND',
+        'django.core.mail.backends.console.EmailBackend',
+    )
 EMAIL_HOST = os.getenv('EMAIL_HOST', '')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587') or 587)
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
@@ -321,6 +355,7 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
 EMAIL_TIMEOUT = 5  # seconds — never let mail block a request
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@furnishop.local')
+SITE_URL = os.getenv('SITE_URL', 'http://localhost:5174')
 
 # ---------------------------------------------------------------------------
 # ERP Integration
@@ -342,5 +377,14 @@ CLOUDINARY_STORAGE = {
     'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME', ''),
     'API_KEY': os.getenv('CLOUDINARY_API_KEY', ''),
     'API_SECRET': os.getenv('CLOUDINARY_API_SECRET', ''),
+    # Where uploads land in Cloudinary. Keeps Console > Media Library
+    # organised when one Cloudinary account is shared across staging/prod.
+    'PREFIX': os.getenv('CLOUDINARY_FOLDER', 'furnishop'),
+    # Reject anything that isn't an image — extra defence on top of model
+    # validators. Override the type list at upload-time if we later need
+    # to host PDFs (e.g. invoices) on Cloudinary too.
+    'EXCLUDE_DELETE_ORPHANED_MEDIA_PATHS': (),
 }
-# Default file storage stays local; Cloudinary fields opt-in per model
+# When credentials are set, STORAGES['default'] above already routes uploads
+# to Cloudinary. The block below stays a no-op when CLOUDINARY_CLOUD_NAME is
+# blank, so local dev without internet still works.

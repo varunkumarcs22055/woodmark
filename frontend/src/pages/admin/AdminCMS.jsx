@@ -4,7 +4,7 @@
  * Endpoints under /api/cms/admin/{banners,pages,faqs}/
  */
 import { useEffect, useState } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiX } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiX, FiUploadCloud, FiImage } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import {
   fetchAdminBanners, createBanner, updateBanner, deleteBanner,
@@ -67,17 +67,28 @@ function BannersTab() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({ open: false, editing: null });
   const [form, setForm] = useState(EMPTY_BANNER);
+  // File staged for upload to Cloudinary — separate from form so the URL
+  // field stays editable for the "paste a remote URL" workflow.
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
-    try { setRows((await fetchAdminBanners()).results || []); }
-    catch { toast.error('Failed to load banners'); }
+    try {
+      const data = await fetchAdminBanners();
+      setRows(Array.isArray(data) ? data
+        : Array.isArray(data?.results) ? data.results : []);
+    } catch { toast.error('Failed to load banners'); }
     finally { setLoading(false); }
   };
   useEffect(() => { load(); }, []);
 
-  const openAdd = () => { setModal({ open: true, editing: null }); setForm(EMPTY_BANNER); };
+  const openAdd = () => {
+    setModal({ open: true, editing: null });
+    setForm(EMPTY_BANNER);
+    setImageFile(null); setImagePreview('');
+  };
   const openEdit = (b) => {
     setModal({ open: true, editing: b });
     setForm({
@@ -87,8 +98,31 @@ function BannersTab() {
       starts_at: b.starts_at?.slice(0, 16) || '',
       ends_at: b.ends_at?.slice(0, 16) || '',
     });
+    setImageFile(null);
+    // Show whatever the saved CDN URL is, so the admin sees the current
+    // banner while editing without having to click around.
+    setImagePreview(b.image_url_resolved || b.image_url || '');
   };
-  const close = () => setModal({ open: false, editing: null });
+  const close = () => {
+    setModal({ open: false, editing: null });
+    setImageFile(null); setImagePreview('');
+  };
+
+  const onPickFile = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!f.type.startsWith('image/')) {
+      toast.error('Please pick an image file.');
+      return;
+    }
+    if (f.size > 10 * 1024 * 1024) {
+      toast.error('Image is over 10 MB — please pick a smaller file.');
+      return;
+    }
+    setImageFile(f);
+    setImagePreview(URL.createObjectURL(f));
+    e.target.value = '';
+  };
 
   const save = async (e) => {
     e.preventDefault();
@@ -100,6 +134,9 @@ function BannersTab() {
         starts_at: form.starts_at ? new Date(form.starts_at).toISOString() : null,
         ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : null,
       };
+      // Attach the staged file so the api helper switches to multipart and
+      // the backend Cloudinary field captures it.
+      if (imageFile) payload.image = imageFile;
       if (modal.editing) await updateBanner(modal.editing.id, payload);
       else await createBanner(payload);
       toast.success(modal.editing ? 'Banner updated.' : 'Banner created.');
@@ -215,10 +252,43 @@ function BannersTab() {
                   </div>
                 </div>
                 <div className="admin-field">
-                  <label>Image URL</label>
-                  <input value={form.image_url}
-                    onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-                    placeholder="https://…" />
+                  <label>Banner image</label>
+                  <div style={{
+                    display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap',
+                  }}>
+                    <div style={{
+                      width: 200, height: 110, borderRadius: 10,
+                      border: '1px dashed #D1D5DB', background: '#F9FAFB',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      overflow: 'hidden',
+                    }}>
+                      {imagePreview ? (
+                        <img src={imagePreview} alt="preview"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <FiImage size={26} style={{ color: '#9CA3AF' }} />
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 240, display: 'flex',
+                                  flexDirection: 'column', gap: 8 }}>
+                      <label className="btn-outline" style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        cursor: 'pointer', alignSelf: 'flex-start',
+                      }}>
+                        <FiUploadCloud size={14} />
+                        {imageFile ? imageFile.name : 'Upload to Cloudinary'}
+                        <input type="file" accept="image/*"
+                          style={{ display: 'none' }} onChange={onPickFile} />
+                      </label>
+                      <small style={{ color: '#6B7280', fontSize: 12 }}>
+                        Recommended size: 1600 × 700 px. Max 10 MB.<br />
+                        Or paste an external image URL below.
+                      </small>
+                      <input value={form.image_url}
+                        onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+                        placeholder="https://… (used only when no file is uploaded)" />
+                    </div>
+                  </div>
                 </div>
                 <div className="admin-field">
                   <label>Link URL (optional)</label>

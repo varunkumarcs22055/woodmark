@@ -44,6 +44,7 @@ urlpatterns = [
     path('api/shipping/', include('shipping.urls')),
     path('api/support/', include('support.urls')),
     path('api/audit/', include('audit.urls')),
+    path('api/sms/', include('sms_campaigns.urls')),
 
     # Admin-only consolidated endpoints
     path('api/admin/dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),

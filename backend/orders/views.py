@@ -1,12 +1,22 @@
 import logging
+from decimal import Decimal
+from datetime import timedelta
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from users.permissions import IsAdminRole
+from django.conf import settings
 from django.core.mail import send_mail
+from django.utils import timezone
+from audit.mixins import AuditedMixin
 from .models import Order, OrderReturn
-from .serializers import OrderCreateSerializer, OrderSerializer, OrderStatusUpdateSerializer
+from .serializers import (
+    OrderCreateSerializer, OrderSerializer, OrderStatusUpdateSerializer,
+    OrderReturnSerializer, RefundSerializer,
+)
+
+CANCEL_WINDOW_MINUTES = 60
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +33,22 @@ def _is_owner_or_admin(request, order):
     return False
 
 
+def _notify_return_email(order, status_label, note=''):
+    """Best-effort return status email (non-blocking)."""
+    try:
+        subject = f'Return Update — {order.order_id} ({status_label})'
+        body = (
+            f'Hello {order.user_name},\n\n'
+            f'Your return request for order {order.order_id} is now: {status_label}.\n'
+            + (f'Note: {note}\n' if note else '')
+            + '\nThank you,\nFurniShop Support\n'
+        )
+        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL,
+                  [order.user_email], fail_silently=True)
+    except Exception:
+        logger.exception('Return status email failed for %s', order.order_id)
+
+
 class OrderCreateView(APIView):
     permission_classes = [AllowAny]
 
@@ -30,20 +56,22 @@ class OrderCreateView(APIView):
         serializer = OrderCreateSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             order = serializer.save()
-            # Try to send confirmation email
-            try:
-                subject = f"Order Confirmation - {order.order_id}"
-                message = f"Hello {order.user_name},\n\nThank you for shopping with FurniShop! Your order #{order.order_id} has been received.\n\nYou can track your order status here: {request.build_absolute_uri('/')}orders/{order.order_id}/\n\nTotal Amount: ₹{order.total_amount}\n\nWarm regards,\nFurniShop Team"
-                send_mail(
-                    subject,
-                    message,
-                    'no-reply@furnishop.in',
-                    [order.user_email],
-                    fail_silently=True,
-                )
-            except Exception as e:
-                logger.error(f"Failed to send order confirmation for {order.order_id}: {e}")
-            
+            # COD: send confirmation (email + SMS) immediately. Razorpay
+            # orders skip this branch — their notifications fire from
+            # confirm_order_and_sync_erp once the signature verifies (so we
+            # don't notify before payment lands).
+            if (order.payment_method or '').lower() == 'cod':
+                try:
+                    from payments.notifications import (
+                        send_order_confirmation_email,
+                        send_order_confirmation_sms,
+                    )
+                    send_order_confirmation_email(order)
+                    send_order_confirmation_sms(order)
+                except Exception:
+                    logger.exception('COD confirmation notify failed for %s',
+                                     order.order_id)
+
             return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -53,7 +81,9 @@ class OrderListView(APIView):
 
     def get(self, request):
         if request.user.is_authenticated:
-            orders = Order.objects.filter(user=request.user).prefetch_related('items__product')
+            orders = Order.objects.filter(user=request.user).prefetch_related(
+                'items__product', 'returns__refunds', 'refunds',
+            )
         else:
             email = request.query_params.get('email')
             if not email:
@@ -61,7 +91,9 @@ class OrderListView(APIView):
                     {'error': 'Email is required for guest order lookup.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            orders = Order.objects.filter(user_email=email).prefetch_related('items__product')
+            orders = Order.objects.filter(user_email=email).prefetch_related(
+                'items__product', 'returns__refunds', 'refunds',
+            )
         return Response(OrderSerializer(orders, many=True).data)
 
 
@@ -74,7 +106,9 @@ class OrderAdminListView(generics.ListAPIView):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        return Order.objects.prefetch_related('items__product').all()
+        return Order.objects.prefetch_related(
+            'items__product', 'returns__refunds', 'refunds',
+        ).all()
 
 
 class OrderStatusUpdateView(APIView):
@@ -106,7 +140,7 @@ class OrderDetailView(APIView):
     def get(self, request, order_id):
         try:
             order = (Order.objects
-                     .prefetch_related('items__product')
+                     .prefetch_related('items__product', 'returns__refunds', 'refunds')
                      .get(order_id=order_id))
         except Order.DoesNotExist:
             return Response({'error': 'Order not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -233,6 +267,21 @@ class OrderCancelView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # 1-hour self-service cancellation window.
+        deadline = order.created_at + timedelta(minutes=CANCEL_WINDOW_MINUTES)
+        if timezone.now() > deadline:
+            return Response(
+                {'error': 'Cancellation window expired. Please request a return instead.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Block cancellation if a return is already in progress.
+        if order.returns.filter(status__in=('requested', 'approved', 'received', 'refunded')).exists():
+            return Response(
+                {'error': 'A return request is already in progress for this order.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         reason = (request.data.get('reason') or '').strip()[:500]
 
         from django.db.models import F
@@ -308,3 +357,130 @@ class OrderReturnRequestView(APIView):
             'reason': ret.reason,
             'created_at': ret.created_at.isoformat(),
         }, status=status.HTTP_201_CREATED)
+
+
+class AdminReturnListView(generics.ListAPIView):
+    permission_classes = [IsAdminRole]
+    serializer_class = OrderReturnSerializer
+    ordering_fields = ['created_at', 'status']
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        qs = (OrderReturn.objects
+              .select_related('order', 'requested_by')
+              .prefetch_related('refunds'))
+        status_q = self.request.query_params.get('status')
+        if status_q:
+            qs = qs.filter(status=status_q)
+        order_id = self.request.query_params.get('order_id')
+        if order_id:
+            qs = qs.filter(order__order_id=order_id)
+        email = self.request.query_params.get('email')
+        if email:
+            qs = qs.filter(order__user_email__icontains=email)
+        return qs
+
+
+class AdminReturnDetailView(AuditedMixin, APIView):
+    permission_classes = [IsAdminRole]
+    audit_target_type = 'order_return'
+
+    ALLOWED = {
+        'requested': {'approved', 'rejected'},
+        'approved': {'received', 'rejected'},
+        'received': {'refunded'},
+        'rejected': set(),
+        'refunded': set(),
+    }
+
+    def patch(self, request, pk):
+        try:
+            ret = OrderReturn.objects.select_related('order').get(pk=pk)
+        except OrderReturn.DoesNotExist:
+            return Response({'detail': 'Return not found.'}, status=status.HTTP_404_NOT_FOUND)
+        prev_status = ret.status
+        new_status = request.data.get('status')
+        if new_status:
+            if new_status == 'refunded':
+                return Response(
+                    {'detail': 'Use the refund endpoint to mark refunded.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            allowed = self.ALLOWED.get(ret.status, set())
+            if new_status not in allowed:
+                return Response(
+                    {'detail': f'Cannot move from {ret.status} to {new_status}.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            ret.status = new_status
+
+        if 'admin_note' in request.data:
+            ret.admin_note = (request.data.get('admin_note') or '')[:2000]
+        if 'refund_amount' in request.data:
+            try:
+                ret.refund_amount = Decimal(str(request.data.get('refund_amount') or '0'))
+            except Exception:
+                return Response({'detail': 'Invalid refund amount.'}, status=status.HTTP_400_BAD_REQUEST)
+            if ret.refund_amount > ret.order.total_amount:
+                return Response({'detail': 'Refund amount cannot exceed order total.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+        ret.save(update_fields=['status', 'admin_note', 'refund_amount', 'updated_at'])
+        self.audit_write(request, action='update', target_id=ret.id,
+                         payload={'status': ret.status})
+        if new_status and new_status != prev_status:
+            _notify_return_email(ret.order, ret.status, ret.admin_note or '')
+        return Response(OrderReturnSerializer(ret).data)
+
+
+class AdminReturnRefundView(AuditedMixin, APIView):
+    permission_classes = [IsAdminRole]
+    audit_target_type = 'refund'
+
+    def post(self, request, pk):
+        try:
+            ret = OrderReturn.objects.select_related('order').get(pk=pk)
+        except OrderReturn.DoesNotExist:
+            return Response({'detail': 'Return not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if ret.status not in ('approved', 'received'):
+            return Response(
+                {'detail': 'Return must be approved/received before refunding.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        amount = request.data.get('amount') or ret.refund_amount or ret.order.total_amount
+        try:
+            amount_dec = Decimal(str(amount))
+        except Exception:
+            return Response({'detail': 'Invalid amount.'}, status=status.HTTP_400_BAD_REQUEST)
+        if amount_dec <= 0:
+            return Response({'detail': 'Refund amount must be positive.'}, status=status.HTTP_400_BAD_REQUEST)
+        if amount_dec > ret.order.total_amount:
+            return Response({'detail': 'Refund amount cannot exceed order total.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Idempotent: return existing refund if already present.
+        existing = ret.refunds.order_by('-created_at').first()
+        if existing and existing.status in ('pending', 'success'):
+            return Response(RefundSerializer(existing).data)
+
+        from payments.refunds import create_refund
+        refund = create_refund(
+            order=ret.order,
+            amount=amount_dec,
+            return_request=ret,
+            reason=request.data.get('note', '') or 'Return approved',
+        )
+
+        ret.refund_amount = amount_dec
+        if refund.status == 'success':
+            ret.status = 'refunded'
+        ret.save(update_fields=['refund_amount', 'status', 'updated_at'])
+
+        if refund.status == 'success':
+            _notify_return_email(ret.order, 'refunded', request.data.get('note', '') or '')
+
+        self.audit_write(request, action='refund', target_id=refund.id,
+                         payload={'order_id': ret.order.order_id, 'amount': str(amount_dec)})
+        return Response(RefundSerializer(refund).data)

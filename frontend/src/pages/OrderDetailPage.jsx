@@ -54,6 +54,10 @@ export default function OrderDetailPage() {
   const [acting, setActing] = useState(null); // 'cancel' | 'return' | null
 
   const handleCancel = async () => {
+    if (!order?.can_cancel) {
+      toast.error('Cancellation window expired. Please request a return instead.');
+      return;
+    }
     const reason = window.prompt(
       'Why are you cancelling this order? (optional — helps us improve)',
       ''
@@ -139,6 +143,10 @@ export default function OrderDetailPage() {
   const shipping = parseFloat(order.shipping_amount || 0);
   const couponDisc = parseFloat(order.coupon_discount || 0);
   const total = parseFloat(order.total_amount || 0);
+  const canCancel = !!order.can_cancel;
+  const cancelMins = Number.isFinite(order.cancel_minutes_remaining)
+    ? order.cancel_minutes_remaining
+    : 0;
 
   return (
     <div className="orders-page container">
@@ -175,18 +183,20 @@ export default function OrderDetailPage() {
             </strong>
             <span style={{ color: '#6B7280', fontSize: 13 }}>
               {['CREATED', 'CONFIRMED'].includes(order.order_status)
-                ? 'You can cancel this order until it ships.'
+                ? (canCancel
+                    ? `Cancel within ${cancelMins} minute${cancelMins === 1 ? '' : 's'} (1-hour window).`
+                    : 'Cancellation window expired. Please request a return after delivery.')
                 : 'Request a return within 14 days of delivery.'}
             </span>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {['CREATED', 'CONFIRMED'].includes(order.order_status) && (
-              <button onClick={handleCancel} disabled={acting === 'cancel'}
+                    <button onClick={handleCancel} disabled={acting === 'cancel' || !canCancel}
                       className="btn-outline"
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 6,
                                color: '#B91C1C', borderColor: '#FECACA' }}>
                 <FiXCircle size={14} />
-                {acting === 'cancel' ? 'Cancelling…' : 'Cancel order'}
+                {acting === 'cancel' ? 'Cancelling…' : (canCancel ? 'Cancel order' : 'Cancel unavailable')}
               </button>
             )}
             {['SHIPPED', 'DELIVERED'].includes(order.order_status) && (

@@ -267,23 +267,41 @@
 }
 
 /* ─── Why Us Strip ───────────────────────────────────────────────────── */
+/* Contained card sitting between hero and promo banner.
+   No more hard full-bleed borders — instead a soft rounded card with a
+   subtle gradient that feels intentional against the surrounding white. */
 .why-us-strip {
-  background: var(--color-surface-2);
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
-  padding: var(--space-5) 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-top: var(--space-10);
+  margin-bottom: var(--space-12);
 }
 
 .why-us-inner {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: var(--space-4);
+  background: linear-gradient(180deg, #fafbfa 0%, #f4f6f5 100%);
+  border: 1px solid #eef0ee;
+  border-radius: 16px;
+  padding: var(--space-6) var(--space-7);
+  box-shadow: 0 4px 24px -12px rgba(17, 24, 39, 0.08);
 }
 
 .why-us-item {
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.why-us-item:hover {
+  background: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px -8px rgba(0, 115, 106, 0.18);
 }
 
 .why-us-icon {
@@ -293,9 +311,10 @@
   width: 48px;
   height: 48px;
   border-radius: var(--radius-md);
-  background: var(--color-brand-pale);
+  background: linear-gradient(135deg, var(--color-brand-pale), #fff);
   color: var(--color-brand);
   flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px var(--color-brand-50);
 }
 
 .why-us-title {
@@ -501,7 +520,7 @@
 
 /* ─── Promo Banner ───────────────────────────────────────────────────── */
 .promo-banner-section {
-  padding: 0 0 var(--space-16);
+  padding: var(--space-6) 0 var(--space-16);
 }
 
 .promo-banner {

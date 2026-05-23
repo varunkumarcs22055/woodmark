@@ -50,6 +50,8 @@ class NotificationPreference(models.Model):
 class Subscriber(models.Model):
     email = models.EmailField(unique=True)
     is_active = models.BooleanField(default=True)
+    welcomed_at = models.DateTimeField(null=True, blank=True,
+                                       help_text='Set when the welcome email succeeds.')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

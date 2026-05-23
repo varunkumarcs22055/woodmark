@@ -28,48 +28,33 @@ import {
   FiSettings,
   FiTrendingUp,
   FiUserCheck,
+  FiMessageSquare,
 } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { fetchNavTags, fetchContentBlocks } from '../api';
+import { fetchContentBlocks } from '../api';
 import { useSettings } from '../context/SettingsContext';
 import './Navbar.css';
 
-/* ─── Catalog navigation
- * Labels keep the original Featherlite-style office-furniture series naming.
- * `slug` MUST be one of the seeded backend categories so /?category=<slug>
- * actually returns products: sofas, tables, chairs, beds, storage, desks,
- * dining-sets, outdoor.
- */
-/**
- * Convert backend nav-tags response into NAV_ITEMS-shaped data.
+/* ─── Catalog navigation ────────────────────────────────────────────────
+ * The labels here preserve the Featherlite-style office-furniture series
+ * naming the storefront launched with. They are *not* category names —
+ * each item carries:
+ *   { label, slug, search }
+ * where:
+ *   slug   = backend Category slug to filter on (e.g. 'desks', 'chairs')
+ *   search = free-text keyword passed to the product list endpoint's
+ *            `?search=` (matches name / description / SKU).
  *
- * Backend returns:
- *   [{ category: {slug,name}|null, tags: [{slug,label,nav_order}, …] }, …]
+ * Combined URL pattern: /?category=<slug>&search=<keyword>
+ * Backend ANDs the two filters together, so the dropdown items surface
+ * a real subset of products without needing a Tag or child-Category row
+ * for every label. As products are added with these series names in their
+ * titles, the links automatically pull them in.
  *
- * Each category becomes one mega-menu dropdown; tags are children that
- * navigate to /?category=<cat>&tag=<tag-slug> so the storefront filters
- * by both. Null-category groups are surfaced under a "Featured" header.
+ * If a label produces an empty result set, the storefront still falls
+ * back to the broader category — never a blank page.
  */
-const navTagsToNavItems = (groups) =>
-  (groups || [])
-    .filter((g) => g.tags && g.tags.length > 0)
-    .map((g, gi) => ({
-      label: g.category?.name || 'Featured',
-      key: `dyn-${g.category?.slug || 'featured'}-${gi}`,
-      columns: [{
-        heading: g.category?.name || 'Featured',
-        items: g.tags.map((t) => ({
-          label: t.label,
-          slug: g.category?.slug || '',
-          tag: t.slug,
-        })),
-      }],
-    }));
-
-/* Static fallback — used when backend returns no nav-tags so the bar isn't
- * empty on a fresh database. Replace each label/slug with real ones via the
- * Tag admin once you've added keywords. */
 const NAV_ITEMS = [
   {
     label: 'Prestino Director Suit Series',
@@ -78,18 +63,18 @@ const NAV_ITEMS = [
       {
         heading: 'Prestino Director Suit Series',
         items: [
-          { label: 'Prestino Director Table', slug: 'desks' },
-          { label: 'Prestino Storage', slug: 'storage' },
-          { label: 'Prestino Book Shelf & Full Height', slug: 'storage' },
-          { label: 'Free Standing Director Table', slug: 'desks' },
-          { label: 'Manager Table', slug: 'desks' },
-          { label: 'CEO Table', slug: 'desks' },
-          { label: 'Chairman Suit', slug: 'sofas' },
-          { label: 'Modular Computer Table', slug: 'desks' },
-          { label: 'Conference Table Series', slug: 'tables' },
-          { label: 'Modular Workstation Series', slug: 'desks' },
-          { label: 'Modular Cabin Table', slug: 'desks' },
-          { label: 'Modular Workstation', slug: 'desks' },
+          { label: 'Prestino Director Table', slug: 'desks', search: 'director table' },
+          { label: 'Prestino Storage', slug: 'storage', search: 'prestino' },
+          { label: 'Prestino Book Shelf & Full Height', slug: 'storage', search: 'bookshelf' },
+          { label: 'Free Standing Director Table', slug: 'desks', search: 'director' },
+          { label: 'Manager Table', slug: 'desks', search: 'manager' },
+          { label: 'CEO Table', slug: 'desks', search: 'ceo' },
+          { label: 'Chairman Suit', slug: 'sofas', search: 'chairman' },
+          { label: 'Modular Computer Table', slug: 'desks', search: 'computer' },
+          { label: 'Conference Table Series', slug: 'tables', search: 'conference' },
+          { label: 'Modular Workstation Series', slug: 'desks', search: 'workstation' },
+          { label: 'Modular Cabin Table', slug: 'desks', search: 'cabin' },
+          { label: 'Modular Workstation', slug: 'desks', search: 'workstation' },
         ],
       },
     ],
@@ -102,8 +87,8 @@ const NAV_ITEMS = [
       {
         heading: 'Modular Workstation Series',
         items: [
-          { label: 'Modular Cabin Table', slug: 'desks' },
-          { label: 'Modular Workstation', slug: 'desks' },
+          { label: 'Modular Cabin Table', slug: 'desks', search: 'cabin' },
+          { label: 'Modular Workstation', slug: 'desks', search: 'workstation' },
         ],
       },
     ],
@@ -116,18 +101,18 @@ const NAV_ITEMS = [
       {
         heading: 'Chair Series',
         items: [
-          { label: 'Chairman Chair Series', slug: 'chairs' },
-          { label: 'Director Chair Series', slug: 'chairs' },
-          { label: 'Executive Chair Series', slug: 'chairs' },
-          { label: 'Manager Chair Series', slug: 'chairs' },
-          { label: 'Director Chair MSH Series', slug: 'chairs' },
-          { label: 'Director MSH Chair Color Series', slug: 'chairs' },
-          { label: 'Visitor Chair Series', slug: 'chairs' },
-          { label: 'Classroom Chair Series', slug: 'chairs' },
-          { label: 'Institutional Restaurant Chair Series', slug: 'chairs' },
-          { label: 'Restaurant & Bar Stool Chair Series', slug: 'chairs' },
-          { label: 'Restaurant & Bar Chair Series', slug: 'chairs' },
-          { label: 'Auditorium Chair Series', slug: 'chairs' },
+          { label: 'Chairman Chair Series', slug: 'chairs', search: 'chairman' },
+          { label: 'Director Chair Series', slug: 'chairs', search: 'director' },
+          { label: 'Executive Chair Series', slug: 'chairs', search: 'executive' },
+          { label: 'Manager Chair Series', slug: 'chairs', search: 'manager' },
+          { label: 'Director Chair MSH Series', slug: 'chairs', search: 'msh' },
+          { label: 'Director MSH Chair Color Series', slug: 'chairs', search: 'msh color' },
+          { label: 'Visitor Chair Series', slug: 'chairs', search: 'visitor' },
+          { label: 'Classroom Chair Series', slug: 'chairs', search: 'classroom' },
+          { label: 'Institutional Restaurant Chair Series', slug: 'chairs', search: 'restaurant' },
+          { label: 'Restaurant & Bar Stool Chair Series', slug: 'chairs', search: 'bar stool' },
+          { label: 'Restaurant & Bar Chair Series', slug: 'chairs', search: 'bar' },
+          { label: 'Auditorium Chair Series', slug: 'chairs', search: 'auditorium' },
         ],
       },
     ],
@@ -140,8 +125,8 @@ const NAV_ITEMS = [
       {
         heading: 'Kids Furniture',
         items: [
-          { label: 'Kid Furniture Series', slug: 'beds' },
-          { label: 'Kid Storage Furniture Series', slug: 'storage' },
+          { label: 'Kid Furniture Series', slug: 'beds', search: 'kid' },
+          { label: 'Kid Storage Furniture Series', slug: 'storage', search: 'kid' },
         ],
       },
     ],
@@ -154,8 +139,8 @@ const NAV_ITEMS = [
       {
         heading: 'Hospital',
         items: [
-          { label: 'Hospital Bed Series', slug: 'beds' },
-          { label: 'Patient Transfer Trolley Series', slug: 'beds' },
+          { label: 'Hospital Bed Series', slug: 'beds', search: 'hospital' },
+          { label: 'Patient Transfer Trolley Series', slug: 'beds', search: 'trolley' },
         ],
       },
     ],
@@ -168,17 +153,17 @@ const NAV_ITEMS = [
       {
         heading: 'Others',
         items: [
-          { label: 'Laboratory Furniture Series', slug: 'storage' },
-          { label: 'Hostel Furniture Series', slug: 'beds' },
-          { label: 'Reception Table Series', slug: 'tables' },
-          { label: 'Waiting Chair Series', slug: 'chairs' },
-          { label: 'Office Sofa Series', slug: 'sofas' },
-          { label: 'Steel Furniture Series', slug: 'storage' },
-          { label: 'Storage Compactor Series', slug: 'storage' },
-          { label: 'Partition Series', slug: 'storage' },
-          { label: 'Chair Part & Accessories Series', slug: 'chairs' },
-          { label: 'Outdoor & Garden Seating', slug: 'outdoor' },
-          { label: 'Dining Sets', slug: 'dining-sets' },
+          { label: 'Laboratory Furniture Series', slug: 'storage', search: 'laboratory' },
+          { label: 'Hostel Furniture Series', slug: 'beds', search: 'hostel' },
+          { label: 'Reception Table Series', slug: 'tables', search: 'reception' },
+          { label: 'Waiting Chair Series', slug: 'chairs', search: 'waiting' },
+          { label: 'Office Sofa Series', slug: 'sofas', search: 'office' },
+          { label: 'Steel Furniture Series', slug: 'storage', search: 'steel' },
+          { label: 'Storage Compactor Series', slug: 'storage', search: 'compactor' },
+          { label: 'Partition Series', slug: 'storage', search: 'partition' },
+          { label: 'Chair Part & Accessories Series', slug: 'chairs', search: 'accessories' },
+          { label: 'Outdoor & Garden Seating', slug: 'outdoor', search: '' },
+          { label: 'Dining Sets', slug: 'dining-sets', search: '' },
         ],
       },
     ],
@@ -210,16 +195,6 @@ export default function Navbar() {
       }).format(settings.free_shipping_threshold)}`
     : 'Free shipping on all orders';
   const [contentBlocks, setContentBlocks] = useState({});
-  // The client-curated NAV_ITEMS is the canonical source. Dynamic tag groups
-  // from `/api/products/nav-tags/` are *appended* — they never replace the
-  // hand-tuned menu. A dynamic group is dropped if its label already exists
-  // in the static menu (case-insensitive) so we don't duplicate columns.
-  const [dynamicNav, setDynamicNav] = useState([]);
-  useEffect(() => {
-    fetchNavTags()
-      .then((groups) => setDynamicNav(navTagsToNavItems(groups)))
-      .catch(() => setDynamicNav([]));
-  }, []);
 
   useEffect(() => {
     fetchContentBlocks(['announcement_bar', 'nav_menu'])
@@ -232,6 +207,7 @@ export default function Navbar() {
   }, []);
 
   const navItems = useMemo(() => {
+    // CMS override wins — admin can hand-author the navbar tree.
     const override = contentBlocks.nav_menu?.data_json?.groups;
     if (Array.isArray(override) && override.length > 0) {
       return override.map((g, idx) => {
@@ -241,14 +217,13 @@ export default function Navbar() {
         return {
           label: g.label || g.heading || `Menu ${idx + 1}`,
           key: g.key || `cms-${idx}`,
+          slug: g.slug || '',
           columns,
         };
       });
     }
-    const staticLabels = new Set(NAV_ITEMS.map((i) => i.label.toLowerCase()));
-    const extras = dynamicNav.filter((i) => !staticLabels.has(i.label.toLowerCase()));
-    return [...NAV_ITEMS, ...extras];
-  }, [contentBlocks.nav_menu, dynamicNav]);
+    return NAV_ITEMS;
+  }, [contentBlocks.nav_menu]);
 
   const searchRef = useRef(null);
   const menuTimer = useRef(null);
@@ -305,15 +280,22 @@ export default function Navbar() {
     menuTimer.current = setTimeout(() => setActiveMenu(null), 150);
   };
 
-  // `child` is one mega-menu link: { slug, tag? } where slug = category slug,
-  // tag = optional Tag.slug (set when the link comes from /api/products/nav-tags/).
+  // `child` is one mega-menu link: { slug, search?, tag? }
+  //   slug   -> backend Category slug ('desks', 'chairs', ...)
+  //   search -> free-text keyword passed to /api/products/?search=
+  //   tag    -> optional Tag.slug (CMS overrides may still use it)
+  // Bare strings are treated as a category slug for backward compat.
   const goTo = (child) => {
-    // Backward-compat: callers may pass a bare string for legacy NAV_ITEMS.
-    const slug = typeof child === 'string' ? child : child?.slug;
-    const tag = typeof child === 'string' ? null : child?.tag;
+    if (typeof child === 'string') {
+      navigate(child ? `/?category=${encodeURIComponent(child)}` : '/');
+      setActiveMenu(null);
+      setMobileOpen(false);
+      return;
+    }
     const params = new URLSearchParams();
-    if (slug) params.set('category', slug);
-    if (tag) params.set('tag', tag);
+    if (child?.slug) params.set('category', child.slug);
+    if (child?.search) params.set('search', child.search);
+    if (child?.tag) params.set('tag', child.tag);
     const qs = params.toString();
     navigate(qs ? `/?${qs}` : '/');
     setActiveMenu(null);
@@ -447,7 +429,7 @@ export default function Navbar() {
                         </span>
                         <button
                           className="mega-footer-btn"
-                          onClick={() => goTo(item.columns[0].items[0].slug)}
+                          onClick={() => goTo(item.columns[0]?.items[0])}
                         >
                           View Full Range →
                         </button>
@@ -504,6 +486,11 @@ export default function Navbar() {
                       {user.role === 'user' && (
                         <Link to="/account" className="account-menu__link" onClick={() => setAccountOpen(false)}>
                           <FiUserCheck size={16} /> My Account
+                        </Link>
+                      )}
+                      {user.role === 'user' && (
+                        <Link to="/account/support" className="account-menu__link" onClick={() => setAccountOpen(false)}>
+                          <FiMessageSquare size={16} /> Support Inbox
                         </Link>
                       )}
                       {user.role === 'admin' && (

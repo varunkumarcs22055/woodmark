@@ -35,18 +35,143 @@ def get_tokens_for_user(user):
 
 
 class RegisterView(APIView):
+    """
+    Two-step signup:
+      1) POST /api/auth/register/  with email + password + name
+         - rejects disposable / throwaway email domains
+         - creates the User row with is_active=False (cannot log in yet)
+         - issues a 6-digit OTP, emails it via Brevo
+         - returns {detail, email} — NO tokens
+      2) POST /api/auth/verify-email/  with email + otp
+         - validates OTP, flips is_active=True, returns JWT tokens
+
+    Disposable-email policy: see users/disposable_emails.py. We block
+    obvious throwaways but allow corporate / regional providers without
+    a positive allowlist (which would be too restrictive).
+    """
     permission_classes = [AllowAny]
 
     def post(self, request):
+        from .disposable_emails import is_disposable_email
+
+        email = (request.data.get('email') or '').strip().lower()
+        if is_disposable_email(email):
+            return Response(
+                {'email': 'Disposable / temporary email addresses are not allowed. '
+                          'Please use a real email account.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = UserRegistrationSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            tokens = get_tokens_for_user(user)
-            return Response({
-                **tokens,
-                'user': UserProfileSerializer(user).data,
-            }, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create user as inactive — they can't log in until OTP is verified.
+        user = serializer.save()
+        user.is_active = False
+        user.save(update_fields=['is_active'])
+
+        # Issue OTP + email it.
+        otp = EmailOTP.issue(user, purpose='signup', ttl_minutes=15)
+        self._send_signup_otp_email(user, otp.code)
+
+        return Response({
+            'detail': 'Account created. Check your email for a 6-digit verification code.',
+            'email': user.email,
+            'requires_verification': True,
+        }, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    def _send_signup_otp_email(user, code):
+        from django.core.mail import EmailMultiAlternatives
+        html = (
+            '<div style="font-family:sans-serif;padding:24px;background:#f6f6f4">'
+            '<div style="max-width:480px;margin:auto;background:#fff;padding:28px;'
+            'border-radius:8px;border:1px solid #eee">'
+            '<h2 style="color:#00736A;margin:0 0 12px">Verify your email</h2>'
+            f'<p>Hi {user.full_name or "there"}, your FurniShop verification code is:</p>'
+            f'<div style="font-size:32px;font-weight:800;letter-spacing:8px;'
+            f'background:#f6f6f4;text-align:center;padding:18px;border-radius:8px;'
+            f'margin:18px 0;color:#00736A">{code}</div>'
+            '<p>This code expires in 15 minutes. If you didn\'t sign up, '
+            'you can ignore this email.</p>'
+            '<p style="color:#888;font-size:12px;margin-top:24px">- FurniShop</p>'
+            '</div></div>'
+        )
+        try:
+            msg = EmailMultiAlternatives(
+                subject=f'Your FurniShop verification code: {code}',
+                body=(f'Hi {user.full_name or "there"},\n\n'
+                      f'Your FurniShop verification code is: {code}\n\n'
+                      f'It expires in 15 minutes.\n\n- FurniShop'),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[user.email],
+            )
+            msg.attach_alternative(html, 'text/html')
+            msg.send(fail_silently=False)
+        except Exception:
+            logger.exception('Signup OTP email failed for %s', user.email)
+
+
+class VerifyEmailView(APIView):
+    """POST /api/auth/verify-email/  {email, otp}"""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip().lower()
+        otp_code = (request.data.get('otp') or '').strip()
+        if not email or not otp_code:
+            return Response({'detail': 'email and otp are required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response({'detail': 'Invalid email or code.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        otp = (EmailOTP.objects
+               .filter(user=user, purpose='signup', used_at__isnull=True)
+               .order_by('-created_at').first())
+        if not otp or not otp.is_valid:
+            return Response({'detail': 'Code expired or invalid. Request a new one.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if otp.code != otp_code:
+            otp.attempts += 1
+            otp.save(update_fields=['attempts'])
+            return Response({'detail': 'Invalid code.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Success: activate user, consume OTP, issue tokens.
+        from django.utils import timezone
+        otp.used_at = timezone.now()
+        otp.save(update_fields=['used_at'])
+        user.is_active = True
+        user.save(update_fields=['is_active'])
+
+        tokens = get_tokens_for_user(user)
+        return Response({
+            **tokens,
+            'user': UserProfileSerializer(user).data,
+        }, status=status.HTTP_200_OK)
+
+
+class ResendSignupOTPView(APIView):
+    """POST /api/auth/resend-verification/  {email}"""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip().lower()
+        if not email:
+            return Response({'detail': 'email is required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = User.objects.get(email__iexact=email, is_active=False)
+        except User.DoesNotExist:
+            # Don't leak whether the address exists.
+            return Response({'detail': 'If that account exists, a new code was sent.'})
+        otp = EmailOTP.issue(user, purpose='signup', ttl_minutes=15)
+        RegisterView._send_signup_otp_email(user, otp.code)
+        return Response({'detail': 'A new verification code was sent.'})
 
 
 class LoginView(APIView):

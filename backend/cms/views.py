@@ -31,11 +31,17 @@ from .models import Banner, Page, FAQ, NewsletterSubscriber, ContentBlock, Newsl
 
 class BannerSerializer(serializers.ModelSerializer):
     image_url_resolved = serializers.CharField(source='resolved_image_url', read_only=True)
+    # `image` is a Cloudinary file field — the admin can either:
+    #   - upload a file (multipart) → Cloudinary hosts it, image_url_resolved
+    #     returns the CDN URL, OR
+    #   - paste a remote image_url manually (legacy / external CDN fallback).
+    image = serializers.ImageField(required=False, allow_null=True, write_only=True)
 
     class Meta:
         model = Banner
         fields = [
-            'id', 'title', 'image_url', 'image_url_resolved',
+            'id', 'title',
+            'image', 'image_url', 'image_url_resolved',
             'link_url', 'placement', 'is_active', 'sort_order',
             'starts_at', 'ends_at', 'created_at',
         ]
@@ -164,6 +170,13 @@ class NewsletterSubscriptionView(APIView):
 
 class _AdminCRUDMixin:
     permission_classes = [IsAdminUser]
+    # JSONParser handles the existing typed-URL flow; FormParser +
+    # MultiPartParser let the admin POST a file directly so the
+    # Banner.image CloudinaryField receives a real upload.
+    from rest_framework.parsers import (
+        JSONParser, FormParser, MultiPartParser,
+    )
+    parser_classes = [JSONParser, FormParser, MultiPartParser]
     audit_target_type = 'cms'
 
     def perform_create(self, serializer):

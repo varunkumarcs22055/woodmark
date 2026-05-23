@@ -51,6 +51,10 @@ class Invoice(models.Model):
 
     subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     discount_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    # Order-level coupon savings, snapshotted from Order at invoice time so a
+    # later coupon edit doesn't retro-change the legal record.
+    coupon_code = models.CharField(max_length=40, blank=True)
+    coupon_discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     cgst_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     sgst_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     igst_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)

@@ -274,9 +274,19 @@ def render_invoice_pdf(invoice) -> bytes:
         totals_rows.append([_para(label, ls), _para(_money(val), vs)])
 
     _add('Subtotal', invoice.subtotal)
-    if invoice.discount_total and float(invoice.discount_total) > 0:
-        totals_rows.append([_para('Discount', totals_label),
-                            _para(f'- {_money(invoice.discount_total)}', totals_value)])
+    # Item-level discounts (price < original_price) + coupon are surfaced as
+    # one combined "Discount" row, with the coupon code spelled out below it
+    # if one was used. Keeps the PDF readable while making it obvious that
+    # the savings include both per-product offers and the coupon.
+    line_discounts = invoice.discount_total - invoice.coupon_discount
+    if line_discounts and float(line_discounts) > 0:
+        totals_rows.append([_para('Item Discount', totals_label),
+                            _para(f'- {_money(line_discounts)}', totals_value)])
+    if invoice.coupon_discount and float(invoice.coupon_discount) > 0:
+        coupon_label = (f'Coupon ({invoice.coupon_code})'
+                        if invoice.coupon_code else 'Coupon')
+        totals_rows.append([_para(coupon_label, totals_label),
+                            _para(f'- {_money(invoice.coupon_discount)}', totals_value)])
     if invoice.cgst_total and float(invoice.cgst_total) > 0:
         _add('CGST', invoice.cgst_total)
     if invoice.sgst_total and float(invoice.sgst_total) > 0:

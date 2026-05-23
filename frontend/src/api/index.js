@@ -175,6 +175,9 @@ export const fetchTags = (params = {}) =>
 export const fetchNavTags = () =>
   api.get('/products/nav-tags/').then((r) => r.data);
 
+export const fetchNavMenu = () =>
+  api.get('/products/nav-menu/').then((r) => r.data);
+
 export const fetchAdminTags = () =>
   api.get('/products/admin/tags/').then((r) => r.data);
 
@@ -312,6 +315,19 @@ export const cancelOrder = (orderId, reason = '') =>
 export const requestOrderReturn = (orderId, reason) =>
   api.post(`/orders/${orderId}/return/`, { reason }).then((r) => r.data);
 
+export const fetchAdminOrderWishlist = (orderPk) =>
+  api.get(`/wishlist/admin/order/${orderPk}/`).then((r) => r.data);
+
+// Admin: returns + refunds
+export const fetchAdminReturns = (params = {}) =>
+  api.get('/orders/returns/admin/', { params }).then((r) => r.data);
+
+export const updateAdminReturn = (id, data) =>
+  api.patch(`/orders/returns/admin/${id}/`, data).then((r) => r.data);
+
+export const refundAdminReturn = (id, data) =>
+  api.post(`/orders/returns/admin/${id}/refund/`, data).then((r) => r.data);
+
 // "Notify me when in stock" — anyone (guest or signed-in) can subscribe.
 export const subscribeStockAlert = (slug, email) =>
   api.post(`/products/${slug}/stock-alert/`, email ? { email } : {}).then((r) => r.data);
@@ -426,12 +442,38 @@ export const fetchLowStock = () =>
   api.get('/inventory/low-stock/').then((r) => r.data);
 
 // ─── CMS ───────────────────────────────────────────────────────────
+// Banner create/update accept either a plain JSON payload (legacy: typed
+// image_url) OR a FormData with an `image` File (Cloudinary upload). Auto-
+// detect on the caller's payload shape so the same admin form drives both.
+const buildBannerFormData = (data) => {
+  const fd = new FormData();
+  Object.entries(data).forEach(([k, v]) => {
+    if (v === undefined || v === null || v === '') return;
+    if (k === 'image' && v instanceof File) { fd.append('image', v); return; }
+    fd.append(k, typeof v === 'boolean' ? (v ? 'true' : 'false') : v);
+  });
+  return fd;
+};
+const _hasFile = (data) => data && data.image instanceof File;
+
 export const fetchAdminBanners = () =>
   api.get('/cms/admin/banners/').then((r) => r.data);
-export const createBanner = (data) =>
-  api.post('/cms/admin/banners/', data).then((r) => r.data);
-export const updateBanner = (id, data) =>
-  api.patch(`/cms/admin/banners/${id}/`, data).then((r) => r.data);
+export const createBanner = (data) => {
+  if (_hasFile(data)) {
+    return api.post('/cms/admin/banners/', buildBannerFormData(data), {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data);
+  }
+  return api.post('/cms/admin/banners/', data).then((r) => r.data);
+};
+export const updateBanner = (id, data) => {
+  if (_hasFile(data)) {
+    return api.patch(`/cms/admin/banners/${id}/`, buildBannerFormData(data), {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data);
+  }
+  return api.patch(`/cms/admin/banners/${id}/`, data).then((r) => r.data);
+};
 export const deleteBanner = (id) =>
   api.delete(`/cms/admin/banners/${id}/`).then((r) => r.data);
 
@@ -640,5 +682,57 @@ export const dealerBulkUpload = (formData) =>
   api.post('/dealer/orders/bulk-upload/', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }).then((r) => r.data);
+
+// ─── SMS Campaigns ──────────────────────────────────────────────────
+export const fetchSmsContacts = (params = {}) =>
+  api.get('/sms/contacts/', { params }).then((r) => r.data);
+
+// Targeting helper: users whose wishlist totals >= min_value (rupees).
+// Returns rows with phone+email so admin can bulk-import into SMS / send a
+// targeted promo blast ("10% off if you complete the order").
+export const fetchHighValueWishlistUsers = (minValue = 50000) =>
+  api.get('/wishlist/admin/high-value/', { params: { min_value: minValue } })
+    .then((r) => r.data);
+
+// Browse every wishlist item across all users (admin retention view).
+export const fetchAllWishlists = (params = {}) =>
+  api.get('/wishlist/admin/all/', { params }).then((r) => r.data);
+
+export const createSmsContact = (data) =>
+  api.post('/sms/contacts/', data).then((r) => r.data);
+
+export const bulkImportSmsContacts = (data) => {
+  if (data instanceof FormData) {
+    return api.post('/sms/contacts/bulk/', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data);
+  }
+  return api.post('/sms/contacts/bulk/', data).then((r) => r.data);
+};
+
+export const deleteSmsContact = (id) =>
+  api.delete(`/sms/contacts/${id}/`).then((r) => r.data);
+
+// Body: {ids: [...]}  OR  {all: true}
+export const bulkDeleteSmsContacts = (body) =>
+  api.post('/sms/contacts/bulk-delete/', body).then((r) => r.data);
+
+export const fetchSmsCampaigns = (params = {}) =>
+  api.get('/sms/campaigns/', { params }).then((r) => r.data);
+
+export const createSmsCampaign = (data) =>
+  api.post('/sms/campaigns/', data).then((r) => r.data);
+
+export const fetchSmsCampaignDetail = (id) =>
+  api.get(`/sms/campaigns/${id}/`).then((r) => r.data);
+
+export const queueSmsCampaign = (id, data = {}) =>
+  api.post(`/sms/campaigns/${id}/queue/`, data).then((r) => r.data);
+
+export const sendSmsCampaign = (id) =>
+  api.post(`/sms/campaigns/${id}/send/`, {}, { timeout: LONG_TIMEOUT_MS }).then((r) => r.data);
+
+export const fetchSmsCampaignDeliveries = (id, params = {}) =>
+  api.get(`/sms/campaigns/${id}/deliveries/`, { params }).then((r) => r.data);
 
 export default api;

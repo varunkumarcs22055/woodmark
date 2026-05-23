@@ -9,59 +9,89 @@
  */
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import api, { fetchProfile, logoutUser } from '../api';
 
 const AuthContext = createContext();
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+
+const PROFILE_CACHE_KEY = 'furnishop_user_profile';
+
+// Read cached user from localStorage *synchronously* (so first render already
+// has it). Returns null if missing or malformed.
+function readCachedUser() {
+  try {
+    const raw = localStorage.getItem(PROFILE_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Sanity check: must have an id+email. Anything else is junk.
+    if (parsed && parsed.id && parsed.email) return parsed;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedUser(profile) {
+  try {
+    if (profile) {
+      localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profile));
+    } else {
+      localStorage.removeItem(PROFILE_CACHE_KEY);
+    }
+  } catch {
+    /* quota / privacy mode — ignore */
+  }
+}
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Initialise from localStorage so the very first paint already shows the
+  // logged-in UI. If the refresh-token validation later fails we'll clear it.
+  // This makes session restore feel instant on every page navigation / reload.
+  const initialUser = (() => {
+    if (typeof window === 'undefined') return null;
+    if (!localStorage.getItem('furnishop_refresh_token')) return null;
+    return readCachedUser();
+  })();
+  const [user, setUser] = useState(initialUser);
+  // `loading` only stays true on the very first boot when we have NO cached
+  // user but DO have a refresh token (we need to fetch the profile). Once
+  // we have a cached user, the UI is already correct — no need to gate it.
+  const [loading, setLoading] = useState(!initialUser
+    && typeof window !== 'undefined'
+    && !!localStorage.getItem('furnishop_refresh_token'));
 
-  // Restore session from refresh token on app boot.
-  //
-  // On a fresh tab/window, `window.__accessToken` is undefined (it lives in
-  // memory only, per the XSS-mitigation policy). If we just call fetchProfile
-  // it produces a 401 → the interceptor refreshes → retries. That worked, BUT
-  // it failed silently when the refresh token had been rotated and never saved
-  // back to localStorage (now fixed in api/index.js). To make session restore
-  // bulletproof we now refresh proactively here so the access token is in
-  // memory before any other request fires.
+  // Background validate: refresh the profile so any stale data (role change,
+  // dealer approval, etc.) reconciles. Failures = token dead -> log out.
   useEffect(() => {
-    const restore = async () => {
-      const refresh = localStorage.getItem('furnishop_refresh_token');
-      if (!refresh) {
-        setLoading(false);
-        return;
-      }
-      try {
-        // Proactive refresh — pre-warms window.__accessToken and rotates the
-        // refresh token in localStorage so every tab opened later sees a
-        // fresh, non-blacklisted token.
-        const res = await axios.post(`${API_BASE}/auth/token/refresh/`,
-          { refresh });
-        window.__accessToken = res.data.access;
-        if (res.data.refresh) {
-          localStorage.setItem('furnishop_refresh_token', res.data.refresh);
-        }
-        const profile = await fetchProfile();
+    const refresh = localStorage.getItem('furnishop_refresh_token');
+    if (!refresh) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    fetchProfile()
+      .then((profile) => {
+        if (cancelled) return;
         setUser(profile);
-      } catch {
-        // Refresh failed → token is dead, clear and force re-login.
+        writeCachedUser(profile);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Refresh path failed -> token is dead. Clear everything.
         localStorage.removeItem('furnishop_refresh_token');
+        writeCachedUser(null);
         window.__accessToken = null;
         setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    restore();
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const login = useCallback((tokens, userProfile) => {
     window.__accessToken = tokens.access;
     localStorage.setItem('furnishop_refresh_token', tokens.refresh);
+    writeCachedUser(userProfile);
     setUser(userProfile);
   }, []);
 
@@ -76,6 +106,7 @@ export function AuthProvider({ children }) {
     }
     window.__accessToken = null;
     localStorage.removeItem('furnishop_refresh_token');
+    writeCachedUser(null);
     setUser(null);
   }, []);
 
@@ -85,11 +116,13 @@ export function AuthProvider({ children }) {
     localStorage.setItem('furnishop_refresh_token', tokens.refresh);
     try {
       const profile = await fetchProfile();
+      writeCachedUser(profile);
       setUser(profile);
       return profile;
     } catch (err) {
       window.__accessToken = null;
       localStorage.removeItem('furnishop_refresh_token');
+      writeCachedUser(null);
       throw err;
     }
   }, []);
@@ -109,6 +142,7 @@ export function AuthProvider({ children }) {
       const { data } = await api.post('/auth/dev-login/', { role });
       window.__accessToken = data.access;
       localStorage.setItem('furnishop_refresh_token', data.refresh);
+      writeCachedUser(data.user);
       setUser(data.user);
       return data.user;
     } catch (err) {
@@ -121,6 +155,7 @@ export function AuthProvider({ children }) {
   const refreshProfile = useCallback(async () => {
     try {
       const profile = await fetchProfile();
+      writeCachedUser(profile);
       setUser(profile);
       return profile;
     } catch {

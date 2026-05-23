@@ -233,6 +233,73 @@ p, li, td, dd, dt, code, pre { overflow-wrap: anywhere; word-break: break-word; 
   .pager__count { font-size: 11.5px; }
 }
 
+/* ─── Extra hardening for known-tricky screens ─────────────────────
+ * The rules above already cover the common offenders. This block fixes
+ * specific small-screen edge cases that surfaced during QA.
+ */
+@media (max-width: 768px) {
+  /* Product detail: collapse the 2-column gallery+info layout cleanly,
+     shrink the price block, make Add-to-Cart full width. */
+  .product-detail-page .pd-gallery,
+  .product-detail-page .pd-info { min-width: 0; width: 100%; }
+  .product-detail-page .pd-title { font-size: clamp(1.4rem, 5vw, 1.9rem) !important; }
+  .product-detail-page .pd-price-row { flex-wrap: wrap; gap: 8px !important; }
+  .product-detail-page .pd-cta-row,
+  .product-detail-page .pd-actions,
+  .product-detail-page .qty-and-cta { flex-wrap: wrap; gap: 10px !important; }
+  .product-detail-page .pd-cta-row > *,
+  .product-detail-page .qty-and-cta > * { flex: 1 1 100%; }
+
+  /* Cart: stop the row from compressing to unusable widths. */
+  .cart-page .cart-row,
+  .cart-page .cart-item { flex-wrap: wrap; gap: 12px; }
+  .cart-page .cart-item-image { flex: 0 0 90px; }
+  .cart-page .cart-item-body { min-width: 0; flex: 1 1 60%; }
+  .cart-page .cart-totals,
+  .cart-page .cart-summary { position: static !important; width: 100% !important; }
+
+  /* Checkout: address form & payment selector — stack and fill width. */
+  .checkout-page .checkout-form,
+  .checkout-page .payment-options,
+  .checkout-page .order-summary { width: 100% !important; max-width: 100% !important; }
+  .checkout-page input,
+  .checkout-page select,
+  .checkout-page textarea { width: 100% !important; }
+
+  /* Forms with multi-column grids on auth pages. */
+  .login-page form, .signup-page form, .dealer-apply-page form {
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .login-page form > .form-row,
+  .signup-page form > .form-row { grid-template-columns: 1fr !important; }
+
+  /* Generic form rows that aren't using the grid system. */
+  .form-row, .field-row {
+    display: flex !important; flex-direction: column !important;
+    gap: 10px !important;
+  }
+  .form-row > *, .field-row > * { width: 100% !important; }
+
+  /* Order detail page summary cards. */
+  .order-detail-summary,
+  .order-detail-rows { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 480px) {
+  /* Very narrow phones: trim breadcrumbs + tighten product card padding. */
+  .breadcrumb { font-size: 11px !important; padding: 12px 0 0 !important; }
+  .breadcrumb .current { max-width: 120px; }
+  .product-card { padding: 8px !important; }
+  .product-card-body { padding: 8px 6px !important; }
+  /* Account / orders page: tabs scroll horizontally instead of wrapping. */
+  .account-tabs, .orders-tabs {
+    display: flex !important; overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap; padding-bottom: 4px;
+  }
+  .account-tabs > *, .orders-tabs > * { flex: 0 0 auto; }
+}
+
 /* ─── Print: keep the invoice + receipt readable when printed ──── */
 @media print {
   .navbar, .footer, .admin-sidebar, .dealer-sidebar,

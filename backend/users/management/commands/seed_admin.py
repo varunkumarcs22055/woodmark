@@ -13,11 +13,13 @@ Run:
     python manage.py seed_admin
 """
 from django.core.management.base import BaseCommand
+from decimal import Decimal
 
 from cms.models import Banner, Page, FAQ
 from inventory.models import StockLevel, StockMovement, Warehouse
 from products.models import Product
 from users.models import User
+from shipping.models import ShippingZone
 
 
 class Command(BaseCommand):
@@ -27,6 +29,7 @@ class Command(BaseCommand):
         self._seed_users()
         self._seed_warehouses_and_stock()
         self._seed_cms()
+        self._seed_shipping_zones()
         self.stdout.write(self.style.SUCCESS('Seed complete.'))
 
     # ── Users ────────────────────────────────────────────────────────────
@@ -128,3 +131,92 @@ class Command(BaseCommand):
                 question=q,
                 defaults={'answer': a, 'category': cat, 'sort_order': order, 'is_active': True},
             )
+
+    # ── Shipping zones ──────────────────────────────────────────────────
+
+    def _seed_shipping_zones(self):
+        zones = [
+            {
+                'name': 'Delhi NCR',
+                'pincode_prefix': '11',
+                'base_fee': Decimal('149'),
+                'per_kg_fee': Decimal('25'),
+                'free_shipping_threshold': Decimal('5000'),
+                'etd_days_min': 2,
+                'etd_days_max': 4,
+                'cod_available': True,
+                'is_active': True,
+            },
+            {
+                'name': 'Mumbai',
+                'pincode_prefix': '40',
+                'base_fee': Decimal('199'),
+                'per_kg_fee': Decimal('30'),
+                'free_shipping_threshold': Decimal('6000'),
+                'etd_days_min': 3,
+                'etd_days_max': 5,
+                'cod_available': True,
+                'is_active': True,
+            },
+            {
+                'name': 'Bengaluru',
+                'pincode_prefix': '56',
+                'base_fee': Decimal('189'),
+                'per_kg_fee': Decimal('28'),
+                'free_shipping_threshold': Decimal('5500'),
+                'etd_days_min': 3,
+                'etd_days_max': 6,
+                'cod_available': True,
+                'is_active': True,
+            },
+            {
+                'name': 'Chennai',
+                'pincode_prefix': '60',
+                'base_fee': Decimal('189'),
+                'per_kg_fee': Decimal('28'),
+                'free_shipping_threshold': Decimal('5500'),
+                'etd_days_min': 3,
+                'etd_days_max': 6,
+                'cod_available': True,
+                'is_active': True,
+            },
+            {
+                'name': 'Hyderabad',
+                'pincode_prefix': '50',
+                'base_fee': Decimal('189'),
+                'per_kg_fee': Decimal('28'),
+                'free_shipping_threshold': Decimal('5500'),
+                'etd_days_min': 3,
+                'etd_days_max': 6,
+                'cod_available': True,
+                'is_active': True,
+            },
+            {
+                'name': 'Kolkata',
+                'pincode_prefix': '70',
+                'base_fee': Decimal('209'),
+                'per_kg_fee': Decimal('32'),
+                'free_shipping_threshold': Decimal('6500'),
+                'etd_days_min': 4,
+                'etd_days_max': 7,
+                'cod_available': True,
+                'is_active': True,
+            },
+        ]
+
+        for z in zones:
+            zone, created = ShippingZone.objects.get_or_create(
+                pincode_prefix=z['pincode_prefix'],
+                defaults=z,
+            )
+            if created:
+                self.stdout.write(f'  + shipping zone {zone.name} ({zone.pincode_prefix}*)')
+            else:
+                # Update defaults on existing rows to keep local data fresh.
+                changed = False
+                for k, v in z.items():
+                    if getattr(zone, k) != v:
+                        setattr(zone, k, v)
+                        changed = True
+                if changed:
+                    zone.save()

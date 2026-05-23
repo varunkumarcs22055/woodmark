@@ -100,12 +100,509 @@
   .admin-grid-2 { grid-template-columns: 1fr; }
 }
 
+/* ─── Search pill (admin tables) ─────────────────────────────────── */
+.admin-search {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e2e6e3;
+  border-radius: 999px;
+  padding: 4px 4px 4px 16px;
+  height: 46px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.admin-search:focus-within {
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px rgba(0, 115, 106, 0.12);
+}
+
+.admin-search__icon {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.admin-search__input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 10px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  min-width: 0;
+}
+
+.admin-search__input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.admin-search__input::-webkit-search-cancel-button { display: none; }
+
+.admin-search__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: none;
+  background: #f1f3f1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-right: 6px;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.admin-search__clear:hover {
+  background: #e4e8e5;
+  color: var(--color-text);
+}
+
+.admin-search__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 22px;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-brand);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 160ms ease, transform 120ms ease;
+  flex-shrink: 0;
+}
+
+.admin-search__btn:hover {
+  background: var(--color-brand-dark, #005c54);
+}
+
+.admin-search__btn:active {
+  transform: scale(0.97);
+}
+
+/* ─── Section header (icon + title + subtitle) ───────────────────── */
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid #f0f2f0;
+}
+
+.section-header__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--color-brand-pale), #fff);
+  color: var(--color-brand);
+  box-shadow: inset 0 0 0 1px var(--color-brand-50);
+}
+
+/* Variants for color-coded section badges */
+.section-header__icon--red {
+  background: linear-gradient(135deg, #fde4e0, #fff);
+  color: #e74c3c;
+  box-shadow: inset 0 0 0 1px #f6c2b8;
+}
+.section-header__icon--amber {
+  background: linear-gradient(135deg, #fff1d6, #fff);
+  color: #c77900;
+  box-shadow: inset 0 0 0 1px #f4d6a0;
+}
+.section-header__icon--blue {
+  background: linear-gradient(135deg, #dbeafe, #fff);
+  color: #2563eb;
+  box-shadow: inset 0 0 0 1px #c7d8fb;
+}
+
+.section-header__text { min-width: 0; flex: 1; }
+
+.section-header__title {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 4px;
+  letter-spacing: -0.01em;
+}
+
+.section-header__subtitle {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* When a section-header lives inside admin-card, suppress the auto h3
+   underline rule from earlier (we already provide our own divider). */
+.admin-card > .section-header + * { margin-top: 0; }
+.admin-card > .section-header:first-child { margin-top: 0; }
+
+/* ─── Form inputs (admin pages) ──────────────────────────────────── */
+.admin-input,
+.admin-card input[type='text'],
+.admin-card input[type='number'],
+.admin-card input[type='email'],
+.admin-card input[type='tel'],
+.admin-card input[type='password'],
+.admin-card input[type='url'],
+.admin-card input[type='search'],
+.admin-card input[type='date'],
+.admin-card input[type='datetime-local'],
+.admin-card select,
+.admin-card textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #dde2df;
+  border-radius: 10px;
+  background: #fff;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  outline: none;
+  line-height: 1.4;
+}
+
+.admin-input:hover,
+.admin-card input:hover:not([disabled]),
+.admin-card select:hover:not([disabled]),
+.admin-card textarea:hover:not([disabled]) {
+  border-color: #c4cbc7;
+}
+
+.admin-input:focus,
+.admin-card input:focus,
+.admin-card select:focus,
+.admin-card textarea:focus {
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px rgba(0, 115, 106, 0.14);
+  background: #fff;
+}
+
+.admin-input[disabled],
+.admin-card input[disabled],
+.admin-card select[disabled],
+.admin-card textarea[disabled] {
+  background: #f6f7f6;
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.admin-input::placeholder,
+.admin-card textarea::placeholder {
+  color: #9ba3a0;
+}
+
+textarea.admin-input {
+  resize: vertical;
+  min-height: 90px;
+}
+
+/* File input — browsers style this very inconsistently. Force a clean look. */
+.admin-card input[type='file'] {
+  font-size: 13px;
+  cursor: pointer;
+}
+.admin-card input[type='file']::file-selector-button {
+  margin-right: 10px;
+  padding: 6px 12px;
+  border: 1px solid #dde2df;
+  border-radius: 8px;
+  background: #f6f7f6;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+.admin-card input[type='file']::file-selector-button:hover {
+  background: #ecefed;
+}
+
+/* Labels — stacked above the input with proper rhythm */
+.admin-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: -0.005em;
+}
+
+.admin-label > span:first-child {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+/* ─── Buttons (admin pages — override base, larger / more "click here") ── */
+.admin-card .btn-primary,
+.admin-card .btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 22px;
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, transform 100ms ease,
+              box-shadow 200ms ease, border-color 160ms ease;
+  text-decoration: none;
+  line-height: 1;
+}
+
+.admin-card .btn-primary {
+  background: var(--color-brand);
+  color: #fff;
+  border: 1px solid var(--color-brand);
+  box-shadow: 0 1px 2px rgba(0, 115, 106, 0.16),
+              0 4px 12px -4px rgba(0, 115, 106, 0.24);
+}
+
+.admin-card .btn-primary:hover:not([disabled]) {
+  background: var(--color-brand-dark, #005c54);
+  border-color: var(--color-brand-dark, #005c54);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 115, 106, 0.2),
+              0 8px 18px -4px rgba(0, 115, 106, 0.32);
+}
+
+.admin-card .btn-primary:active:not([disabled]) {
+  transform: translateY(0);
+}
+
+.admin-card .btn-primary[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.admin-card .btn-outline {
+  background: #fff;
+  color: var(--color-text);
+  border: 1px solid #d9ddda;
+}
+
+.admin-card .btn-outline:hover:not([disabled]) {
+  background: #f6f7f6;
+  border-color: #c0c6c2;
+}
+
+.admin-card .btn-outline[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ─── Money range filter (admin lists) ──────────────────────────── */
+.admin-money-range {
+  display: inline-flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e2e6e3;
+  border-radius: 999px;
+  padding: 3px 4px 3px 14px;
+  height: 40px;
+  gap: 6px;
+}
+
+.admin-money-range:focus-within {
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px rgba(0, 115, 106, 0.1);
+}
+
+.admin-money-range__currency {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.admin-money-range__input {
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 110px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  padding: 0 4px;
+}
+
+.admin-money-range__input::-webkit-outer-spin-button,
+.admin-money-range__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.admin-money-range__sep {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.admin-money-range__apply {
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-brand);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 140ms ease, transform 100ms ease;
+}
+
+.admin-money-range__apply:hover { background: var(--color-brand-dark, #005c54); }
+.admin-money-range__apply:active { transform: scale(0.97); }
+
+/* ─── Filter chips (quick pickers) ─────────────────────────────── */
+.admin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #e2e6e3;
+  border-radius: 999px;
+  background: #fff;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.admin-chip:hover {
+  background: #f5f7f5;
+  color: var(--color-text);
+}
+
+.admin-chip--active {
+  background: var(--color-brand);
+  border-color: var(--color-brand);
+  color: #fff;
+}
+
+.admin-chip--active:hover {
+  background: var(--color-brand);
+  color: #fff;
+}
+
+.admin-chip--ghost {
+  background: transparent;
+  border: 1px dashed #cfd5d1;
+  color: var(--color-text-muted);
+}
+
+.admin-chip--ghost:hover {
+  background: #fff;
+  border-style: solid;
+  color: #e74c3c;
+  border-color: #e74c3c;
+}
+
+/* ─── Tabs (Contacts / Campaigns / Deliveries / Settings sub-tabs) ─ */
+.admin-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid #eef0ee;
+  border-radius: 999px;
+  padding: 4px;
+  gap: 2px;
+  margin-bottom: var(--space-5);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+}
+
+.admin-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, transform 120ms ease;
+}
+
+.admin-tab:hover {
+  color: var(--color-text);
+  background: #f6f7f6;
+}
+
+.admin-tab--active {
+  background: var(--color-brand);
+  color: #fff;
+}
+
+.admin-tab--active:hover {
+  background: var(--color-brand);
+  color: #fff;
+}
+
 /* ─── Card ────────────────────────────────────────────────────────── */
 .admin-card {
   background: white;
   border-radius: var(--radius-lg);
   padding: var(--space-5);
   box-shadow: var(--shadow-sm);
+  /* Subtle hover lift + accent bar pull the page out of "wireframe" land. */
+  border: 1px solid #eef0ee;
+  transition: box-shadow 180ms ease, transform 180ms ease;
+}
+.admin-card:hover {
+  box-shadow: 0 2px 14px -4px rgba(17, 24, 39, 0.08),
+              0 4px 24px -8px rgba(0, 115, 106, 0.06);
+}
+
+/* Any heading directly under an admin-card gets the same visual treatment
+   as an admin-card__header — auto-styling so pages that don't wrap their
+   title in <div class="admin-card__header"> still look intentional. */
+.admin-card > h2:first-child,
+.admin-card > h3:first-child,
+.admin-card > h4:first-child {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  margin: 0 0 var(--space-3);
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid #f0f2f0;
 }
 
 .admin-card--tight {
@@ -128,10 +625,32 @@
 }
 
 .admin-empty {
-  padding: var(--space-8);
+  padding: var(--space-10) var(--space-8);
   text-align: center;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
+  background: linear-gradient(180deg, #fafbfa 0%, #f4f6f5 100%);
+  border-radius: var(--radius-lg);
+  border: 1px dashed #d8dcd9;
+  /* Center vertically with a tiny icon if the caller provides one. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-height: 140px;
+  justify-content: center;
+}
+
+.admin-empty__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-brand);
+  box-shadow: 0 2px 8px rgba(0, 115, 106, 0.08);
 }
 
 /* ─── Toolbar (search + filters) ────────────────────────────────── */

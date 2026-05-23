@@ -1,7 +1,9 @@
 from decimal import Decimal
+from datetime import timedelta
+from django.utils import timezone
 from rest_framework import serializers
 from django.db.models import F
-from .models import Order, OrderItem
+from .models import Order, OrderItem, OrderReturn, Refund
 from products.models import Product
 from discounts.services import get_effective_price
 
@@ -21,10 +23,44 @@ class OrderItemSerializer(serializers.ModelSerializer):
         ]
 
 
+class RefundSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Refund
+        fields = [
+            'id', 'amount', 'gateway', 'gateway_refund_id',
+            'status', 'note', 'gateway_payload', 'created_at',
+        ]
+
+
+class OrderReturnSerializer(serializers.ModelSerializer):
+    order_id = serializers.CharField(source='order.order_id', read_only=True)
+    user_name = serializers.CharField(source='order.user_name', read_only=True)
+    user_email = serializers.CharField(source='order.user_email', read_only=True)
+    order_total = serializers.DecimalField(
+        source='order.total_amount', max_digits=10, decimal_places=2, read_only=True,
+    )
+    refunds = RefundSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = OrderReturn
+        fields = [
+            'id', 'order', 'order_id', 'user_name', 'user_email', 'order_total',
+            'reason', 'status', 'refund_amount', 'admin_note',
+            'created_at', 'updated_at', 'refunds',
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     invoice_id = serializers.SerializerMethodField()
     invoice_number = serializers.SerializerMethodField()
+    can_cancel = serializers.SerializerMethodField()
+    cancel_expires_at = serializers.SerializerMethodField()
+    cancel_minutes_remaining = serializers.SerializerMethodField()
+    is_high_value = serializers.SerializerMethodField()
+    returns = OrderReturnSerializer(many=True, read_only=True)
+    refunds = RefundSerializer(many=True, read_only=True)
 
     def get_invoice_id(self, obj):
         invoice = getattr(obj, 'invoice', None)
@@ -33,6 +69,28 @@ class OrderSerializer(serializers.ModelSerializer):
     def get_invoice_number(self, obj):
         invoice = getattr(obj, 'invoice', None)
         return invoice.invoice_number if invoice else None
+
+    def _cancel_deadline(self, obj):
+        return obj.created_at + timedelta(hours=1)
+
+    def get_cancel_expires_at(self, obj):
+        return self._cancel_deadline(obj).isoformat()
+
+    def get_can_cancel(self, obj):
+        if obj.order_status not in ('CREATED', 'CONFIRMED'):
+            return False
+        return timezone.now() <= self._cancel_deadline(obj)
+
+    def get_cancel_minutes_remaining(self, obj):
+        remaining = self._cancel_deadline(obj) - timezone.now()
+        minutes = int(max(0, remaining.total_seconds() // 60))
+        return minutes
+
+    def get_is_high_value(self, obj):
+        try:
+            return Decimal(str(obj.total_amount)) >= Decimal('50000')
+        except Exception:
+            return False
 
     class Meta:
         model = Order
@@ -47,6 +105,8 @@ class OrderSerializer(serializers.ModelSerializer):
             'payment_method', 'po_number', 'dealer_note', 'preferred_carrier',
             'erp_order_id', 'erp_sync_status', 'created_at', 'items',
             'invoice_id', 'invoice_number',
+            'can_cancel', 'cancel_expires_at', 'cancel_minutes_remaining',
+            'is_high_value', 'returns', 'refunds',
         ]
 
 

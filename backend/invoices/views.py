@@ -7,6 +7,7 @@
 """
 from datetime import date
 
+from django.conf import settings
 from django.core.mail import EmailMessage
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -109,7 +110,7 @@ class InvoiceEmailView(AuditedMixin, APIView):
                 f'{invoice.order.order_id}.\n\n'
                 f'Thank you for shopping with us.\n— {invoice.store_name}'
             ),
-            from_email=invoice.store_email or 'no-reply@furnishop.local',
+            from_email=settings.DEFAULT_FROM_EMAIL,
             to=[recipient],
         )
         msg.attach(f'{invoice.invoice_number}.pdf', pdf_bytes, 'application/pdf')

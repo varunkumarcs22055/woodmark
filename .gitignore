@@ -93,3 +93,12 @@ frontend/build/
 *.swp
 .cache/
 .turbo/
+
+# Personal / sales reports — keep local only
+FINAL_BUILD_PROMPT.md
+FurniShop_Client_Report.pdf
+FurniShop_Services_Required.pdf
+build_client_pdf.py
+build_services_pdf.py
+admin.md
+

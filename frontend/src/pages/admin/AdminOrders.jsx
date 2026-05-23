@@ -10,7 +10,11 @@
 import { useEffect, useState, useMemo } from 'react';
 import { FiSearch, FiX, FiRefreshCw } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import { fetchAllOrders, updateOrderStatus, retryErpSync } from '../../api';
+import {
+  fetchAllOrders, updateOrderStatus, retryErpSync,
+  fetchOrderDetail, updateAdminReturn, refundAdminReturn,
+  fetchAdminOrderWishlist,
+} from '../../api';
 import { formatPrice, formatDateTime } from '../../utils/format';
 import Pagination from '../../components/Pagination';
 
@@ -38,6 +42,7 @@ export default function AdminOrders() {
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterPayment, setFilterPayment] = useState('ALL');
   const [drawerOrder, setDrawerOrder] = useState(null);
+  const [wishlist, setWishlist] = useState(null);
 
   const loadOrders = async () => {
     setLoading(true);
@@ -66,6 +71,18 @@ export default function AdminOrders() {
   }, [search]);
   // Reset to page 1 when filters change
   useEffect(() => { if (page !== 1) setPage(1); /* eslint-disable-next-line */ }, [filterStatus, filterPayment]);
+
+  useEffect(() => {
+    let live = true;
+    if (!drawerOrder?.is_high_value) {
+      setWishlist(null);
+      return undefined;
+    }
+    fetchAdminOrderWishlist(drawerOrder.id)
+      .then((data) => { if (live) setWishlist(data); })
+      .catch(() => { if (live) setWishlist({ count: 0, results: [] }); });
+    return () => { live = false; };
+  }, [drawerOrder]);
 
   const filtered = useMemo(() => {
     return orders.filter((o) => {
@@ -113,6 +130,37 @@ export default function AdminOrders() {
       await loadOrders();
     } catch (err) {
       toast.error(err.response?.data?.detail || 'ERP retry failed');
+    }
+  };
+
+  const refreshOrder = async (orderId) => {
+    try {
+      const updated = await fetchOrderDetail(orderId);
+      setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+      if (drawerOrder?.id === updated.id) setDrawerOrder(updated);
+    } catch {
+      // fallback to full reload
+      await loadOrders();
+    }
+  };
+
+  const handleReturnUpdate = async (retId, data, orderId) => {
+    try {
+      await updateAdminReturn(retId, data);
+      toast.success('Return updated');
+      await refreshOrder(orderId);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to update return');
+    }
+  };
+
+  const handleReturnRefund = async (retId, orderId, amount) => {
+    try {
+      await refundAdminReturn(retId, { amount });
+      toast.success('Refund processed');
+      await refreshOrder(orderId);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Refund failed');
     }
   };
 
@@ -165,7 +213,14 @@ export default function AdminOrders() {
                     {o.user_name}
                     <span className="admin-meta-line">{o.user_email}</span>
                   </td>
-                  <td>{formatPrice(o.total_amount)}</td>
+                  <td>
+                    {formatPrice(o.total_amount)}
+                    {o.is_high_value && (
+                      <span className="admin-meta-line" style={{ color: '#B45309', fontWeight: 600 }}>
+                        High value
+                      </span>
+                    )}
+                  </td>
                   <td>
                     <span className={`status-badge status-badge--${(o.order_status || '').toLowerCase()}`}>
                       {o.order_status}
@@ -201,13 +256,16 @@ export default function AdminOrders() {
           onClose={() => setDrawerOrder(null)}
           onStatusChange={handleStatusChange}
           onErpRetry={handleErpRetry}
+          onReturnUpdate={handleReturnUpdate}
+          onReturnRefund={handleReturnRefund}
+          wishlist={wishlist}
         />
       )}
     </div>
   );
 }
 
-function OrderDrawer({ order, onClose, onStatusChange, onErpRetry }) {
+function OrderDrawer({ order, onClose, onStatusChange, onErpRetry, onReturnUpdate, onReturnRefund, wishlist }) {
   return (
     <>
       <div className="admin-drawer-backdrop" onClick={onClose} />
@@ -228,6 +286,36 @@ function OrderDrawer({ order, onClose, onStatusChange, onErpRetry }) {
             <p>{order.phone}</p>
             <p style={{ whiteSpace: 'pre-wrap' }}>{order.address}</p>
           </section>
+
+          {order.is_high_value && (
+            <section className="admin-drawer__section">
+              <h4>High value outreach</h4>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <a className="btn-outline" href={`mailto:${order.user_email}`}>Email</a>
+                <a className="btn-outline" href={`tel:${order.phone}`}>Call</a>
+                <a className="btn-outline" href="/admin-dashboard/sms">SMS campaign</a>
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <strong style={{ display: 'block', marginBottom: 6 }}>Wishlist</strong>
+                {wishlist?.results?.length ? (
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {wishlist.results.map((w) => (
+                      <div key={w.id} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <img src={w.product_detail?.image_url}
+                             alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover' }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600 }}>{w.product_detail?.name}</div>
+                          <div className="admin-meta-line">₹{w.product_detail?.price}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="admin-meta-line">No wishlist items.</span>
+                )}
+              </div>
+            </section>
+          )}
 
           <section className="admin-drawer__section">
             <h4>Items</h4>
@@ -260,6 +348,73 @@ function OrderDrawer({ order, onClose, onStatusChange, onErpRetry }) {
             </select>
             {TERMINAL.has(order.order_status) && (
               <span className="admin-meta-line">Terminal state — no further transitions.</span>
+            )}
+          </section>
+
+          <section className="admin-drawer__section">
+            <h4>Returns</h4>
+            {order.returns?.length ? (
+              order.returns.map((ret) => {
+                const latestRefund = Array.isArray(ret.refunds) && ret.refunds.length > 0
+                  ? ret.refunds[0]
+                  : null;
+                return (
+                  <div key={ret.id} style={{
+                    border: '1px solid #E5E7EB', borderRadius: 10, padding: 12, marginBottom: 10,
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <strong>Return #{ret.id}</strong>
+                      <span className={`status-badge status-badge--${ret.status}`}>{ret.status}</span>
+                    </div>
+                    <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{ret.reason}</p>
+                    <div className="admin-meta-line">
+                      Refund amount: {formatPrice(ret.refund_amount || 0)}
+                    </div>
+                    {latestRefund && (
+                      <div className="admin-meta-line">
+                        Refund: {latestRefund.status} · {latestRefund.gateway}
+                        {latestRefund.gateway_refund_id ? ` · ${latestRefund.gateway_refund_id}` : ''}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                      {ret.status === 'requested' && (
+                        <>
+                          <button className="btn-outline"
+                                  onClick={() => onReturnUpdate(ret.id, { status: 'approved' }, order.order_id)}>
+                            Approve
+                          </button>
+                          <button className="btn-outline" style={{ color: '#B91C1C', borderColor: '#FECACA' }}
+                                  onClick={() => onReturnUpdate(ret.id, { status: 'rejected' }, order.order_id)}>
+                            Reject
+                          </button>
+                        </>
+                      )}
+                      {ret.status === 'approved' && (
+                        <button className="btn-outline"
+                                onClick={() => onReturnUpdate(ret.id, { status: 'received' }, order.order_id)}>
+                          Mark received
+                        </button>
+                      )}
+                      {ret.status === 'received' && (
+                        <button className="btn-outline"
+                                onClick={() => {
+                                  const def = ret.refund_amount || order.total_amount;
+                                  const input = window.prompt('Refund amount (INR):', String(def));
+                                  if (!input) return;
+                                  const amt = parseFloat(input);
+                                  if (!Number.isFinite(amt) || amt <= 0) return;
+                                  onReturnRefund(ret.id, order.order_id, amt);
+                                }}>
+                          Refund
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="admin-meta-line">No return requests.</p>
             )}
           </section>
 

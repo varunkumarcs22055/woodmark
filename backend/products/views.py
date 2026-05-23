@@ -241,6 +241,7 @@ class ProductDeliveryEtaView(APIView):
                 'cod_available': ship.get('cod_available'),
                 'etd_days_min': ship.get('etd_days_min'),
                 'etd_days_max': ship.get('etd_days_max'),
+                'message': ship.get('message'),
             }
             if ship.get('etd_days_min'):
                 etd_min += int(ship['etd_days_min'])
@@ -311,6 +312,17 @@ class SimilarProductsView(APIView):
                       .exclude(pk__in=seen)
                       .order_by('-rating_avg', '-created_at')[:limit - len(results)])
             results.extend(extras)
+
+        # Last-resort pad: featured / top-rated products from ANY category so
+        # the "You May Also Like" grid never shows fewer than `limit` cards.
+        # Without this, sparse categories (e.g. only 2 products in Outdoor)
+        # render a single lonely card and the layout looks broken.
+        if len(results) < limit:
+            seen = {p.pk for p in results}
+            fillers = (base.exclude(pk__in=seen)
+                       .order_by('-is_featured', '-rating_avg', '-rating_count')
+                       [:limit - len(results)])
+            results.extend(fillers)
 
         return Response(
             ProductListSerializer(results, many=True, context={'request': request}).data
@@ -484,6 +496,88 @@ class CategoryListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
 
+class NavMenuView(APIView):
+    """
+    GET /api/products/nav-menu/
+
+    Returns the navbar mega-menu tree in one call:
+
+        [
+          {
+            "name": "Sofas",
+            "slug": "sofas",
+            "product_count": 2,
+            "children": [],            # child categories if any exist
+            "top_products": [          # falls back to top N products if no children
+              {"id": 1, "slug": "...", "name": "...", "image_url": "..."},
+              ...
+            ]
+          },
+          ...
+        ]
+
+    The frontend renders each top-level row as a navbar header. If `children`
+    is non-empty, those are the sub-items; otherwise `top_products` is shown
+    so the dropdown is never empty.
+
+    Cached for 5 min — this is the single most-hit endpoint on the storefront.
+    """
+    permission_classes = [AllowAny]
+
+    @method_decorator(cache_page(60 * 5))
+    def get(self, request):
+        TOP_N = 6
+        roots = (Category.objects.filter(parent__isnull=True, is_active=True)
+                 .order_by('sort_order', 'name'))
+        out = []
+        for cat in roots:
+            children = list(
+                cat.children.filter(is_active=True)
+                   .order_by('sort_order', 'name')
+                   .values('id', 'name', 'slug')
+            )
+            # Annotate child product counts in one pass
+            if children:
+                child_ids = [c['id'] for c in children]
+                counts = dict(
+                    Product.objects.filter(category_id__in=child_ids,
+                                           is_deleted=False, status='active')
+                                   .values_list('category_id')
+                                   .annotate(n=Count('id'))
+                                   .values_list('category_id', 'n')
+                )
+                for c in children:
+                    c['product_count'] = counts.get(c['id'], 0)
+
+            top_products = []
+            if not children:
+                qs = (Product.objects.filter(category=cat, is_deleted=False,
+                                             status='active')
+                                     .order_by('-is_featured', '-rating_avg',
+                                               '-created_at')[:TOP_N])
+                for p in qs:
+                    top_products.append({
+                        'id': p.id,
+                        'slug': p.slug,
+                        'name': p.name,
+                        'image_url': p.image_url or '',
+                    })
+
+            total = Product.objects.filter(
+                category=cat, is_deleted=False, status='active'
+            ).count()
+
+            out.append({
+                'id': cat.id,
+                'name': cat.name,
+                'slug': cat.slug,
+                'product_count': total,
+                'children': children,
+                'top_products': top_products,
+            })
+        return Response(out)
+
+
 class ProductAdminViewSet(APIView):
     permission_classes = [IsAdminRole]
 
@@ -498,20 +592,82 @@ class ProductAdminViewSet(APIView):
             product = serializer.save()
             self._attach_media(request, product)
             self._sync_primary_image_url(product)
-            return Response(ProductDetailSerializer(product).data, status=status.HTTP_201_CREATED)
+            data = ProductDetailSerializer(product).data
+            warnings = getattr(request, '_image_quality_warnings', [])
+            if warnings:
+                data['image_quality_warnings'] = warnings
+            return Response(data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def _attach_media(self, request, product):
         files = request.FILES.getlist('media')
         existing = product.media.exists()
+        quality_warnings = []
         for i, f in enumerate(files):
+            is_image = not f.content_type.startswith('video')
+            # ── Image quality enforcement ──
+            if is_image:
+                # Check file size
+                file_size = f.size if hasattr(f, 'size') else 0
+                if file_size > 0 and file_size < 50_000:  # < 50 KB → reject
+                    quality_warnings.append(
+                        f'{f.name}: file too small ({file_size // 1000}KB). Min 50KB.'
+                    )
+                    continue  # skip this file
+                # Check dimensions
+                try:
+                    from PIL import Image as PILImage
+                    img = PILImage.open(f)
+                    w, h = img.size
+                    f.seek(0)  # rewind after PIL read
+                    if w < 800 or h < 800:
+                        quality_warnings.append(
+                            f'{f.name}: {w}x{h} is below minimum 800x800. Upload rejected.'
+                        )
+                        continue
+                    if w < 1000 or h < 1000:
+                        quality_warnings.append(
+                            f'{f.name}: {w}x{h} — acceptable but below ideal 1000x1000.'
+                        )
+                        # allow but warn
+                except Exception:
+                    pass  # If PIL isn't available or file is unreadable, allow upload
+
+            # Per-product Cloudinary folder so every product keeps its
+            # media tidily grouped under furnishop/products/<slug>/.
+            # Cloudinary auto-generates a public_id inside that folder so
+            # multiple uploads with the same filename don't collide.
+            from django.utils.text import slugify
+            slug = product.slug or slugify(product.name)
+            folder = f'furnishop/products/{slug}'
+            kind = 'video' if f.content_type.startswith('video') else 'image'
+
+            # Route through the central helper so eager thumb/card
+            # transforms, retries, and audit logging happen in one place.
+            # Falls back to FileSystemStorage when Cloudinary creds aren't
+            # configured (e.g. local dev with no internet).
+            from services import cloudinary as cdn
+            file_value = f
+            if cdn.is_configured():
+                try:
+                    eager = None if kind == 'video' else ('thumb', 'card')
+                    result = cdn.upload(f, folder=folder, kind=kind, eager=eager)
+                    file_value = result['public_id']
+                    if kind == 'video':
+                        file_value = f"video/upload/{result['public_id']}"
+                except Exception:
+                    f.seek(0)
+                    file_value = f
+
             ProductMedia.objects.create(
                 product=product,
-                kind='video' if f.content_type.startswith('video') else 'image',
-                file=f,
+                kind=kind,
+                file=file_value,
                 is_primary=(i == 0 and not existing),
                 order=product.media.count(),
             )
+        # Stash warnings so the view can return them.
+        request._image_quality_warnings = quality_warnings
 
     def _sync_primary_image_url(self, product):
         """If image_url is empty, copy the primary (or first) media URL onto it
@@ -554,7 +710,11 @@ class ProductAdminDetailView(APIView):
             product = serializer.save()
             ProductAdminViewSet._attach_media(self, request, product)
             ProductAdminViewSet._sync_primary_image_url(self, product)
-            return Response(ProductDetailSerializer(product).data)
+            data = ProductDetailSerializer(product).data
+            warnings = getattr(request, '_image_quality_warnings', [])
+            if warnings:
+                data['image_quality_warnings'] = warnings
+            return Response(data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):

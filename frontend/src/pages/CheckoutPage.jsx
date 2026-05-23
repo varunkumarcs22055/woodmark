@@ -48,22 +48,45 @@ const loadRazorpayScript = () =>
 
 export default function CheckoutPage() {
   const { cartItems, cartTotal, cartCount, clearCart } = useCart();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { settings } = useSettings();
   const { gst_percent, free_shipping_threshold, standard_shipping_fee } = settings;
 
   const navigate = useNavigate();
+
+  // ─── Auth gate ────────────────────────────────────────────────────────
+  // Anyone who lands on /checkout without being logged in is bounced to
+  // /login?next=/checkout. After they finish login the LoginPage reads
+  // ?next=… and redirects them back here with cart intact (cart lives in
+  // localStorage so it survives the round-trip).
+  useEffect(() => {
+    if (authLoading) return;        // wait for restore() to finish
+    if (!user) {
+      // Stable `id` so React 18 StrictMode's double-effect-fire in dev
+      // (and any future re-render that briefly clears `user`) dedupes the
+      // toast — react-hot-toast treats two toasts with the same id as one.
+      toast('Please sign in to continue checkout.', { id: 'checkout-auth-gate' });
+      navigate('/login?next=/checkout', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   const [step, setStep] = useState('form'); // form | processing | success | error
   const [createdOrder, setCreatedOrder] = useState(null);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
+  // Address is split into structured fields for a cleaner form. They are
+  // joined into a single string before sending to the backend (which still
+  // expects one `address` field). The textarea-everywhere look is gone.
   const [form, setForm] = useState({
     user_name: user?.full_name || '',
     user_email: user?.email || '',
     phone: user?.phone || '',
-    address: '',
+    house_no: '',
+    street: '',
+    landmark: '',
+    city: '',
+    state: '',
     pincode: '',
   });
 
@@ -93,10 +116,10 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (user && step === 'form') {
       setForm((f) => ({
+        ...f,
         user_name: f.user_name || user.full_name || '',
         user_email: f.user_email || user.email || '',
         phone: f.phone || user.phone || '',
-        address: f.address,
       }));
     }
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -200,6 +223,15 @@ export default function CheckoutPage() {
     }
   };
 
+  // Build a single address string from the structured fields. Used both for
+  // validation and submission so the backend keeps receiving one `address`.
+  const composedAddress = () => {
+    return [
+      form.house_no, form.street, form.landmark,
+      form.city, form.state, form.pincode,
+    ].map((s) => (s || '').trim()).filter(Boolean).join(', ');
+  };
+
   const validate = () => {
     const errs = {};
     if (!form.user_name.trim()) errs.user_name = 'Full name is required';
@@ -209,9 +241,13 @@ export default function CheckoutPage() {
     if (!form.phone) errs.phone = 'Phone is required';
     else if (!/^\d{10}$/.test(form.phone.replace(/\D/g, '').slice(-10)))
       errs.phone = 'Enter a valid 10-digit mobile number';
-    if (!form.address.trim()) errs.address = 'Delivery address is required';
-    else if (form.address.trim().length < 20)
-      errs.address = 'Please enter a complete address (min 20 characters)';
+    if (!form.house_no.trim()) errs.house_no = 'House / flat is required';
+    if (!form.street.trim()) errs.street = 'Street / area is required';
+    if (!form.city.trim()) errs.city = 'City is required';
+    if (!form.state.trim()) errs.state = 'State is required';
+    if (!form.pincode) errs.pincode = 'Pincode is required';
+    else if (!/^\d{6}$/.test(form.pincode.trim()))
+      errs.pincode = 'Pincode must be 6 digits';
     return errs;
   };
 
@@ -235,7 +271,17 @@ export default function CheckoutPage() {
         product_id: item.product.id,
         quantity: item.quantity,
       }));
-      const orderPayload = { ...form, items, payment_type: paymentType };
+      // Backend still expects one `address` string — compose it from our
+      // structured fields. We drop the per-field keys from the payload so
+      // the backend doesn't see unrecognised fields.
+      const { house_no, street, landmark, city, state: stateField, ...rest } = form;
+      void house_no; void street; void landmark; void city; void stateField;
+      const orderPayload = {
+        ...rest,
+        address: composedAddress(),
+        items,
+        payment_type: paymentType,
+      };
       // Map UI choice → backend payment_method so the right pay path runs.
       if (paymentType === 'cod') orderPayload.payment_method = 'cod';
       else if (paymentType === 'credit') orderPayload.payment_method = 'credit';
@@ -473,32 +519,82 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <div className={`form-group ${errors.address ? 'form-group--error' : ''}`}>
-            <label className="form-label" htmlFor="address">Delivery Address</label>
-            <textarea
-              className="form-input" id="address" name="address"
-              value={form.address} onChange={handleChange}
-              placeholder="House/flat number, street, area, city, state"
-              rows={3} autoComplete="street-address"
-            />
-            {errors.address && <span className="form-error">{errors.address}</span>}
+          {/* Structured address — no more giant textarea */}
+          <div className="form-row form-row--3">
+            <div className={`form-group ${errors.house_no ? 'form-group--error' : ''}`}>
+              <label className="form-label" htmlFor="house_no">House / Flat / Building</label>
+              <input
+                className="form-input" id="house_no" name="house_no"
+                value={form.house_no} onChange={handleChange}
+                placeholder="e.g. Flat 302, Lotus Heights"
+                autoComplete="address-line1"
+              />
+              {errors.house_no && <span className="form-error">{errors.house_no}</span>}
+            </div>
+            <div className={`form-group form-group--span-2 ${errors.street ? 'form-group--error' : ''}`}>
+              <label className="form-label" htmlFor="street">Street / Area</label>
+              <input
+                className="form-input" id="street" name="street"
+                value={form.street} onChange={handleChange}
+                placeholder="MG Road, Indiranagar"
+                autoComplete="address-line2"
+              />
+              {errors.street && <span className="form-error">{errors.street}</span>}
+            </div>
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="pincode">PIN code</label>
+            <label className="form-label" htmlFor="landmark">Landmark <span style={{ color: '#888', fontWeight: 400 }}>(optional)</span></label>
             <input
-              className="form-input" id="pincode" name="pincode"
-              type="text" inputMode="numeric" maxLength={6}
-              value={form.pincode}
-              onChange={(e) => setForm({ ...form, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-              placeholder="6-digit PIN code"
-              autoComplete="postal-code"
+              className="form-input" id="landmark" name="landmark"
+              value={form.landmark} onChange={handleChange}
+              placeholder="Opposite Apollo Hospital"
             />
-            {shipEstimate && !shipEstimate.cod_available && (
+          </div>
+
+          <div className="form-row form-row--3">
+            <div className={`form-group ${errors.city ? 'form-group--error' : ''}`}>
+              <label className="form-label" htmlFor="city">City</label>
+              <input
+                className="form-input" id="city" name="city"
+                value={form.city} onChange={handleChange}
+                placeholder="Bengaluru"
+                autoComplete="address-level2"
+              />
+              {errors.city && <span className="form-error">{errors.city}</span>}
+            </div>
+            <div className={`form-group ${errors.state ? 'form-group--error' : ''}`}>
+              <label className="form-label" htmlFor="state">State</label>
+              <input
+                className="form-input" id="state" name="state"
+                value={form.state} onChange={handleChange}
+                placeholder="Karnataka"
+                autoComplete="address-level1"
+              />
+              {errors.state && <span className="form-error">{errors.state}</span>}
+            </div>
+            <div className={`form-group ${errors.pincode ? 'form-group--error' : ''}`}>
+              <label className="form-label" htmlFor="pincode">PIN code</label>
+              <input
+                className="form-input" id="pincode" name="pincode"
+                type="text" inputMode="numeric" maxLength={6}
+                value={form.pincode}
+                onChange={(e) => setForm({ ...form, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                placeholder="560001"
+                autoComplete="postal-code"
+              />
+              {errors.pincode && <span className="form-error">{errors.pincode}</span>}
+              {shipEstimate && !shipEstimate.cod_available && (
               <span className="form-error" style={{ color: '#92400E' }}>
                 Note: COD is not available for this PIN code.
               </span>
             )}
+            {shipEstimate?.message && (
+              <span className="form-help" style={{ color: '#6B7280', fontSize: 12 }}>
+                {shipEstimate.message}
+              </span>
+            )}
+            </div>
           </div>
 
           <h3 style={{ marginTop: 24 }}>Payment</h3>

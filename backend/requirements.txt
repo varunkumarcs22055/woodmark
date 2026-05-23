@@ -32,6 +32,9 @@ social-auth-core>=4.5,<5.0
 # Payments
 razorpay>=1.4
 
+# Transactional email via Brevo (formerly Sendinblue)
+django-anymail[brevo]>=11.0,<13.0
+
 # Media storage & image handling
 django-storages>=1.14,<2.0
 Pillow>=10.0,<11.0

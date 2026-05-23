@@ -305,8 +305,13 @@ class AdminNewsletterSendView(APIView):
 
         if not subject or not body:
             return Response({'error': 'Subject and body are required.'}, status=status.HTTP_400_BAD_REQUEST)
-        if not targets:
-            return Response({'error': 'Select at least one recipient group.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Allow either a group OR a hand-picked recipient list. We only
+        # reject when both are empty — i.e. there's nobody to send to.
+        if not targets and not recipient_emails:
+            return Response(
+                {'error': 'Select at least one recipient group OR pick individual recipients.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         emails = set(e.lower().strip() for e in recipient_emails if e)
         if 'subscribers' in targets:
@@ -320,7 +325,10 @@ class AdminNewsletterSendView(APIView):
         recipients_count = len([e for e in emails if e])
 
         if recipients_count == 0:
-            return Response({'error': 'Selected groups have no active recipients.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'error': 'No recipients found. Check the group / individual selection.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         campaign = NewsletterCampaign.objects.create(
             subject=subject,

@@ -611,35 +611,43 @@ class ProductAdminViewSet(APIView):
         files = request.FILES.getlist('media')
         existing = product.media.exists()
         quality_warnings = []
+        if not files:
+            logger.warning(
+                'No media files in request.FILES for product=%s (got %d files). '
+                'Content-Type was %r. Frontend may have sent multipart with a '
+                'bad boundary or no files at all.',
+                product.slug, len(files), request.content_type,
+            )
+            request._image_quality_warnings = []
+            return
         for i, f in enumerate(files):
             is_image = not f.content_type.startswith('video')
-            # ── Image quality enforcement ──
+            # ── Image quality enforcement (relaxed) ──
+            # We *warn* rather than reject for size/dimension so the admin
+            # can still publish low-res placeholders or stock photos. Only
+            # truly broken files (zero bytes) are rejected outright.
             if is_image:
-                # Check file size
                 file_size = f.size if hasattr(f, 'size') else 0
-                if file_size > 0 and file_size < 50_000:  # < 50 KB → reject
+                if file_size <= 0:
                     quality_warnings.append(
-                        f'{f.name}: file too small ({file_size // 1000}KB). Min 50KB.'
+                        f'{f.name}: empty file (0 bytes). Upload rejected.'
                     )
-                    continue  # skip this file
-                # Check dimensions
+                    continue
+                if file_size < 20_000:  # < 20KB usually means thumbnail/icon
+                    quality_warnings.append(
+                        f'{f.name}: small file ({file_size // 1000}KB) — upload accepted but quality may suffer.'
+                    )
                 try:
                     from PIL import Image as PILImage
                     img = PILImage.open(f)
                     w, h = img.size
-                    f.seek(0)  # rewind after PIL read
-                    if w < 800 or h < 800:
+                    f.seek(0)
+                    if w < 400 or h < 400:
                         quality_warnings.append(
-                            f'{f.name}: {w}x{h} is below minimum 800x800. Upload rejected.'
+                            f'{f.name}: {w}x{h} — upload accepted but resolution is low.'
                         )
-                        continue
-                    if w < 1000 or h < 1000:
-                        quality_warnings.append(
-                            f'{f.name}: {w}x{h} — acceptable but below ideal 1000x1000.'
-                        )
-                        # allow but warn
                 except Exception:
-                    pass  # If PIL isn't available or file is unreadable, allow upload
+                    pass  # PIL unavailable or unreadable — don't block upload
 
             # Per-product Cloudinary folder so every product keeps its
             # media tidily grouped under furnishop/products/<slug>/.

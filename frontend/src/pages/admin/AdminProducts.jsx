@@ -320,17 +320,39 @@ export default function AdminProducts() {
         price,
         stock,
       };
+      let saved;
       if (modal.editing) {
-        await adminUpdateProduct(modal.editing.id, payload, { mediaFiles });
-        toast.success(mediaFiles.length
-          ? `Product updated with ${mediaFiles.length} new image(s).`
-          : 'Product updated.');
+        saved = await adminUpdateProduct(modal.editing.id, payload, { mediaFiles });
       } else {
-        await adminCreateProduct(payload, { mediaFiles });
-        toast.success(mediaFiles.length
-          ? `Product created with ${mediaFiles.length} image(s) uploaded.`
-          : 'Product created.');
+        saved = await adminCreateProduct(payload, { mediaFiles });
       }
+      // Count what actually landed in ProductMedia (not what was staged) so
+      // the user sees the real result. The backend may reject low-res /
+      // tiny images via image_quality_warnings without aborting the save.
+      const stagedCount = mediaFiles.length;
+      const savedCount = Array.isArray(saved?.media) ? saved.media.length : 0;
+      const existingCount = existingMedia.length;
+      const newlyAdded = Math.max(0, savedCount - existingCount);
+      const warnings = saved?.image_quality_warnings || [];
+
+      const verb = modal.editing ? 'updated' : 'created';
+      if (stagedCount > 0 && newlyAdded === 0) {
+        toast.error(
+          `Product ${verb}, but none of the ${stagedCount} image(s) were saved. ` +
+          (warnings[0] || 'Check Cloudinary credentials or image quality.'),
+          { duration: 6000 },
+        );
+      } else if (stagedCount > 0 && newlyAdded < stagedCount) {
+        toast(`Product ${verb}. ${newlyAdded}/${stagedCount} image(s) uploaded. ` +
+              (warnings[0] || 'Some images were rejected.'),
+              { duration: 6000, icon: '⚠️' });
+      } else if (stagedCount > 0) {
+        toast.success(`Product ${verb} with ${newlyAdded} image(s) uploaded.`);
+      } else {
+        toast.success(`Product ${verb}.`);
+      }
+      warnings.slice(1).forEach((w) => toast(w, { icon: '⚠️', duration: 5000 }));
+
       closeModal();
       await loadProducts();
     } catch (err) {

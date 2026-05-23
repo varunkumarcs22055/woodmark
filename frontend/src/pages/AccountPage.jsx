@@ -248,17 +248,37 @@ export default function AccountPage() {
 
   const submitPassword = async (e) => {
     e.preventDefault();
+    // Catch the obvious mistakes client-side so the user gets a precise
+    // message instead of a generic backend rejection.
+    if (pwForm.new_password.length < 8) {
+      toast.error('New password must be at least 8 characters.');
+      return;
+    }
+    if (pwForm.new_password !== pwForm.confirm_password) {
+      toast.error("Passwords don't match.");
+      return;
+    }
+    if (pwForm.new_password === pwForm.old_password) {
+      toast.error('Pick a new password different from the current one.');
+      return;
+    }
     setPwSaving(true);
     try {
       await changePassword(pwForm);
       toast.success('Password updated.');
       setPwForm({ old_password: '', new_password: '', confirm_password: '' });
     } catch (err) {
+      const data = err.response?.data || {};
+      // DRF validators return per-field arrays; flatten the first useful one
+      // so messages like "This password is too common." surface to the user.
       const msg =
-        err.response?.data?.old_password
-        || err.response?.data?.detail
+        data.old_password?.[0] || data.old_password
+        || data.new_password?.[0] || data.new_password
+        || data.confirm_password?.[0] || data.confirm_password
+        || data.non_field_errors?.[0]
+        || data.detail
         || 'Failed to update password.';
-      toast.error(msg);
+      toast.error(typeof msg === 'string' ? msg : 'Failed to update password.');
     } finally {
       setPwSaving(false);
     }

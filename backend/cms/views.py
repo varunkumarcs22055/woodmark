@@ -276,8 +276,12 @@ class AdminNewsletterStatsView(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
+        # Customers: include anyone with role='user' who isn't blocked, even
+        # if they haven't verified their OTP yet (they explicitly signed up
+        # and gave us their email). Only dealers stay locked behind is_active
+        # because B2B campaigns shouldn't go to unapproved accounts.
         subscribers = NewsletterSubscriber.objects.filter(is_active=True).count()
-        customers = User.objects.filter(role='user', is_active=True, is_blocked=False).count()
+        customers = User.objects.filter(role='user', is_blocked=False).count()
         dealers = User.objects.filter(role='dealer', dealer_status='active', is_active=True, is_blocked=False).count()
         return Response({
             'subscribers': subscribers,
@@ -308,7 +312,8 @@ class AdminNewsletterSendView(APIView):
         if 'subscribers' in targets:
             emails.update(NewsletterSubscriber.objects.filter(is_active=True).values_list('email', flat=True))
         if 'customers' in targets:
-            emails.update(User.objects.filter(role='user', is_active=True, is_blocked=False).values_list('email', flat=True))
+            # Include unverified signups — see AdminNewsletterStatsView for rationale.
+            emails.update(User.objects.filter(role='user', is_blocked=False).values_list('email', flat=True))
         if 'dealers' in targets:
             emails.update(User.objects.filter(role='dealer', dealer_status='active', is_active=True, is_blocked=False).values_list('email', flat=True))
 
@@ -358,7 +363,9 @@ class AdminNewsletterRecipientsView(APIView):
                 for s in page_obj.object_list
             ]
         elif group == 'customers':
-            qs = User.objects.filter(role='user', is_active=True, is_blocked=False)
+            # Include unverified signups — they handed us their email at
+            # registration and newsletter is opt-in by signup.
+            qs = User.objects.filter(role='user', is_blocked=False)
             if search:
                 qs = qs.filter(
                     Q(email__icontains=search)

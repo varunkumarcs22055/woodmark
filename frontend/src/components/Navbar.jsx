@@ -283,7 +283,9 @@ export default function Navbar() {
   // `child` is one mega-menu link: { label, slug, search?, tag? }
   //   label  -> the visible name (used as the search keyword so the URL
   //             reflects exactly what the user clicked)
-  //   slug   -> backend Category slug ('desks', 'chairs', ...)
+  //   slug   -> backend Category slug. Used ONLY when there's no search
+  //             keyword — otherwise it would AND with the search and drop
+  //             products that match the keyword but live in another category.
   //   search -> optional override keyword (defaults to label)
   //   tag    -> optional Tag.slug (CMS overrides may still use it)
   // Bare strings are treated as a category slug for backward compat.
@@ -293,12 +295,16 @@ export default function Navbar() {
     }
     if (!child) return '/';
     const params = new URLSearchParams();
-    if (child.slug) params.set('category', child.slug);
     // Default the search to the clicked label so the URL is self-describing.
     // Explicit empty string (`search: ''`) suppresses it on items that should
     // pull the entire category instead of narrowing.
     const keyword = child.search !== undefined ? child.search : (child.label || '');
-    if (keyword) params.set('search', keyword);
+    if (keyword) {
+      params.set('search', keyword);
+    } else if (child.slug) {
+      // Only fall back to category when there's no keyword at all.
+      params.set('category', child.slug);
+    }
     if (child.tag) params.set('tag', child.tag);
     const qs = params.toString();
     return qs ? `/?${qs}` : '/';

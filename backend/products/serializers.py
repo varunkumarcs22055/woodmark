@@ -135,14 +135,20 @@ class ProductListSerializer(DiscountInfoMixin, serializers.ModelSerializer):
 
     def get_image_url(self, obj):
         raw = obj.image_url or ''
-        if raw.startswith(('http://', 'https://', '//')):
+        # `/auto/upload/...` URLs come from CloudinaryField when its field
+        # is declared with resource_type='auto' — Cloudinary's CDN rejects
+        # those with HTTP 400 even though the file exists. Treat them as
+        # broken and fall through to the media fallback below.
+        is_broken_auto = '/auto/upload/' in raw
+        if raw.startswith(('http://', 'https://', '//')) and not is_broken_auto:
             return raw
         # Fallback: read primary media's resolved URL (handles legacy rows
-        # where image_url was never set OR was set to a bare public_id).
+        # where image_url was never set OR was set to a bare public_id OR
+        # was set to a `/auto/upload/` URL that Cloudinary rejects).
         primary = obj.media.filter(is_primary=True).first() or obj.media.first()
         if primary:
             url = primary.url or ''
-            if url.startswith(('http://', 'https://', '//')):
+            if url.startswith(('http://', 'https://', '//')) and '/auto/upload/' not in url:
                 return url
         return raw  # last-resort: return whatever we had (lets admin spot it)
 

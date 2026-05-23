@@ -257,32 +257,56 @@ class ProductMedia(models.Model):
     def url(self):
         if not self.file:
             return None
-        # Happy path: CloudinaryResource exposes .url
+        # We always rebuild the URL with the explicit resource_type matching
+        # `self.kind`. The CloudinaryField on this model is declared with
+        # resource_type='auto', so its built-in .url produces
+        # `/auto/upload/...` URLs which Cloudinary's CDN rejects with 400.
+        # Build the proper `/image/upload/...` or `/video/upload/...` URL
+        # using the helper so the storefront can actually render the asset.
+        resource_type = 'video' if self.kind == 'video' else 'image'
+        public_id = self._get_public_id()
+        if public_id:
+            try:
+                from services import cloudinary as cdn
+                if cdn.is_configured():
+                    built = cdn.transform_url(
+                        public_id,
+                        resource_type=resource_type,
+                        secure=True,
+                    )
+                    if built:
+                        return built
+            except Exception:
+                pass
+        # Last-resort: try the CloudinaryField's own .url (may be wrong but
+        # better than nothing for legacy rows without explicit public_id).
         try:
             return self.file.url
-        except AttributeError:
-            pass  # file is a bare string (public_id) — see below
         except Exception:
-            return str(self.file)
+            return str(self.file) if self.file else None
 
-        # Field was just assigned a public_id string in this request and
-        # hasn't been re-read from the DB yet (so cloudinary-django hasn't
-        # wrapped it in a CloudinaryResource). Build the delivery URL
-        # ourselves so list/detail views never render an empty img src.
-        public_id = str(self.file)
-        try:
-            from services import cloudinary as cdn
-            if cdn.is_configured():
-                built = cdn.transform_url(
-                    public_id,
-                    resource_type='video' if self.kind == 'video' else 'image',
-                    secure=True,
-                )
-                if built:
-                    return built
-        except Exception:
-            pass
-        return public_id
+    def _get_public_id(self):
+        """Best-effort extraction of the Cloudinary public_id from
+        whatever shape `self.file` happens to be in (CloudinaryResource,
+        raw string, or FieldFile)."""
+        f = self.file
+        if not f:
+            return None
+        for attr in ('public_id', 'name'):
+            val = getattr(f, attr, None)
+            if val:
+                return val
+        s = str(f)
+        # `/image/upload/v123/path/file.ext` → `path/file`
+        if 'upload/' in s:
+            tail = s.split('upload/', 1)[1]
+            if tail.startswith('v') and '/' in tail[1:]:
+                tail = tail.split('/', 1)[1]
+            # Strip extension
+            if '.' in tail.rsplit('/', 1)[-1]:
+                tail = tail.rsplit('.', 1)[0]
+            return tail
+        return s
 
     def __str__(self):
         return f'{self.product.name} — {self.kind} ({self.id})'

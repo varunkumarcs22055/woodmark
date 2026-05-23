@@ -94,7 +94,7 @@ class Command(BaseCommand):
 
     def _seed_cms(self):
         Banner.objects.get_or_create(
-            title='Welcome to FurniShop',
+            title='Welcome to FurnoTech',
             defaults={
                 'image_url': 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1600',
                 'link_url': '/',

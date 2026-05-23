@@ -100,12 +100,19 @@ class NewsletterTargetGroupView(APIView):
         
         users = []
         if group in ['all', 'customers', 'custom']:
-            qs = User.objects.filter(role='user', is_active=True)
+            # Include every customer who signed up, regardless of OTP status.
+            # They handed over their email at registration, so it's fair game
+            # for newsletters. We still exclude *blocked* accounts.
+            qs = User.objects.filter(role='user', is_blocked=False)
             for u in qs:
                 users.append({'email': u.email, 'name': u.full_name, 'type': 'Customer'})
-                
+
         if group in ['all', 'dealers', 'custom']:
-            qs = User.objects.filter(role='dealer', dealer_status='active', is_active=True)
+            # Dealers: only active + approved get B2B campaigns.
+            qs = User.objects.filter(
+                role='dealer', dealer_status='active',
+                is_active=True, is_blocked=False,
+            )
             for u in qs:
                 users.append({'email': u.email, 'name': u.dealer_company_name or u.full_name, 'type': 'Dealer'})
                 

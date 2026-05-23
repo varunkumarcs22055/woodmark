@@ -123,10 +123,28 @@ class ProductListSerializer(DiscountInfoMixin, serializers.ModelSerializer):
     discount_applied = serializers.SerializerMethodField()
     discount_units_remaining = serializers.SerializerMethodField()
     tag_slugs = serializers.SerializerMethodField()
+    # Override image_url with a safe getter that falls back to primary media's
+    # URL if the column is empty OR contains a bare public_id (no http scheme).
+    # Without this, products created before the Cloudinary URL-sync fix render
+    # broken <img> tags on the storefront list/grid.
+    image_url = serializers.SerializerMethodField()
 
     def get_tag_slugs(self, obj):
         # Cheap: returns just slugs (used for client-side filter chips).
         return list(obj.tags.values_list('slug', flat=True))
+
+    def get_image_url(self, obj):
+        raw = obj.image_url or ''
+        if raw.startswith(('http://', 'https://', '//')):
+            return raw
+        # Fallback: read primary media's resolved URL (handles legacy rows
+        # where image_url was never set OR was set to a bare public_id).
+        primary = obj.media.filter(is_primary=True).first() or obj.media.first()
+        if primary:
+            url = primary.url or ''
+            if url.startswith(('http://', 'https://', '//')):
+                return url
+        return raw  # last-resort: return whatever we had (lets admin spot it)
 
     class Meta:
         model = Product

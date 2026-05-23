@@ -117,10 +117,9 @@ export default function AdminCustomers() {
           />
         </div>
         <select value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="">All roles</option>
-          <option value="user">Customer</option>
-          <option value="dealer">Dealer</option>
-          <option value="admin">Admin</option>
+          <option value="">Customers + Admins</option>
+          <option value="user">Customers only</option>
+          <option value="admin">Admins only</option>
         </select>
         <select value={blocked} onChange={(e) => setBlocked(e.target.value)}>
           <option value="">Blocked + Active</option>

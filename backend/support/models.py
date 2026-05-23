@@ -91,6 +91,51 @@ class SupportTicket(models.Model):
         return f'{self.ticket_number} — {self.subject}'
 
 
+class FaqEntry(models.Model):
+    """
+    Admin-curated Q&A used by the support chatbot.
+
+    Matching strategy:
+      - `triggers` is a JSON list of lowercased keywords / short phrases.
+        When a user message contains any of them (substring match), this
+        entry is a candidate.
+      - The candidate with the most trigger matches wins. Tie -> lowest
+        `sort_order` -> newest.
+
+    `topic` is a free-form grouping label ("Package & delivery",
+    "Payment & refund", ...). Useful for rendering the quick-pick
+    buttons at the start of a chat.
+
+    `follow_up_prompts` is an optional list of strings shown as quick-reply
+    chips under the bot's answer ("Track my order", "Cancel order", ...).
+    Each prompt re-enters the bot loop with that text as the user message.
+    """
+    topic = models.CharField(max_length=80, db_index=True,
+                             help_text='Group label, e.g. "Package & delivery".')
+    question = models.CharField(max_length=240,
+                                help_text='What this Q&A answers, shown as a quick chip.')
+    answer = models.TextField(help_text='Bot reply (plain text or simple markdown).')
+    triggers = models.JSONField(
+        default=list, blank=True,
+        help_text='Lowercased keywords/phrases the bot matches against.',
+    )
+    follow_up_prompts = models.JSONField(
+        default=list, blank=True,
+        help_text='Suggested next questions to chip-render after this answer.',
+    )
+    sort_order = models.PositiveIntegerField(default=100, db_index=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'support_faq_entries'
+        ordering = ['sort_order', '-updated_at']
+
+    def __str__(self):
+        return f'{self.topic} — {self.question[:60]}'
+
+
 class TicketMessage(models.Model):
     ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,

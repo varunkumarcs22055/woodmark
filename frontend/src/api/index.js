@@ -215,6 +215,15 @@ export const requestEmailOtp = (email) =>
 export const verifyEmailOtp = (email, code) =>
   api.post('/auth/otp/verify/', { email, code }).then((r) => r.data);
 
+// Signup OTP — different from the passwordless-login OTP above. This one
+// is sent on RegisterView creation; verifying it activates the account
+// (is_active flips True) and returns the JWT tokens.
+export const verifySignupEmail = (email, otp) =>
+  api.post('/auth/verify-email/', { email, otp }).then((r) => r.data);
+
+export const resendSignupOtp = (email) =>
+  api.post('/auth/resend-verification/', { email }).then((r) => r.data);
+
 export const fetchProfile = () =>
   api.get('/auth/profile/').then((r) => r.data);
 
@@ -676,6 +685,25 @@ export const replyToTicket = (id, body, isInternal = false, attachmentUrl = '') 
 
 export const updateTicketStatus = (id, status) =>
   api.patch(`/support/admin/tickets/${id}/status/`, { status }).then((r) => r.data);
+
+// ─── Support chatbot + admin FAQ ────────────────────────────────────
+export const fetchBotTopics = () =>
+  api.get('/support/bot/').then((r) => r.data);
+
+export const askBot = (message) =>
+  api.post('/support/bot/', { message }).then((r) => r.data);
+
+export const fetchFaqEntries = () =>
+  api.get('/support/admin/faq/').then((r) => r.data);
+
+export const createFaqEntry = (data) =>
+  api.post('/support/admin/faq/', data).then((r) => r.data);
+
+export const updateFaqEntry = (id, data) =>
+  api.patch(`/support/admin/faq/${id}/`, data).then((r) => r.data);
+
+export const deleteFaqEntry = (id) =>
+  api.delete(`/support/admin/faq/${id}/`).then((r) => r.data);
 
 // ─── Dealer bulk upload ─────────────────────────────────────────────
 export const dealerBulkUpload = (formData) =>

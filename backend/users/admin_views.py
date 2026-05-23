@@ -45,7 +45,11 @@ class CustomerListView(generics.ListAPIView):
     ordering = ['-date_joined']
 
     def get_queryset(self):
-        qs = User.objects.all().annotate(
+        # Customer admin = retail buyers only. Dealers have their own page
+        # at /admin-dashboard/dealers, so we never surface them here even if
+        # someone passes ?role=dealer in the URL. The query-string role
+        # filter can still narrow user <-> admin if needed.
+        qs = User.objects.exclude(role='dealer').annotate(
             order_count=Count('orders', distinct=True),
             lifetime_value=Sum(
                 'orders__total_amount',
@@ -54,7 +58,7 @@ class CustomerListView(generics.ListAPIView):
             last_order_at=Max('orders__created_at'),
         )
         role = self.request.query_params.get('role')
-        if role in ('user', 'dealer', 'admin'):
+        if role in ('user', 'admin'):
             qs = qs.filter(role=role)
         is_blocked = self.request.query_params.get('is_blocked')
         if is_blocked in ('true', 'false'):

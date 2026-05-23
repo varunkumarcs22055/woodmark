@@ -32,6 +32,7 @@ import AdminNewsletter from './admin/AdminNewsletter';
 import AdminShipping from './admin/AdminShipping';
 import AdminSMS from './admin/AdminSMS';
 import AdminWishlists from './admin/AdminWishlists';
+import AdminFAQ from './admin/AdminFAQ';
 
 import './AdminDashboard.css';
 import './admin/AdminPanel.css';
@@ -54,6 +55,7 @@ const NAV_ITEMS = [
   { path: 'newsletter', label: 'Newsletter', icon: <FiMail /> },
   { path: 'sms',        label: 'SMS Campaigns', icon: <FiSmartphone /> },
   { path: 'support',    label: 'Support',    icon: <FiMessageSquare /> },
+  { path: 'faq',        label: 'Chatbot FAQ', icon: <FiMessageSquare /> },
   { path: 'audit',      label: 'Audit Logs', icon: <FiActivity /> },
   { path: 'erp',        label: 'ERP Status', icon: <FiRefreshCw /> },
   { path: 'settings',   label: 'Settings',   icon: <FiSettings /> },
@@ -142,6 +144,7 @@ export default function AdminDashboard() {
             <Route path="newsletter" element={<AdminNewsletter />} />
             <Route path="sms" element={<AdminSMS />} />
             <Route path="support" element={<AdminSupport />} />
+            <Route path="faq" element={<AdminFAQ />} />
             <Route path="audit" element={<AdminAuditLogs />} />
             <Route path="erp" element={<AdminERP />} />
             <Route path="settings" element={<AdminSettings />} />

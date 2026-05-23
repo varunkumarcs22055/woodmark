@@ -6,10 +6,11 @@ from rest_framework.views import APIView
 
 from users.permissions import IsAdminRole
 
-from .models import SupportTicket, TicketMessage
+from .models import SupportTicket, TicketMessage, FaqEntry
 from .serializers import (
     SupportTicketSerializer, SupportTicketCreateSerializer,
     TicketMessageSerializer, TicketStatusSerializer,
+    FaqEntrySerializer,
 )
 
 
@@ -193,3 +194,104 @@ class AdminTicketStatusView(APIView):
             pass
 
         return Response(SupportTicketSerializer(ticket).data)
+
+
+# ─── Chatbot ────────────────────────────────────────────────────────────────
+
+def _match_faq(message: str):
+    """
+    Naive but effective matcher: for every active FaqEntry, count how many of
+    its `triggers` appear (substring, case-insensitive) in the user's message.
+    Return the entry with the highest score (lowest sort_order breaks ties).
+    None if no match.
+    """
+    if not message:
+        return None
+    msg = message.lower()
+    best = None
+    best_score = 0
+    for entry in FaqEntry.objects.filter(is_active=True).order_by('sort_order'):
+        triggers = entry.triggers or []
+        score = sum(1 for t in triggers if t and str(t).lower() in msg)
+        if score > best_score:
+            best, best_score = entry, score
+    return best
+
+
+class SupportBotView(APIView):
+    """
+    POST /api/support/bot/  {message: str, history?: [...]}
+
+    Returns:
+      {
+        reply: str,
+        matched: bool,
+        topic: str | '',
+        follow_ups: [str, ...],
+        can_escalate: true,
+        topics: [{topic, question}]   # only when there is no message yet
+      }
+
+    GET /api/support/bot/         — returns the list of all topics so the UI
+    can render quick-start chips even before the user has typed anything.
+
+    Unauthenticated calls are allowed; escalation to a ticket still requires
+    the user to provide their email at ticket-create time.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        # Group entries by topic so the chat UI can render starter chips.
+        topics = {}
+        for e in FaqEntry.objects.filter(is_active=True).order_by('topic', 'sort_order'):
+            topics.setdefault(e.topic, []).append({
+                'id': e.id,
+                'question': e.question,
+            })
+        return Response({
+            'topics': [{'topic': t, 'questions': qs} for t, qs in topics.items()],
+        })
+
+    def post(self, request):
+        message = (request.data.get('message') or '').strip()
+        if not message:
+            return Response({'error': 'message is required'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        entry = _match_faq(message)
+        if entry:
+            return Response({
+                'matched': True,
+                'topic': entry.topic,
+                'question': entry.question,
+                'reply': entry.answer,
+                'follow_ups': entry.follow_up_prompts or [],
+                'can_escalate': True,
+            })
+
+        # No match — fallback. We tell the user we couldn't answer and offer
+        # to create a ticket. The frontend renders an "Open ticket" button
+        # that POSTs to /api/support/tickets/ with the conversation history.
+        return Response({
+            'matched': False,
+            'topic': '',
+            'reply': ("I couldn't find an answer for that. Want me to create "
+                      "a support ticket so our team gets back to you?"),
+            'follow_ups': [],
+            'can_escalate': True,
+        })
+
+
+# ─── Admin FAQ CRUD ─────────────────────────────────────────────────────────
+
+
+class AdminFaqListCreateView(generics.ListCreateAPIView):
+    queryset = FaqEntry.objects.all().order_by('topic', 'sort_order')
+    serializer_class = FaqEntrySerializer
+    permission_classes = [IsAdminRole]
+
+
+class AdminFaqDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = FaqEntry.objects.all()
+    serializer_class = FaqEntrySerializer
+    permission_classes = [IsAdminRole]

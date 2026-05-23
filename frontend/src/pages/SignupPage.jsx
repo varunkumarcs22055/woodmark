@@ -78,6 +78,15 @@ export default function SignupPage() {
     setErrors({});
     try {
       const data = await registerUser(form);
+      // RegisterView now creates the user as inactive and emails an OTP.
+      // We MUST send the user to the verify-email page; only after they
+      // enter the OTP does the backend issue tokens.
+      if (data.requires_verification) {
+        toast.success('Check your email for a 6-digit code.');
+        navigate(`/verify-email?email=${encodeURIComponent(data.email || form.email)}`);
+        return;
+      }
+      // Legacy fallback — backend issued tokens directly (older builds).
       login({ access: data.access, refresh: data.refresh }, data.user);
       toast.success('Account created! Welcome to FurniShop.');
       navigate('/');

@@ -56,3 +56,18 @@ class SupportTicketCreateSerializer(serializers.Serializer):
 
 class TicketStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=SupportTicket.STATUS_CHOICES)
+
+
+from .models import FaqEntry
+
+
+class FaqEntrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FaqEntry
+        fields = [
+            'id', 'topic', 'question', 'answer',
+            'triggers', 'follow_up_prompts',
+            'sort_order', 'is_active',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['created_at', 'updated_at']

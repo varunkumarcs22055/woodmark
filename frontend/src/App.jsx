@@ -10,6 +10,8 @@ import { Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import SupportChatbot from './components/SupportChatbot';
+import './components/SupportChatbot.css';
 import ScrollToTop from './components/ScrollToTop';
 import ErrorBoundary from './components/ErrorBoundary';
 import { RoleRoute } from './components/ProtectedRoute';
@@ -26,6 +28,7 @@ const BestSellersPage = lazy(() => import('./pages/BestSellersPage'));
 const AccountPage = lazy(() => import('./pages/AccountPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const SignupPage = lazy(() => import('./pages/SignupPage'));
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
 const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
@@ -95,6 +98,7 @@ export default function App() {
               <Route path="/best-sellers" element={<BestSellersPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/auth-callback" element={<AuthCallbackPage />} />
@@ -134,6 +138,9 @@ export default function App() {
       </main>
 
       {!isFullscreenLayout && <Footer />}
+      {/* Floating support chatbot — public storefront only, never on the
+          admin / dealer dashboards (those have their own support inbox). */}
+      {!isFullscreenLayout && <SupportChatbot />}
     </div>
   );
 }

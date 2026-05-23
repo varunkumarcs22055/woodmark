@@ -390,7 +390,6 @@ export default function Navbar() {
                 Furno<span className="brand-text__accent">Tech</span>
               </span>
             </span>
-            </div>
           </Link>
 
           {/* Desktop Nav */}

@@ -187,8 +187,28 @@ class LoginView(APIView):
 
         user = authenticate(request, username=email, password=password)
         if user is None:
+            # Django's default backend silently rejects inactive users with
+            # None. Check explicitly so an unverified signup gets routed to
+            # the verify-email page instead of seeing a misleading
+            # "Invalid email or password" message.
+            possible = User.objects.filter(email__iexact=email).first()
+            if possible and not possible.is_active and not getattr(possible, 'is_blocked', False):
+                # Password is correct? Only fire OTP if so — otherwise we'd
+                # let attackers probe valid emails. Recheck with the explicit
+                # backend that allows inactive users.
+                if possible.check_password(password):
+                    otp = EmailOTP.issue(possible, purpose='signup', ttl_minutes=15)
+                    RegisterView._send_signup_otp_email(possible, otp.code)
+                    return Response({
+                        'detail': 'Your email is not yet verified. We sent a new 6-digit code.',
+                        'requires_verification': True,
+                        'email': possible.email,
+                    }, status=status.HTTP_403_FORBIDDEN)
             return Response({'detail': 'Invalid email or password.'}, status=status.HTTP_401_UNAUTHORIZED)
         if not user.is_active:
+            # Defensive — shouldn't reach here because authenticate() filters
+            # out inactive users, but cover the case where a custom backend
+            # might let them through.
             return Response({'detail': 'Account is disabled.'}, status=status.HTTP_401_UNAUTHORIZED)
         if getattr(user, 'is_blocked', False):
             return Response(
@@ -540,9 +560,20 @@ class EmailOTPVerifyView(APIView):
             otp.save(update_fields=['attempts'])
             return Response({'detail': 'Invalid code.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not user.is_active or getattr(user, 'is_blocked', False):
+        # Blocked = admin took action against the account; never let in.
+        if getattr(user, 'is_blocked', False):
             return Response({'detail': 'Account disabled or blocked.'},
                             status=status.HTTP_403_FORBIDDEN)
+
+        # Inactive = signup OTP was never completed. The fact that the
+        # user just proved they own this inbox (correct login OTP) is at
+        # least as strong as the signup OTP would have been — so activate
+        # them in place instead of locking them out. Otherwise old-flow
+        # registrants get permanently stranded.
+        if not user.is_active:
+            user.is_active = True
+            user.save(update_fields=['is_active'])
+            logger.info('OTP login auto-activated stale signup %s', user.email)
 
         otp.consume()
         tokens = get_tokens_for_user(user)

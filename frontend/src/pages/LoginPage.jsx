@@ -116,10 +116,19 @@ export default function LoginPage() {
       toast.success(`Welcome back, ${data.user.full_name || data.user.email}!`);
       navigate(from, { replace: true });
     } catch (err) {
+      // Backend signals "this signup never finished OTP" with a 403 +
+      // requires_verification flag. Route the user to the verify page
+      // instead of showing a misleading credential error.
+      const body = err.response?.data || {};
+      if (body.requires_verification) {
+        toast(body.detail || 'Please verify your email first.');
+        navigate(`/verify-email?email=${encodeURIComponent(body.email || form.email)}`);
+        return;
+      }
       const detail =
-        err.response?.data?.detail ||
-        err.response?.data?.non_field_errors?.[0] ||
-        err.response?.data?.email?.[0];
+        body.detail ||
+        body.non_field_errors?.[0] ||
+        body.email?.[0];
       setErrors({
         form: detail || 'Login failed. Please check your credentials.',
       });

@@ -134,24 +134,43 @@ class TicketMessageView(APIView):
                 ticket.status = new_status
                 ticket.save(update_fields=['status'])
 
-            # Notify the other side
+            # Notify the other side. Don't include the reply body in the
+            # notification — for customer emails it can be confusing (looks
+            # like the email IS the reply); for admin in-app it's noisy.
+            # Just point them at the ticket and let them read it in context.
             try:
                 from services.notifications import notify, notify_admins
+                # Best-effort URL the recipient can click.
+                from django.conf import settings as dj_settings
+                site = (dj_settings.SITE_URL or '').rstrip('/') if hasattr(dj_settings, 'SITE_URL') else ''
+                cust_url = f'{site}/account/support'
+                admin_url = f'{site}/admin-dashboard/support'
+
                 if is_admin:
                     notify(
                         user=ticket.user,
                         kind='support_reply',
-                        title=f'Reply on ticket {ticket.ticket_number}',
-                        body=body[:300],
-                        payload={'ticket_id': ticket.id},
+                        title=f'Our team replied on ticket {ticket.ticket_number}',
+                        body=(
+                            f'Our support team has replied to your ticket '
+                            f'{ticket.ticket_number}. Open your Support Inbox '
+                            f'to read it:\n{cust_url}'
+                        ),
+                        payload={'ticket_id': ticket.id,
+                                 'ticket_number': ticket.ticket_number},
                         channels=['inapp', 'email'],
                     )
                 else:
                     notify_admins(
                         kind='support_customer_reply',
-                        title=f'Customer replied on {ticket.ticket_number}',
-                        body=body[:300],
-                        payload={'ticket_id': ticket.id},
+                        title=f'Customer replied on ticket {ticket.ticket_number}',
+                        body=(
+                            f'A customer has posted a new message on ticket '
+                            f'{ticket.ticket_number}. Open it in the admin '
+                            f'support inbox:\n{admin_url}'
+                        ),
+                        payload={'ticket_id': ticket.id,
+                                 'ticket_number': ticket.ticket_number},
                         channels=['inapp'],
                     )
             except Exception:

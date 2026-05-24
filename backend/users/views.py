@@ -714,12 +714,19 @@ class AdminUserListCreateView(APIView):
     permission_classes = [IsAdminRole]
 
     def get(self, request):
-        rows = (User.objects
-                .filter(role='admin')
-                .order_by('-date_joined')
-                .values('id', 'email', 'full_name', 'phone', 'is_active',
-                        'is_blocked', 'last_login', 'date_joined'))
-        return Response(list(rows))
+        # `full_name` is a @property on User, not a column — values() can't
+        # SELECT it. Pull the columns we need and compute full_name per row.
+        qs = (User.objects
+              .filter(role='admin')
+              .order_by('-date_joined')
+              .values('id', 'email', 'first_name', 'last_name', 'phone',
+                      'is_active', 'is_blocked', 'last_login', 'date_joined'))
+        out = []
+        for u in qs:
+            full = f"{u.pop('first_name', '')} {u.pop('last_name', '')}".strip()
+            u['full_name'] = full or u['email']
+            out.append(u)
+        return Response(out)
 
     def post(self, request):
         from .disposable_emails import is_disposable_email
@@ -742,10 +749,14 @@ class AdminUserListCreateView(APIView):
             return Response({'email': 'A user with this email already exists.'},
                             status=status.HTTP_400_BAD_REQUEST)
 
+        # User has no `full_name` column — it's a computed property. Split
+        # the supplied name into first/last so the DB write actually persists.
+        first, _, last = full_name.partition(' ')
         user = User.objects.create(
             email=email,
             username=email,
-            full_name=full_name,
+            first_name=first[:30],
+            last_name=last[:150],
             phone=phone,
             role='admin',
             is_active=True,
@@ -781,10 +792,11 @@ class AdminUserListCreateView(APIView):
         return Response({
             'id': user.id,
             'email': user.email,
-            'full_name': user.full_name,
+            'full_name': user.full_name,  # @property — call works on a model instance
             'phone': user.phone,
             'role': user.role,
             'is_active': user.is_active,
+            'date_joined': user.date_joined.isoformat() if user.date_joined else None,
         }, status=status.HTTP_201_CREATED)
 
 
@@ -812,7 +824,12 @@ class AdminUserDetailView(APIView):
         if user.id == request.user.id and 'is_blocked' in request.data:
             return Response({'detail': 'You cannot block your own account.'},
                             status=status.HTTP_400_BAD_REQUEST)
-        for field in ('full_name', 'phone', 'is_active', 'is_blocked'):
+        if 'full_name' in request.data:
+            full = (request.data.get('full_name') or '').strip()
+            first, _, last = full.partition(' ')
+            user.first_name = first[:30]
+            user.last_name = last[:150]
+        for field in ('phone', 'is_active', 'is_blocked'):
             if field in request.data:
                 setattr(user, field, request.data[field])
         user.save()

@@ -74,7 +74,13 @@ class StockMovement(models.Model):
         ordering = ['-created_at']
 
     def save(self, *args, **kwargs):
-        # Atomic: lock the stock level row, validate non-negative result, apply delta.
+        # Atomic: lock the stock level row, validate non-negative result, apply
+        # delta, AND propagate the delta onto Product.stock so the customer-
+        # facing storefront sees the new quantity immediately. Without that
+        # second update, warehouse adjustments were invisible to shoppers —
+        # admin saw 50 in stock, storefront still said "Out of stock".
+        from django.db.models import F
+        from products.models import Product
         with transaction.atomic():
             level = StockLevel.objects.select_for_update().get(pk=self.stock_level_id)
             new_quantity = level.quantity + self.delta
@@ -84,6 +90,11 @@ class StockMovement(models.Model):
                 )
             level.quantity = new_quantity
             level.save(update_fields=['quantity', 'updated_at'])
+            # Propagate to Product.stock. F-expression keeps it atomic vs
+            # concurrent order placements that also touch product.stock.
+            Product.objects.filter(pk=level.product_id).update(
+                stock=F('stock') + self.delta,
+            )
             super().save(*args, **kwargs)
 
     def __str__(self):

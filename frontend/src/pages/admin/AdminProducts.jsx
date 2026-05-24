@@ -20,6 +20,7 @@ import {
 } from '../../api';
 import { formatPrice } from '../../utils/format';
 import ConfirmModal from '../../components/ConfirmModal';
+import useModalDismiss from '../../utils/useModalDismiss';
 import Pagination from '../../components/Pagination';
 
 const PAGE_SIZE = 20;
@@ -68,6 +69,10 @@ export default function AdminProducts() {
   const [modal, setModal] = useState({ open: false, editing: null });
   const [form, setForm] = useState(EMPTY_FORM);
   const [activeTab, setActiveTab] = useState('basics');
+  // Esc-to-close + body scroll lock for the product modal. Overlay click is
+  // intentionally not wired so a stray click outside doesn't wipe 7 tabs of
+  // unsaved typing.
+  useModalDismiss(modal.open, () => closeModal());
   const [saving, setSaving] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [errors, setErrors] = useState({});
@@ -273,9 +278,25 @@ export default function AdminProducts() {
           subtitle: (p.subtitle || '').trim(),
         }))
         .filter((p) => p.title);
-      const cleanTags = (form.tags || [])
-        .map((t) => (typeof t === 'string' ? t : '').trim())
-        .filter(Boolean);
+      // Flush any pending keyword the user typed but didn't press Enter on.
+      // The KeywordsTab stashes its current input into form.__pending_keyword
+      // so the parent can sweep it into tags before submit. This is the
+      // single biggest cause of "I added keywords and they didn't save".
+      const pendingKeyword = (form.__pending_keyword || '').trim();
+      const allTagsRaw = pendingKeyword
+        ? [...(form.tags || []), pendingKeyword]
+        : (form.tags || []);
+      // Dedupe case-insensitively while preserving the user's original order.
+      const seenTags = new Set();
+      const cleanTags = [];
+      for (const raw of allTagsRaw) {
+        const t = (typeof raw === 'string' ? raw : '').trim();
+        if (!t) continue;
+        const key = t.toLowerCase();
+        if (seenTags.has(key)) continue;
+        seenTags.add(key);
+        cleanTags.push(t);
+      }
       const cleanBlocks = (form.feature_blocks || [])
         .map((b, i) => ({
           title: (b.title || '').trim(),
@@ -479,9 +500,12 @@ export default function AdminProducts() {
         <Pagination page={page} count={count} pageSize={PAGE_SIZE} onChange={setPage} />
       </div>
 
-      {/* Modal */}
+      {/* Modal — overlay click is NOT bound to close because this form has
+          7 tabs and a stray outside-click was silently dropping minutes of
+          work. Esc (wired via useModalDismiss at the top) and the X button
+          are the only dismissal paths. */}
       {modal.open && (
-        <div className="admin-modal-overlay" onClick={closeModal}>
+        <div className="admin-modal-overlay">
           <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
             <div className="admin-modal__header">
               <h3>{modal.editing ? 'Edit Product' : 'Add Product'}</h3>
@@ -920,12 +944,19 @@ function FeatureBlocksTab({ form, setForm }) {
 
 function KeywordsTab({ form, setForm }) {
   const [allTags, setAllTags] = useState([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(form.__pending_keyword || '');
 
   useEffect(() => {
     fetchTags().then((t) => setAllTags(Array.isArray(t) ? t : t?.results || []))
       .catch(() => setAllTags([]));
   }, []);
+
+  // Mirror current input text onto a hidden form key so submit can flush
+  // text the user typed but never committed (no Enter / no comma).
+  useEffect(() => {
+    setForm((f) => ({ ...f, __pending_keyword: input }));
+    // eslint-disable-next-line
+  }, [input]);
 
   const selected = form.tags || [];
   const norm = (s) => (s || '').trim().toLowerCase();
@@ -934,13 +965,18 @@ function KeywordsTab({ form, setForm }) {
   const addTag = (name) => {
     const trimmed = (name || '').trim();
     if (!trimmed) return;
-    if (isSelected(trimmed)) return;
-    setForm({ ...form, tags: [...selected, trimmed] });
+    if (isSelected(trimmed)) {
+      setInput('');
+      return;
+    }
+    setForm((f) => ({ ...f, tags: [...(f.tags || []), trimmed], __pending_keyword: '' }));
     setInput('');
   };
 
   const removeTag = (name) => {
-    setForm({ ...form, tags: selected.filter((t) => norm(t) !== norm(name)) });
+    setForm((f) => ({
+      ...f, tags: (f.tags || []).filter((t) => norm(t) !== norm(name)),
+    }));
   };
 
   const onKeyDown = (e) => {
@@ -988,7 +1024,19 @@ function KeywordsTab({ form, setForm }) {
           placeholder={selected.length ? '' : 'office, executive, ergonomic…'}
           style={{ flex: 1, minWidth: 140, border: 0, outline: 'none', fontSize: 14 }}
         />
+        {input.trim() && (
+          <button type="button" onClick={() => addTag(input)}
+                  style={{ ...suggestionChipStyle, background: '#2D2E5F', color: '#fff', borderColor: '#2D2E5F' }}>
+            + Add "{input.trim()}"
+          </button>
+        )}
       </div>
+      {input.trim() && (
+        <p className="admin-meta-line" style={{ color: '#B45309', marginBottom: 8 }}>
+          ⚠️ Press <kbd>Enter</kbd>, <kbd>,</kbd>, or click "+ Add" to commit this keyword
+          — otherwise it won't save. (We'll auto-flush on Save as a safety net.)
+        </p>
+      )}
 
       {/* Suggestions row */}
       {suggestions.length > 0 && (

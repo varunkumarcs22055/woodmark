@@ -21,6 +21,22 @@ from products.models import Product
 from .models import Warehouse, StockLevel, StockMovement
 
 
+def _resync_product_stock(product_id):
+    """Recompute Product.stock = SUM(StockLevel.quantity across warehouses).
+    Called whenever a StockLevel is created/updated/deleted outside of the
+    StockMovement path (which already updates Product.stock via its delta).
+    """
+    if not product_id:
+        return
+    from django.db.models import Sum
+    from products.models import Product
+    agg = (StockLevel.objects
+           .filter(product_id=product_id, variant__isnull=True)
+           .aggregate(total=Sum('quantity')))
+    total = agg.get('total') or 0
+    Product.objects.filter(pk=product_id).update(stock=total)
+
+
 class WarehouseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Warehouse
@@ -30,6 +46,10 @@ class WarehouseSerializer(serializers.ModelSerializer):
 class StockLevelSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
     product_sku = serializers.CharField(source='product.sku', read_only=True)
+    # Canonical storefront stock for this product (sum across all warehouses)
+    # so the admin can see at a glance whether their warehouse rows agree
+    # with what customers see.
+    product_stock = serializers.IntegerField(source='product.stock', read_only=True)
     variant_label = serializers.SerializerMethodField()
     warehouse_code = serializers.CharField(source='warehouse.code', read_only=True)
     warehouse_name = serializers.CharField(source='warehouse.name', read_only=True)
@@ -38,7 +58,7 @@ class StockLevelSerializer(serializers.ModelSerializer):
     class Meta:
         model = StockLevel
         fields = [
-            'id', 'product', 'product_name', 'product_sku',
+            'id', 'product', 'product_name', 'product_sku', 'product_stock',
             'variant', 'variant_label',
             'warehouse', 'warehouse_code', 'warehouse_name',
             'quantity', 'low_threshold', 'is_low', 'updated_at',
@@ -67,6 +87,63 @@ class WarehouseListView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         return Warehouse.objects.all()
+
+
+class WarehouseDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET    /api/inventory/warehouses/<pk>/  → single warehouse
+    PATCH  /api/inventory/warehouses/<pk>/  → rename / deactivate / address
+    DELETE /api/inventory/warehouses/<pk>/  → only allowed when no stock rows
+                                              reference this warehouse; admins
+                                              should deactivate instead.
+    """
+    permission_classes = [IsAdminUser]
+    serializer_class = WarehouseSerializer
+    queryset = Warehouse.objects.all()
+
+    def destroy(self, request, *args, **kwargs):
+        wh = self.get_object()
+        if StockLevel.objects.filter(warehouse=wh).exists():
+            return Response(
+                {'detail': 'Cannot delete a warehouse that still has stock rows. '
+                           'Set is_active=false instead.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return super().destroy(request, *args, **kwargs)
+
+
+class StockLevelDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    PATCH /api/inventory/levels/<pk>/  body={low_threshold} only
+    Lets admins tune the alert threshold without going through StockMovement.
+    Quantity changes MUST go through /adjust/ so the audit trail stays clean.
+    """
+    permission_classes = [IsAdminUser]
+    serializer_class = StockLevelSerializer
+    queryset = StockLevel.objects.all()
+
+    def update(self, request, *args, **kwargs):
+        level = self.get_object()
+        if 'low_threshold' in request.data:
+            try:
+                level.low_threshold = max(0, int(request.data['low_threshold']))
+            except (TypeError, ValueError):
+                return Response({'detail': 'low_threshold must be an integer.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+        if 'quantity' in request.data:
+            return Response(
+                {'detail': 'Use POST /api/inventory/adjust/ to change quantity.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        level.save(update_fields=['low_threshold', 'updated_at'])
+        return Response(StockLevelSerializer(level).data)
+
+    def destroy(self, request, *args, **kwargs):
+        level = self.get_object()
+        product_id = level.product_id
+        result = super().destroy(request, *args, **kwargs)
+        _resync_product_stock(product_id)
+        return result
 
 
 class StockLevelListView(generics.ListCreateAPIView):
@@ -125,6 +202,11 @@ class StockLevelListView(generics.ListCreateAPIView):
             level.quantity = quantity
             level.low_threshold = low_threshold
             level.save(update_fields=['quantity', 'low_threshold', 'updated_at'])
+
+        # Resync Product.stock to SUM(StockLevel) — seeding bypasses
+        # StockMovement so we need to push the canonical product stock
+        # column ourselves to keep the storefront aligned.
+        _resync_product_stock(level.product_id)
 
         return Response(
             StockLevelSerializer(level).data,
@@ -189,6 +271,15 @@ class StockLevelBulkSeedView(APIView):
                     quantity=qty, low_threshold=low,
                 )
                 created_count += 1
+
+        # Resync Product.stock for every product we just touched so the
+        # storefront reflects the seeded quantities immediately.
+        touched_ids = list(
+            StockLevel.objects.filter(warehouse=warehouse)
+            .values_list('product_id', flat=True).distinct()
+        )
+        for pid in touched_ids:
+            _resync_product_stock(pid)
 
         return Response({
             'warehouse': warehouse.code,

@@ -9,15 +9,20 @@
  *   POST /api/inventory/adjust/
  */
 import { useEffect, useMemo, useState } from 'react';
-import { FiAlertTriangle, FiPlus, FiX, FiList, FiPackage, FiZap } from 'react-icons/fi';
+import {
+  FiAlertTriangle, FiPlus, FiX, FiList, FiPackage, FiZap,
+  FiEdit2, FiTrash2, FiCheck,
+} from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import {
-  fetchWarehouses, createWarehouse,
+  fetchWarehouses, createWarehouse, updateWarehouse, deleteWarehouse,
   fetchStockLevels, fetchStockMovements, adjustStock,
-  createStockLevel, seedStockForAllProducts,
+  createStockLevel, updateStockLevel, deleteStockLevel,
+  seedStockForAllProducts,
   fetchProducts,
 } from '../../api';
 import { formatDateTime } from '../../utils/format';
+import useModalDismiss from '../../utils/useModalDismiss';
 
 const REASONS = [
   { value: 'adjustment', label: 'Manual adjustment' },
@@ -35,7 +40,7 @@ export default function AdminInventory() {
 
   const [adjust, setAdjust] = useState(null);     // selected stock level for adjust modal
   const [movements, setMovements] = useState(null); // { level, rows }
-  const [whModal, setWhModal] = useState(false);
+  const [whModal, setWhModal] = useState({ open: false, editing: null });
   const [seedModal, setSeedModal] = useState(false);
   const [bulkSeedModal, setBulkSeedModal] = useState(false);
 
@@ -141,7 +146,7 @@ export default function AdminInventory() {
                 </p>
                 <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
                   {warehouses.length === 0 ? (
-                    <button className="btn-primary" onClick={() => { setTab('warehouses'); setWhModal(true); }}>
+                    <button className="btn-primary" onClick={() => { setTab('warehouses'); setWhModal({ open: true, editing: null }); }}>
                       Add Warehouse
                     </button>
                   ) : (
@@ -164,43 +169,27 @@ export default function AdminInventory() {
                     <th>SKU</th>
                     <th>Variant</th>
                     <th>Warehouse</th>
-                    <th>Quantity</th>
-                    <th>Threshold</th>
+                    <th>Qty (this WH)</th>
+                    <th>Storefront stock</th>
+                    <th>Low at</th>
                     <th>Updated</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {levels.map((l) => (
-                    <tr key={l.id}>
-                      <td><strong>{l.product_name}</strong></td>
-                      <td><code>{l.product_sku || '—'}</code></td>
-                      <td>{l.variant_label || '—'}</td>
-                      <td>{l.warehouse_name} <span className="admin-meta-line">[{l.warehouse_code}]</span></td>
-                      <td>
-                        <span className={l.is_low ? 'admin-stock-warn' : ''}>
-                          {l.is_low && <FiAlertTriangle size={12} />} {l.quantity}
-                        </span>
-                      </td>
-                      <td>{l.low_threshold}</td>
-                      <td>{formatDateTime(l.updated_at)}</td>
-                      <td>
-                        <button className="admin-icon-btn" onClick={() => setAdjust(l)}>
-                          Adjust
-                        </button>
-                        <button
-                          className="admin-icon-btn"
-                          onClick={async () => {
-                            try {
-                              const m = await fetchStockMovements(l.id);
-                              setMovements({ level: l, rows: m.results || m || [] });
-                            } catch { toast.error('Failed to load movements'); }
-                          }}
-                        >
-                          <FiList size={14} />
-                        </button>
-                      </td>
-                    </tr>
+                    <StockLevelRow
+                      key={l.id}
+                      level={l}
+                      onAdjust={() => setAdjust(l)}
+                      onMovements={async () => {
+                        try {
+                          const m = await fetchStockMovements(l.id);
+                          setMovements({ level: l, rows: m.results || m || [] });
+                        } catch { toast.error('Failed to load movements'); }
+                      }}
+                      onSaved={loadAll}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -212,7 +201,7 @@ export default function AdminInventory() {
       {tab === 'warehouses' && (
         <>
           <div className="admin-toolbar">
-            <button className="btn-primary" onClick={() => setWhModal(true)}>
+            <button className="btn-primary" onClick={() => setWhModal({ open: true, editing: null })}>
               <FiPlus size={16} /> Add Warehouse
             </button>
           </div>
@@ -222,7 +211,9 @@ export default function AdminInventory() {
             ) : (
               <table className="admin-table">
                 <thead>
-                  <tr><th>Name</th><th>Code</th><th>Address</th><th>Active</th></tr>
+                  <tr>
+                    <th>Name</th><th>Code</th><th>Address</th><th>Active</th><th></th>
+                  </tr>
                 </thead>
                 <tbody>
                   {warehouses.map((w) => (
@@ -234,6 +225,47 @@ export default function AdminInventory() {
                         <span className={`status-badge status-badge--${w.is_active ? 'confirmed' : 'cancelled'}`}>
                           {w.is_active ? 'Yes' : 'No'}
                         </span>
+                      </td>
+                      <td>
+                        <button
+                          className="admin-icon-btn"
+                          onClick={() => setWhModal({ open: true, editing: w })}
+                          title="Edit warehouse"
+                        >
+                          <FiEdit2 size={13} />
+                        </button>
+                        <button
+                          className="admin-icon-btn"
+                          onClick={async () => {
+                            try {
+                              await updateWarehouse(w.id, { is_active: !w.is_active });
+                              toast.success(`${w.name} is now ${!w.is_active ? 'active' : 'inactive'}.`);
+                              await loadAll();
+                            } catch (err) {
+                              toast.error(err.response?.data?.detail || 'Could not toggle.');
+                            }
+                          }}
+                          title={w.is_active ? 'Deactivate' : 'Activate'}
+                        >
+                          {w.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <button
+                          className="admin-icon-btn admin-icon-btn--danger"
+                          onClick={async () => {
+                            if (!window.confirm(`Delete ${w.name}? Only allowed if no stock rows exist for it.`)) return;
+                            try {
+                              await deleteWarehouse(w.id);
+                              toast.success('Warehouse deleted.');
+                              await loadAll();
+                            } catch (err) {
+                              toast.error(err.response?.data?.detail
+                                || 'Could not delete — likely has stock rows. Deactivate instead.');
+                            }
+                          }}
+                          title="Delete (no stock rows must exist)"
+                        >
+                          <FiTrash2 size={13} />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -263,11 +295,12 @@ export default function AdminInventory() {
         />
       )}
 
-      {whModal && (
+      {whModal.open && (
         <WarehouseModal
-          onClose={() => setWhModal(false)}
+          editing={whModal.editing}
+          onClose={() => setWhModal({ open: false, editing: null })}
           onSaved={async () => {
-            setWhModal(false);
+            setWhModal({ open: false, editing: null });
             await loadAll();
           }}
         />
@@ -298,11 +331,118 @@ export default function AdminInventory() {
   );
 }
 
+function StockLevelRow({ level: l, onAdjust, onMovements, onSaved }) {
+  const [editingThr, setEditingThr] = useState(false);
+  const [thrVal, setThrVal] = useState(String(l.low_threshold));
+  const [busy, setBusy] = useState(false);
+
+  const saveThr = async () => {
+    const n = Number.parseInt(thrVal, 10);
+    if (!Number.isFinite(n) || n < 0) {
+      toast.error('Threshold must be a non-negative integer.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await updateStockLevel(l.id, { low_threshold: n });
+      toast.success('Threshold updated.');
+      setEditingThr(false);
+      await onSaved();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Could not update.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!window.confirm(`Delete the stock row for ${l.product_name} @ ${l.warehouse_code}? Storefront stock will resync to the remaining warehouses.`)) {
+      return;
+    }
+    try {
+      await deleteStockLevel(l.id);
+      toast.success('Stock row deleted.');
+      await onSaved();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Could not delete.');
+    }
+  };
+
+  const drift = (l.product_stock ?? null) !== null
+    && l.product_stock !== l.quantity
+    && !l.variant_label; // variants don't roll up
+
+  return (
+    <tr>
+      <td><strong>{l.product_name}</strong></td>
+      <td><code>{l.product_sku || '—'}</code></td>
+      <td>{l.variant_label || '—'}</td>
+      <td>{l.warehouse_name} <span className="admin-meta-line">[{l.warehouse_code}]</span></td>
+      <td>
+        <span className={l.is_low ? 'admin-stock-warn' : ''}>
+          {l.is_low && <FiAlertTriangle size={12} />} {l.quantity}
+        </span>
+      </td>
+      <td>
+        <strong>{l.product_stock ?? '—'}</strong>
+        {drift && (
+          <span className="admin-meta-line" style={{ color: '#B45309' }}>
+            differs from warehouse — likely split across multiple WHs
+          </span>
+        )}
+      </td>
+      <td>
+        {editingThr ? (
+          <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+            <input
+              type="number" min="0" step="1"
+              value={thrVal}
+              onChange={(e) => setThrVal(e.target.value)}
+              style={{ width: 64, padding: '4px 6px' }}
+              autoFocus
+            />
+            <button className="admin-icon-btn admin-icon-btn--success"
+                    onClick={saveThr} disabled={busy}>
+              <FiCheck size={13} />
+            </button>
+            <button className="admin-icon-btn"
+                    onClick={() => { setEditingThr(false); setThrVal(String(l.low_threshold)); }}>
+              <FiX size={13} />
+            </button>
+          </span>
+        ) : (
+          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+            {l.low_threshold}
+            <button className="admin-icon-btn"
+                    onClick={() => setEditingThr(true)}
+                    title="Edit low-stock threshold">
+              <FiEdit2 size={11} />
+            </button>
+          </span>
+        )}
+      </td>
+      <td>{formatDateTime(l.updated_at)}</td>
+      <td>
+        <button className="admin-icon-btn" onClick={onAdjust}>Adjust</button>
+        <button className="admin-icon-btn" onClick={onMovements} title="History">
+          <FiList size={14} />
+        </button>
+        <button className="admin-icon-btn admin-icon-btn--danger"
+                onClick={remove} title="Delete stock row">
+          <FiTrash2 size={13} />
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+
 function AdjustModal({ level, onClose, onSaved }) {
   const [delta, setDelta] = useState('');
   const [reason, setReason] = useState('adjustment');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  useModalDismiss(true, onClose);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -324,7 +464,7 @@ function AdjustModal({ level, onClose, onSaved }) {
   };
 
   return (
-    <div className="admin-modal-overlay" onClick={onClose}>
+    <div className="admin-modal-overlay">
       <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
         <div className="admin-modal__header">
           <h3>Adjust Stock</h3>
@@ -369,8 +509,9 @@ function AdjustModal({ level, onClose, onSaved }) {
 }
 
 function MovementsModal({ level, rows, onClose }) {
+  useModalDismiss(true, onClose);
   return (
-    <div className="admin-modal-overlay" onClick={onClose}>
+    <div className="admin-modal-overlay">
       <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
         <div className="admin-modal__header">
           <h3>Movements — {level.product_name} @ {level.warehouse_code}</h3>
@@ -415,6 +556,7 @@ function SeedStockModal({ warehouses, onClose, onSaved }) {
   const [threshold, setThreshold] = useState('5');
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
+  useModalDismiss(true, onClose);
 
   useEffect(() => {
     fetchProducts({ page_size: 200 })
@@ -452,7 +594,7 @@ function SeedStockModal({ warehouses, onClose, onSaved }) {
   };
 
   return (
-    <div className="admin-modal-overlay" onClick={onClose}>
+    <div className="admin-modal-overlay">
       <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
         <div className="admin-modal__header">
           <h3>Seed Stock</h3>
@@ -525,6 +667,7 @@ function BulkSeedModal({ warehouses, onClose, onSaved }) {
   const [threshold, setThreshold] = useState('5');
   const [onlyMissing, setOnlyMissing] = useState(true);
   const [saving, setSaving] = useState(false);
+  useModalDismiss(true, onClose);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -549,7 +692,7 @@ function BulkSeedModal({ warehouses, onClose, onSaved }) {
   };
 
   return (
-    <div className="admin-modal-overlay" onClick={onClose}>
+    <div className="admin-modal-overlay">
       <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
         <div className="admin-modal__header">
           <h3>Bulk-Seed All Products</h3>
@@ -608,32 +751,45 @@ function BulkSeedModal({ warehouses, onClose, onSaved }) {
   );
 }
 
-function WarehouseModal({ onClose, onSaved }) {
-  const [name, setName] = useState('');
-  const [code, setCode] = useState('');
-  const [address, setAddress] = useState('');
+function WarehouseModal({ editing, onClose, onSaved }) {
+  const [name, setName] = useState(editing?.name || '');
+  const [code, setCode] = useState(editing?.code || '');
+  const [address, setAddress] = useState(editing?.address || '');
+  const [isActive, setIsActive] = useState(editing ? !!editing.is_active : true);
   const [saving, setSaving] = useState(false);
+  useModalDismiss(true, onClose);
 
   const submit = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await createWarehouse({ name: name.trim(), code: code.trim().toUpperCase(), address });
-      toast.success('Warehouse created.');
+      const payload = {
+        name: name.trim(),
+        code: code.trim().toUpperCase(),
+        address,
+        is_active: isActive,
+      };
+      if (editing) {
+        await updateWarehouse(editing.id, payload);
+        toast.success('Warehouse updated.');
+      } else {
+        await createWarehouse(payload);
+        toast.success('Warehouse created.');
+      }
       onSaved();
     } catch (err) {
       const data = err.response?.data || {};
-      toast.error(data.detail || Object.values(data).flat()[0] || 'Create failed.');
+      toast.error(data.detail || Object.values(data).flat()[0] || 'Save failed.');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="admin-modal-overlay" onClick={onClose}>
+    <div className="admin-modal-overlay">
       <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
         <div className="admin-modal__header">
-          <h3>Add Warehouse</h3>
+          <h3>{editing ? `Edit Warehouse — ${editing.code}` : 'Add Warehouse'}</h3>
           <button className="admin-modal__close" onClick={onClose}><FiX /></button>
         </div>
         <form onSubmit={submit}>
@@ -652,11 +808,21 @@ function WarehouseModal({ onClose, onSaved }) {
               <label>Address</label>
               <textarea rows={3} value={address} onChange={(e) => setAddress(e.target.value)} />
             </div>
+            <div className="admin-field">
+              <label className="admin-toggle">
+                <input
+                  type="checkbox"
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                />
+                <span>Active — uncheck to stop selecting this warehouse on bulk seed</span>
+              </label>
+            </div>
           </div>
           <div className="admin-modal__footer">
             <button type="button" className="btn-outline" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? 'Saving…' : 'Create Warehouse'}
+              {saving ? 'Saving…' : (editing ? 'Save Changes' : 'Create Warehouse')}
             </button>
           </div>
         </form>

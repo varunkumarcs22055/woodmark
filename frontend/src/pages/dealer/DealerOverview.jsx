@@ -20,6 +20,7 @@ import {
   fetchDealerDashboard, initDealerCreditPay, verifyDealerCreditPay,
 } from '../../api';
 import { formatPrice } from '../../utils/format';
+import useModalDismiss from '../../utils/useModalDismiss';
 
 const loadRazorpayScript = () =>
   new Promise((resolve) => {
@@ -247,6 +248,7 @@ function StatCard({ icon, label, value, sub, accent }) {
 function PayCreditModal({ maxAmount, defaultAmount, dealerEmail, dealerName, onClose, onSuccess }) {
   const [amount, setAmount] = useState(defaultAmount);
   const [busy, setBusy] = useState(false);
+  useModalDismiss(true, onClose);
 
   const submit = async (e) => {
     e.preventDefault();

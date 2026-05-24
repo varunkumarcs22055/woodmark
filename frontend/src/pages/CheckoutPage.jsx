@@ -131,8 +131,20 @@ export default function CheckoutPage() {
     // Fetch dealer info if applicable
     if (user?.role === 'dealer') {
       import('../api').then(({ fetchDealerCredit, fetchDealerWallet }) => {
-        fetchDealerCredit().then(setDealerCredit).catch(() => {});
-        fetchDealerWallet().then(setDealerWallet).catch(() => {});
+        // Surface errors with a fallback sentinel so the UI can show "couldn't
+        // load" instead of leaving the radio mysteriously greyed-out forever.
+        fetchDealerCredit()
+          .then(setDealerCredit)
+          .catch((err) => {
+            console.warn('[dealer credit] fetch failed', err?.response?.status);
+            setDealerCredit({ _fetch_error: true });
+          });
+        fetchDealerWallet()
+          .then(setDealerWallet)
+          .catch((err) => {
+            console.warn('[dealer wallet] fetch failed', err?.response?.status);
+            setDealerWallet({ _fetch_error: true });
+          });
       });
     }
   }, [user]);
@@ -627,38 +639,94 @@ export default function CheckoutPage() {
               </div>
             </label>
 
-            {user?.role === 'dealer' && (
-              <>
-                <label style={paymentTileStyle(paymentType === 'credit')}>
-                  <input type="radio" name="paymentType" value="credit"
-                         checked={paymentType === 'credit'}
-                         onChange={() => setPaymentType('credit')}
-                         style={{ marginRight: 6 }}
-                         disabled={!dealerCredit?.is_active || (parseFloat(dealerCredit?.credit_limit || 0) - parseFloat(dealerCredit?.amount_used || 0)) < grandTotal} />
-                  <div>
-                    <strong>Dealer Credit</strong>
-                    <div style={{ color: '#6B7280', fontSize: 11 }}>
-                      Limit: {formatPrice(parseFloat(dealerCredit?.credit_limit || 0) - parseFloat(dealerCredit?.amount_used || 0))}
+            {user?.role === 'dealer' && (() => {
+              // Compute eligibility once and surface the *exact* reason if it
+              // can't be used. Previously the radios were greyed with no
+              // explanation, so dealers thought the option was missing.
+              const credit = dealerCredit;
+              const wallet = dealerWallet;
+              const creditAvailable = Math.max(
+                0,
+                parseFloat(credit?.credit_limit || 0) - parseFloat(credit?.amount_used || 0),
+              );
+              const creditFetchFailed = credit?._fetch_error;
+              const creditReason = creditFetchFailed
+                ? "Couldn't load your credit account — sign out and back in, or contact admin."
+                : !credit
+                  ? 'Loading credit account…'
+                  : credit.is_active === false
+                    ? 'Credit account is paused — contact your admin to reactivate.'
+                    : parseFloat(credit.credit_limit || 0) === 0
+                      ? 'No credit limit set yet — ask admin to assign one at /admin-dashboard/dealers.'
+                      : creditAvailable < grandTotal
+                        ? `Insufficient credit. Need ${formatPrice(grandTotal - creditAvailable)} more.`
+                        : '';
+              const creditUsable = !creditReason;
+
+              const walletBalance = parseFloat(wallet?.balance || 0);
+              const walletFetchFailed = wallet?._fetch_error;
+              const walletReason = walletFetchFailed
+                ? "Couldn't load your wallet — sign out and back in, or contact admin."
+                : !wallet
+                  ? 'Loading wallet…'
+                  : wallet.is_active === false
+                    ? 'Wallet is paused — contact your admin.'
+                    : walletBalance === 0
+                      ? 'Wallet is empty — ask admin to top it up.'
+                      : walletBalance < grandTotal
+                        ? `Wallet short by ${formatPrice(grandTotal - walletBalance)}.`
+                        : '';
+              const walletUsable = !walletReason;
+
+              return (
+                <>
+                  <label style={{
+                    ...paymentTileStyle(paymentType === 'credit'),
+                    opacity: creditUsable ? 1 : 0.85,
+                  }}>
+                    <input type="radio" name="paymentType" value="credit"
+                           checked={paymentType === 'credit'}
+                           onChange={() => setPaymentType('credit')}
+                           style={{ marginRight: 6 }}
+                           disabled={!creditUsable} />
+                    <div>
+                      <strong>Dealer Credit</strong>
+                      <div style={{ color: '#6B7280', fontSize: 11 }}>
+                        Available: {formatPrice(creditAvailable)}
+                        {credit?.terms_days ? ` · Net-${credit.terms_days}` : ''}
+                      </div>
+                      {creditReason && (
+                        <div style={{ color: '#92400E', fontSize: 10, marginTop: 2 }}>
+                          {creditReason}
+                        </div>
+                      )}
                     </div>
-                    {!dealerCredit?.is_active && <div style={{ color: '#92400E', fontSize: 10 }}>Credit inactive</div>}
-                  </div>
-                </label>
-                <label style={paymentTileStyle(paymentType === 'wallet')}>
-                  <input type="radio" name="paymentType" value="wallet"
-                         checked={paymentType === 'wallet'}
-                         onChange={() => setPaymentType('wallet')}
-                         style={{ marginRight: 6 }}
-                         disabled={!dealerWallet?.is_active || parseFloat(dealerWallet?.balance || 0) < grandTotal} />
-                  <div>
-                    <strong>Dealer Wallet</strong>
-                    <div style={{ color: '#6B7280', fontSize: 11 }}>
-                      Balance: {formatPrice(dealerWallet?.balance || 0)}
+                  </label>
+
+                  <label style={{
+                    ...paymentTileStyle(paymentType === 'wallet'),
+                    opacity: walletUsable ? 1 : 0.85,
+                  }}>
+                    <input type="radio" name="paymentType" value="wallet"
+                           checked={paymentType === 'wallet'}
+                           onChange={() => setPaymentType('wallet')}
+                           style={{ marginRight: 6 }}
+                           disabled={!walletUsable} />
+                    <div>
+                      <strong>Dealer Wallet</strong>
+                      <div style={{ color: '#6B7280', fontSize: 11 }}>
+                        Balance: {formatPrice(walletBalance)}
+                      </div>
+                      {walletReason && (
+                        <div style={{ color: '#92400E', fontSize: 10, marginTop: 2 }}>
+                          {walletReason}
+                        </div>
+                      )}
                     </div>
-                    {!dealerWallet?.is_active && <div style={{ color: '#92400E', fontSize: 10 }}>Wallet inactive</div>}
-                  </div>
-                </label>
-              </>
-            )}
+                  </label>
+                </>
+              );
+            })()}
           </div>
 
 

@@ -404,6 +404,19 @@ export const updateAdminUser = (id, payload) =>
 export const deleteAdminUser = (id) =>
   api.delete(`/auth/admins/${id}/`).then((r) => r.data);
 
+// ─── Inventory (extra mutations) ────────────────────────────────────
+export const updateWarehouse = (id, payload) =>
+  api.patch(`/inventory/warehouses/${id}/`, payload).then((r) => r.data);
+
+export const deleteWarehouse = (id) =>
+  api.delete(`/inventory/warehouses/${id}/`).then((r) => r.data);
+
+export const updateStockLevel = (id, payload) =>
+  api.patch(`/inventory/levels/${id}/`, payload).then((r) => r.data);
+
+export const deleteStockLevel = (id) =>
+  api.delete(`/inventory/levels/${id}/`).then((r) => r.data);
+
 // ─── Product Media ───────────────────────────────────────────────────
 export const deleteProductMedia = (mediaId) =>
   api.delete(`/products/media/${mediaId}/`).then((r) => r.data);

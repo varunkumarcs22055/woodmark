@@ -24,6 +24,7 @@ import {
   fetchNegotiatedPrices, upsertNegotiatedPrice, deleteNegotiatedPrice,
   fetchProducts,
 } from '../../api';
+import useModalDismiss from '../../utils/useModalDismiss';
 import { formatDate, formatPrice } from '../../utils/format';
 
 export default function AdminDealers() {
@@ -296,7 +297,7 @@ export default function AdminDealers() {
 
 // ─── Tier management modal ───────────────────────────────────────────────
 
-function TierManagementModal({ onClose }) {
+function TierManagementModal({ onClose }) { useModalDismiss(true, onClose);
   const [tiers, setTiers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null); // id or 'new'
@@ -362,7 +363,7 @@ function TierManagementModal({ onClose }) {
   };
 
   return (
-    <div className="admin-modal-overlay" onClick={onClose}>
+    <div className="admin-modal-overlay">
       <div className="admin-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }}>
         <div className="admin-modal__header">
           <h3>B2B Pricing Tiers</h3>
@@ -451,7 +452,7 @@ function TierManagementModal({ onClose }) {
 
 // ─── Credit management modal ─────────────────────────────────────────────
 
-function CreditModal({ dealer, onClose, onSaved }) {
+function CreditModal({ dealer, onClose, onSaved }) { useModalDismiss(true, onClose);
   const [credit, setCredit] = useState(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ credit_limit: '0', terms_days: '30', is_active: true });
@@ -527,7 +528,7 @@ function CreditModal({ dealer, onClose, onSaved }) {
   };
 
   return (
-    <div className="admin-modal-overlay" onClick={onClose}>
+    <div className="admin-modal-overlay">
       <div className="admin-modal" onClick={(e) => e.stopPropagation()}
            style={{ maxWidth: 720 }}>
         <div className="admin-modal__header">
@@ -638,7 +639,7 @@ function CreditModal({ dealer, onClose, onSaved }) {
 
 // ─── Wallet topup modal ──────────────────────────────────────────────────
 
-function WalletModal({ dealer, onClose, onSaved }) {
+function WalletModal({ dealer, onClose, onSaved }) { useModalDismiss(true, onClose);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
@@ -663,7 +664,7 @@ function WalletModal({ dealer, onClose, onSaved }) {
   };
 
   return (
-    <div className="admin-modal-overlay" onClick={onClose}>
+    <div className="admin-modal-overlay">
       <div className="admin-modal" onClick={(e) => e.stopPropagation()}
            style={{ maxWidth: 480 }}>
         <div className="admin-modal__header">
@@ -710,7 +711,7 @@ function WalletModal({ dealer, onClose, onSaved }) {
 
 // ─── Negotiated prices modal ──────────────────────────────────────────────
 
-function NegotiatedPricesModal({ dealer, onClose }) {
+function NegotiatedPricesModal({ dealer, onClose }) { useModalDismiss(true, onClose);
   const [rows, setRows] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -781,7 +782,7 @@ function NegotiatedPricesModal({ dealer, onClose }) {
   };
 
   return (
-    <div className="admin-modal-overlay" onClick={onClose}>
+    <div className="admin-modal-overlay">
       <div className="admin-modal" onClick={(e) => e.stopPropagation()}
            style={{ maxWidth: 820 }}>
         <div className="admin-modal__header">

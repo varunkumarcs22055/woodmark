@@ -38,11 +38,27 @@ export default function AdminSettings() {
       .finally(() => setLoading(false));
   }, []);
 
+  const [adminsError, setAdminsError] = useState('');
   const loadAdmins = () => {
     setAdminsLoading(true);
+    setAdminsError('');
     fetchAdminUsers()
       .then((rows) => setAdmins(Array.isArray(rows) ? rows : rows?.results || []))
-      .catch(() => setAdmins([]))
+      .catch((err) => {
+        // Don't silently fall back to "[]" — that's what made the panel
+        // appear empty with no clue. Surface the actual reason.
+        setAdmins([]);
+        const status = err.response?.status;
+        const detail = err.response?.data?.detail
+          || err.response?.data?.error
+          || err.message
+          || 'Could not load admin list.';
+        const msg = status === 401 || status === 403
+          ? 'Your session expired or this account no longer has admin role. Sign out and back in.'
+          : `${detail}${status ? ` (HTTP ${status})` : ''}`;
+        setAdminsError(msg);
+        toast.error(msg, { duration: 6000 });
+      })
       .finally(() => setAdminsLoading(false));
   };
   useEffect(() => { loadAdmins(); }, []);
@@ -234,6 +250,14 @@ export default function AdminSettings() {
         <div className="admin-table-wrapper" style={{ marginTop: 14 }}>
           {adminsLoading ? (
             <p className="admin-empty">Loading…</p>
+          ) : adminsError ? (
+            <div className="admin-empty" style={{ background: '#FEF3C7', borderRadius: 10, padding: 16, color: '#92400E' }}>
+              <strong>Couldn't load admin list:</strong>
+              <p style={{ margin: '4px 0 8px' }}>{adminsError}</p>
+              <button type="button" className="btn-outline" onClick={loadAdmins}>
+                Retry
+              </button>
+            </div>
           ) : admins.length === 0 ? (
             <p className="admin-empty">No admins found. Strange — you should be on this list.</p>
           ) : (

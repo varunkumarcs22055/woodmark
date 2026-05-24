@@ -716,11 +716,18 @@ class AdminUserListCreateView(APIView):
     def get(self, request):
         # `full_name` is a @property on User, not a column — values() can't
         # SELECT it. Pull the columns we need and compute full_name per row.
+        # Match the same criteria as IsAdminRole/IsAdminUser: role='admin'
+        # OR true Django superuser. Without the OR, legacy seed accounts
+        # (created as Django superusers without explicit role) would show
+        # the panel as empty even though they're the very ones using it.
+        from django.db.models import Q
         qs = (User.objects
-              .filter(role='admin')
+              .filter(Q(role='admin') | Q(is_superuser=True))
+              .distinct()
               .order_by('-date_joined')
               .values('id', 'email', 'first_name', 'last_name', 'phone',
-                      'is_active', 'is_blocked', 'last_login', 'date_joined'))
+                      'role', 'is_superuser', 'is_active', 'is_blocked',
+                      'last_login', 'date_joined'))
         out = []
         for u in qs:
             full = f"{u.pop('first_name', '')} {u.pop('last_name', '')}".strip()

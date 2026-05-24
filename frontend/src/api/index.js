@@ -164,6 +164,12 @@ export const adminUpdateProduct = (id, data, { mediaFiles = [] } = {}) => {
 export const adminDeleteProductMedia = (mediaId) =>
   api.delete(`/products/media/${mediaId}/`).then((r) => r.data);
 
+// Payment reconcile — for the "I paid but it's not showing" support flow.
+// Queries Razorpay for the latest payment state on the linked razorpay order
+// and syncs our DB; returns { reconciled, payment_status, message, ... }.
+export const reconcilePayment = (order_id) =>
+  api.post('/payment/reconcile/', { order_id }).then((r) => r.data);
+
 // Best Sellers — backend ranks by units sold in the trailing window.
 // Returns { window_days, count, results: [...products with units_sold_in_window] }.
 export const fetchBestSellers = ({ days = 30, limit = 12 } = {}) =>

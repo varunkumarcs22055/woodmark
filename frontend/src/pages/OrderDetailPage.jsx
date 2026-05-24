@@ -15,6 +15,7 @@ import {
 import toast from 'react-hot-toast';
 import {
   fetchOrderDetail, fetchInvoicePDFBlob, cancelOrder, requestOrderReturn,
+  reconcilePayment,
 } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { formatPrice, formatDate } from '../utils/format';
@@ -260,12 +261,44 @@ export default function OrderDetailPage() {
               </div>
             </div>
             {order.payment_status !== 'SUCCESS' && (
-              <Link to="/checkout" state={{ pendingOrderId: order.order_id }}
-                    className="btn-primary"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6,
-                             padding: '8px 16px', fontSize: 13, fontWeight: 600 }}>
-                Pay now
-              </Link>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={acting === 'reconcile'}
+                  onClick={async () => {
+                    setActing('reconcile');
+                    try {
+                      const r = await reconcilePayment(order.order_id);
+                      if (r.reconciled) {
+                        toast.success(r.message || 'Payment confirmed!');
+                        const fresh = await fetchOrderDetail(
+                          orderId, !user ? guestEmail : undefined,
+                        );
+                        setOrder(fresh);
+                      } else {
+                        toast(r.message || 'No payment found on Razorpay yet.',
+                              { icon: 'ℹ️', duration: 6000 });
+                      }
+                    } catch (err) {
+                      toast.error(err.response?.data?.error
+                        || 'Could not check payment status. Try again.');
+                    } finally {
+                      setActing(null);
+                    }
+                  }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6,
+                           padding: '8px 16px', fontSize: 13, fontWeight: 600 }}
+                >
+                  {acting === 'reconcile' ? 'Checking…' : 'I paid — verify'}
+                </button>
+                <Link to="/checkout" state={{ pendingOrderId: order.order_id }}
+                      className="btn-primary"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6,
+                               padding: '8px 16px', fontSize: 13, fontWeight: 600 }}>
+                  Pay now
+                </Link>
+              </div>
             )}
           </div>
         </section>

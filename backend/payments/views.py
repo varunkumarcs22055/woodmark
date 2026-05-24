@@ -357,3 +357,112 @@ class ERPRetryView(APIView):
                 {'error': 'ERP sync failed. Check server logs for details.'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
+
+
+class PaymentReconcileView(APIView):
+    """
+    POST /api/payment/reconcile/  body={order_id}
+
+    Self-service payment reconciliation. Customer says "I paid but it's
+    not showing." We hit Razorpay directly to see what THEY think happened
+    and reconcile our DB:
+
+      Razorpay says CAPTURED → mark our order SUCCESS, fire ERP sync
+      Razorpay says AUTHORIZED → still SUCCESS (will auto-capture)
+      Razorpay says FAILED → mark FAILED so the buyer can retry
+      No payment on Razorpay's side → leave as-is, tell the buyer
+
+    This covers the case where the verify endpoint never got called
+    (browser crash, network blip after debit) OR the webhook failed.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        order_id = request.data.get('order_id')
+        if not order_id:
+            return Response({'error': 'order_id is required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            order = Order.objects.get(order_id=order_id)
+        except Order.DoesNotExist:
+            return Response({'error': f'Order {order_id} not found.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        # Already paid? Just tell the caller — idempotent.
+        if order.payment_status == 'SUCCESS':
+            return Response({
+                'order_id': order.order_id,
+                'payment_status': order.payment_status,
+                'reconciled': False,
+                'message': 'Order is already marked as paid.',
+            })
+
+        try:
+            payment_row = order.payment
+            rzp_order_id = payment_row.razorpay_order_id if payment_row else ''
+        except Exception:
+            rzp_order_id = ''
+
+        if not rzp_order_id:
+            return Response({
+                'order_id': order.order_id,
+                'payment_status': order.payment_status,
+                'reconciled': False,
+                'message': 'No Razorpay order linked yet. If you paid through '
+                           'Razorpay and your bank shows the debit, please '
+                           'share the Razorpay payment ID with support.',
+            })
+
+        # Ask Razorpay for the truth.
+        try:
+            client = get_razorpay_client()
+            payments = client.order.payments(rzp_order_id)
+        except Exception as exc:
+            logger.exception('Razorpay reconcile failed for %s', order_id)
+            return Response(
+                {'error': 'Could not reach Razorpay right now. Try again in a minute.'},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        items = (payments or {}).get('items', [])
+        captured = next((p for p in items if p.get('status') == 'captured'), None)
+        authorized = next((p for p in items if p.get('status') == 'authorized'), None)
+        winning = captured or authorized
+
+        if winning:
+            payment = confirm_order_and_sync_erp(
+                order,
+                razorpay_order_id=rzp_order_id,
+                razorpay_payment_id=winning.get('id', ''),
+                razorpay_signature='',  # webhook-style sync, signature N/A
+            )
+            return Response({
+                'order_id': order.order_id,
+                'payment_status': 'SUCCESS',
+                'reconciled': True,
+                'razorpay_payment_id': winning.get('id'),
+                'amount': winning.get('amount', 0) / 100,
+                'erp_order_id': order.erp_order_id,
+                'message': 'Payment confirmed via Razorpay. Your order is now active.',
+                'payment': PaymentSerializer(payment).data,
+            })
+
+        # Razorpay knows the order but no successful payment recorded.
+        any_failed = any(p.get('status') == 'failed' for p in items)
+        if any_failed and order.payment_status != 'FAILED':
+            order.payment_status = 'FAILED'
+            order.save(update_fields=['payment_status'])
+
+        return Response({
+            'order_id': order.order_id,
+            'payment_status': order.payment_status,
+            'reconciled': False,
+            'razorpay_payments_count': len(items),
+            'message': (
+                'Razorpay shows no successful payment for this order. If your '
+                'bank confirms the debit, please contact support with the bank '
+                'reference — refunds for un-captured payments are processed '
+                'automatically by Razorpay within 5–7 business days.'
+            ),
+        })

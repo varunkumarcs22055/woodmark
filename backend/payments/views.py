@@ -206,6 +206,11 @@ class PaymentVerifyView(APIView):
             logger.warning(f'Razorpay signature verification failed for order {order_id}')
             order.payment_status = 'FAILED'
             order.save(update_fields=['payment_status'])
+            try:
+                from .notifications import send_payment_failed_email
+                send_payment_failed_email(order, reason='Signature mismatch')
+            except Exception:
+                logger.exception('payment-failed email error for %s', order_id)
             return Response({'error': 'Payment verification failed. Invalid signature.'}, status=status.HTTP_400_BAD_REQUEST)
 
         payment = confirm_order_and_sync_erp(
@@ -252,7 +257,9 @@ class RazorpayWebhookView(APIView):
                 update_refund_from_webhook(refund_data)
                 return Response({'status': 'ok'})
 
-            if event != 'payment.captured':
+            # Handle both successful captures and explicit failures. Refund
+            # events are routed to update_refund_from_webhook elsewhere.
+            if event not in ('payment.captured', 'payment.failed'):
                 return Response({'status': f'event {event} ignored'})
 
             payment_data = payload['payload']['payment']['entity']
@@ -260,6 +267,32 @@ class RazorpayWebhookView(APIView):
 
             if not razorpay_order_id:
                 return Response({'status': 'no order_id in payload'})
+
+            # payment.failed → flag the order + email the buyer so they
+            # know to retry. Razorpay sends these when a card is declined,
+            # OTP expires, etc. Without this hook the order would just sit
+            # in their history with no explanation.
+            if event == 'payment.failed':
+                try:
+                    pr = Payment.objects.select_related('order').get(
+                        razorpay_order_id=razorpay_order_id,
+                    )
+                    o = pr.order
+                except Payment.DoesNotExist:
+                    fid = payment_data.get('notes', {}).get('furnishop_order_id')
+                    o = Order.objects.filter(order_id=fid).first() if fid else None
+                if o is not None and o.payment_status != 'SUCCESS':
+                    o.payment_status = 'FAILED'
+                    o.save(update_fields=['payment_status'])
+                    try:
+                        from .notifications import send_payment_failed_email
+                        send_payment_failed_email(
+                            o,
+                            reason=payment_data.get('error_description', '') or '',
+                        )
+                    except Exception:
+                        logger.exception('payment-failed email error for %s', o.order_id)
+                return Response({'status': 'failure recorded'})
 
             try:
                 payment_record = Payment.objects.select_related('order').get(
@@ -437,6 +470,14 @@ class PaymentReconcileView(APIView):
                 razorpay_payment_id=winning.get('id', ''),
                 razorpay_signature='',  # webhook-style sync, signature N/A
             )
+            # Buyer asked us to find their payment and we did — send them a
+            # dedicated "we matched it" email so they have proof in their inbox
+            # that we accepted responsibility for the gap.
+            try:
+                from .notifications import send_payment_reconciled_email
+                send_payment_reconciled_email(order)
+            except Exception:
+                logger.exception('reconcile email error for %s', order_id)
             return Response({
                 'order_id': order.order_id,
                 'payment_status': 'SUCCESS',

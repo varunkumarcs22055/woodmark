@@ -452,3 +452,134 @@ def send_order_status_email(order, *, new_status: str) -> bool:
     except Exception:
         logger.exception('Order status email FAILED for %s', order.order_id)
         return False
+
+
+def _simple_card_email(order, *, headline, accent, body_para, subject, cta_label='View Order'):
+    """Shared helper for cancellation / payment-failed / reconcile-success
+    emails — same brand-consistent card layout as the confirmation email but
+    with custom headline + body."""
+    if not getattr(order, 'user_email', None):
+        return False
+    site = (getattr(settings, 'SITE_URL', '') or 'https://furnotech.in').rstrip('/')
+    track = f'{site}/orders/{order.order_id}'
+    name = escape(order.user_name or 'there')
+    html = f"""<!doctype html>
+<html><body style="margin:0;padding:0;background:{BG_PAGE};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:{INK}">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="padding:24px 0">
+    <tr><td align="center">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="max-width:560px;background:{BG_CARD};border-radius:12px;overflow:hidden;border:1px solid {LINE}">
+        <tr><td style="background:{BRAND_NAVY};padding:20px 26px;color:#fff;font-size:18px;font-weight:800">
+          Furno<span style="color:{BRAND_ORANGE}">Tech</span>
+        </td></tr>
+        <tr><td style="padding:28px">
+          <div style="display:inline-block;background:{accent};color:#fff;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:5px 12px;border-radius:999px;margin-bottom:14px">
+            {escape(headline)}
+          </div>
+          <p style="margin:0 0 6px;font-size:14px;color:{MUTED}">Order <strong style="color:{INK}">#{escape(order.order_id)}</strong></p>
+          <p style="margin:0 0 18px;font-size:15px;color:{INK};line-height:1.6">
+            Hi {name}, {escape(body_para)}
+          </p>
+          <p style="margin:0 0 22px;font-size:13px;color:{MUTED}">
+            Amount on order: <strong style="color:{INK}">{_fmt_money(order.total_amount)}</strong>
+          </p>
+          <a href="{track}" style="display:inline-block;background:{BRAND_NAVY};color:#fff;text-decoration:none;padding:11px 24px;border-radius:8px;font-weight:700;font-size:14px">{escape(cta_label)} →</a>
+          <p style="margin:22px 0 0;font-size:12px;color:{MUTED};line-height:1.5">
+            Need help? Reply to this email or write to
+            <a href="mailto:hello@furnotech.in" style="color:{BRAND_NAVY}">hello@furnotech.in</a> with your order number.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+    text_body = (
+        f'Hi {order.user_name or "there"},\n\n'
+        f'Order #{order.order_id} — {headline}\n\n'
+        f'{body_para}\n\n'
+        f'Amount on order: {_fmt_money(order.total_amount)}\n\n'
+        f'{cta_label}: {track}\n\n'
+        f'— FurnoTech'
+    )
+    try:
+        msg = EmailMultiAlternatives(
+            subject=subject, body=text_body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[order.user_email],
+            reply_to=['hello@furnotech.in'],
+        )
+        msg.attach_alternative(html, 'text/html')
+        msg.send(fail_silently=False)
+        logger.info('Order %s email sent (%s) -> %s', order.order_id, headline, order.user_email)
+        return True
+    except Exception:
+        logger.exception('Order %s email FAILED (%s)', order.order_id, headline)
+        return False
+
+
+def send_order_cancellation_email(order, *, reason: str = '', by_admin: bool = False) -> bool:
+    """Buyer-facing email when an order is cancelled. Mentions the reason
+    if provided, and tells the buyer what to expect for any refund."""
+    actor = 'by our team' if by_admin else 'as requested'
+    paid_before = (getattr(order, 'payment_status', '') in ('SUCCESS', 'FAILED')) and bool(getattr(order, 'payment', None))
+    refund_note = (
+        ' Any payment you made will be refunded to the original method within '
+        '5–7 business days; you\'ll get a separate email when it lands.'
+        if paid_before else
+        ' Nothing was charged for this order.'
+    )
+    reason_clause = f' Reason: "{escape(reason).rstrip(".")}".' if reason else ''
+    body = (
+        f'your order has been cancelled {actor}.{reason_clause}{refund_note} '
+        f'If this was unexpected, reply to this email and we\'ll sort it out.'
+    )
+    return _simple_card_email(
+        order,
+        headline='Order cancelled',
+        accent='#B91C1C',
+        body_para=body,
+        subject=f'Order #{order.order_id} cancelled',
+        cta_label='View Order',
+    )
+
+
+def send_payment_failed_email(order, *, reason: str = '') -> bool:
+    """Email when Razorpay reports a failed/declined payment OR signature
+    verification fails. Order stays in the buyer's history so they can
+    retry — link goes straight to the pending order detail."""
+    reason_clause = (f' Razorpay said: "{escape(reason).rstrip(".")}".'
+                     if reason else '')
+    body = (
+        f'we tried to charge your card but the payment didn\'t go through.{reason_clause} '
+        f'No money was taken — open the order from your dashboard and tap '
+        f'"Pay Now" to retry with the same method or switch to COD / a '
+        f'different card.'
+    )
+    return _simple_card_email(
+        order,
+        headline='Payment failed',
+        accent='#B91C1C',
+        body_para=body,
+        subject=f'Payment failed for order #{order.order_id} — please retry',
+        cta_label='Retry Payment',
+    )
+
+
+def send_payment_reconciled_email(order) -> bool:
+    """Email after our self-service reconcile endpoint matches a debit on
+    Razorpay's side that hadn't reflected locally — the 'I paid but my
+    order isn\'t showing as paid' rescue path. Reassures the buyer the
+    money has been accounted for and the order is now active."""
+    body = (
+        f'we found your payment on Razorpay and matched it to this order. '
+        f'It\'s now fully active — invoice and ERP sync have been triggered '
+        f'and the order will ship per the usual timeline. Apologies for the '
+        f'delay in confirmation.'
+    )
+    return _simple_card_email(
+        order,
+        headline='Payment confirmed',
+        accent=SUCCESS,
+        body_para=body,
+        subject=f'Order #{order.order_id} — payment confirmed',
+        cta_label='View Order',
+    )

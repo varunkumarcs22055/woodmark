@@ -343,6 +343,16 @@ class OrderCancelView(APIView):
 
         logger.info('order %s cancelled by user_id=%s reason=%s',
                     order.order_id, request.user.id, reason)
+
+        # Buyer-facing cancellation email — explains refund timing where
+        # relevant, points back to /orders. Best-effort; never blocks the
+        # cancellation API call.
+        try:
+            from payments.notifications import send_order_cancellation_email
+            send_order_cancellation_email(order, reason=reason, by_admin=False)
+        except Exception:
+            logger.exception('Cancellation email failed for %s', order.order_id)
+
         return Response(OrderSerializer(order).data)
 
 

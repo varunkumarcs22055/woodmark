@@ -144,10 +144,17 @@ export default function ProductDetailPage() {
   // to run in the same order every render.
   useEffect(() => {
     if (!product) return undefined;
+    // Skip the call entirely for partial pincodes (1-5 digits) so we don't
+    // fire pincode=undefined six times as the user types "400001". Only
+    // call when the field is empty (qty-only ETA) OR exactly 6 digits.
+    const trimmed = etaPincode.trim();
+    if (trimmed.length > 0 && trimmed.length < 6) {
+      return undefined;
+    }
     const handle = setTimeout(() => {
       fetchProductEta(product.slug, {
         qty: quantity,
-        pincode: /^\d{6}$/.test(etaPincode) ? etaPincode : undefined,
+        pincode: /^\d{6}$/.test(trimmed) ? trimmed : undefined,
       })
         .then(setEta)
         .catch(() => setEta(null));

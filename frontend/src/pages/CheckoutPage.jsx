@@ -324,16 +324,27 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Step 2A — DEV or B2B payments: simulated/direct payment
-    if (DEV_MODE || paymentType === 'credit' || paymentType === 'wallet') {
+    // Step 2A — COD / DEV / B2B payments: no Razorpay modal.
+    //   COD: order is just confirmed; payment collected on delivery.
+    //   credit/wallet: dealer-only; balance deducted server-side.
+    //   DEV_MODE: simulated success endpoint stands in for the gateway.
+    // Without this branch covering 'cod', the COD buyer was getting the
+    // Razorpay modal on top of their COD order.
+    if (
+      paymentType === 'cod'
+      || paymentType === 'credit'
+      || paymentType === 'wallet'
+      || DEV_MODE
+    ) {
       try {
         const result = await simulatePayment(order.order_id);
         setCreatedOrder({ ...order, erp_order_id: result.erp_order_id });
         setStep('success');
       } catch {
-        // Order is committed already; payment is the failing step. Show success
-        // with a "Pay later from My Orders" hint instead of a hard error.
-        toast.error('Payment could not be confirmed. Your order is saved — pay later from My Orders.');
+        // Order is committed already; payment confirmation is the failing
+        // step (matters less for COD — nothing is charged yet). Show success
+        // with a recovery hint.
+        toast.error('Order saved, but confirmation didn\'t complete. Check My Orders shortly.');
         setStep('success');
       } finally {
         setSubmitting(false);

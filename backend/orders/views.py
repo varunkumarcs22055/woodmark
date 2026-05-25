@@ -56,21 +56,63 @@ class OrderCreateView(APIView):
         serializer = OrderCreateSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             order = serializer.save()
-            # COD: send confirmation (email + SMS) immediately. Razorpay
-            # orders skip this branch — their notifications fire from
-            # confirm_order_and_sync_erp once the signature verifies (so we
-            # don't notify before payment lands).
-            if (order.payment_method or '').lower() == 'cod':
+            # Fire the confirmation email + SMS + ERP sync the moment the
+            # order is committed for every "no gateway redirect" path:
+            #   COD    — payment collected on delivery, email shows amount to pay
+            #   credit — dealer credit terms; email shows amount due + Net-N days
+            #   wallet — already debited in serializer.create(); email confirms
+            # Razorpay orders skip this branch — their notifications + ERP fire
+            # from confirm_order_and_sync_erp once the signature verifies, so
+            # we don't notify or push to ERP before the money actually lands.
+            method = (order.payment_method or '').lower()
+            if method in ('cod', 'credit', 'wallet'):
+                # 1. ERP sync — the warehouse must see the order, otherwise
+                #    nothing ships. Previously only Razorpay-paid orders made
+                #    it into ERP; COD/credit/wallet were invisible to fulfilment.
+                try:
+                    from services.erp import send_order_to_erp
+                    order_with_items = order.__class__.objects.prefetch_related(
+                        'items__product',
+                    ).get(pk=order.pk)
+                    erp = send_order_to_erp(order_with_items)
+                    if erp and erp.get('erp_order_id'):
+                        order.erp_order_id = erp['erp_order_id']
+                        order.erp_sync_status = 'synced'
+                    else:
+                        order.erp_sync_status = 'failed'
+                    # COD/credit/wallet orders are committed — bump to
+                    # CONFIRMED so the status timeline shows progress and the
+                    # admin queue surfaces them. The order_status field stays
+                    # PENDING/CREATED for Razorpay until verify clears it.
+                    if order.order_status == 'CREATED':
+                        order.order_status = 'CONFIRMED'
+                    order.save(update_fields=['erp_order_id', 'erp_sync_status', 'order_status'])
+                except Exception:
+                    logger.exception('%s ERP sync failed for %s',
+                                     method.upper(), order.order_id)
+
+                # 2. Email + SMS confirmation. Idempotent via Payment.*_sent_at
+                #    so a retry never double-sends.
                 try:
                     from payments.notifications import (
                         send_order_confirmation_email,
                         send_order_confirmation_sms,
                     )
-                    send_order_confirmation_email(order)
-                    send_order_confirmation_sms(order)
+                    from payments.models import Payment
+                    payment, _ = Payment.objects.get_or_create(
+                        order=order,
+                        defaults={'amount': order.total_amount},
+                    )
+                    from django.utils import timezone as _tz
+                    if not payment.email_sent_at and send_order_confirmation_email(order):
+                        payment.email_sent_at = _tz.now()
+                        payment.save(update_fields=['email_sent_at'])
+                    if not payment.sms_sent_at and send_order_confirmation_sms(order):
+                        payment.sms_sent_at = _tz.now()
+                        payment.save(update_fields=['sms_sent_at'])
                 except Exception:
-                    logger.exception('COD confirmation notify failed for %s',
-                                     order.order_id)
+                    logger.exception('%s confirmation notify failed for %s',
+                                     method.upper(), order.order_id)
 
             return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

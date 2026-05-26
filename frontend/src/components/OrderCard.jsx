@@ -40,18 +40,26 @@ export default function OrderCard({ order }) {
           <span className="order-date">{formatDate(order.created_at)}</span>
         </div>
         <div className="order-badges">
-          <span className={`badge badge-${PAYMENT_BADGE_CLASS[order.payment_status] || 'info'}`}>
-            {order.payment_status}
-          </span>
-          <span
-            className={`badge badge-${STATUS_BADGE_CLASS[order.order_status] || 'info'}`}
-          >
-            <span
-              className="order-status-dot"
-              style={{ background: dotColor }}
-            />
-            {order.order_status}
-          </span>
+          {/* Cancelled orders: collapse the dual payment_status + order_status
+              badges into a single CANCELLED chip. The previous UI rendered
+              "FAILED CANCELLED" side-by-side which confused buyers — FAILED
+              there means "refund pending", not "payment didn't work". */}
+          {order.order_status === 'CANCELLED' ? (
+            <span className="badge badge-error">
+              <span className="order-status-dot" style={{ background: dotColor }} />
+              CANCELLED
+            </span>
+          ) : (
+            <>
+              <span className={`badge badge-${PAYMENT_BADGE_CLASS[order.payment_status] || 'info'}`}>
+                {order.payment_status}
+              </span>
+              <span className={`badge badge-${STATUS_BADGE_CLASS[order.order_status] || 'info'}`}>
+                <span className="order-status-dot" style={{ background: dotColor }} />
+                {order.order_status}
+              </span>
+            </>
+          )}
         </div>
       </div>
 

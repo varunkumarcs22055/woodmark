@@ -135,7 +135,11 @@ export default function SupportChatbot() {
       const ticket = await createTicket({
         subject,
         category: 'other',
-        first_message: `Created from chatbot.\n\nConversation transcript:\n\n${conversation}`,
+        priority: 'normal',
+        // Backend SupportTicketCreateSerializer expects `body`, not
+        // `first_message`. The mismatch was silently 400-ing every chatbot
+        // escalation attempt.
+        body: `Created from chatbot.\n\nConversation transcript:\n\n${conversation}`,
       });
       toast.success(`Ticket ${ticket.ticket_number} opened. Our team will reply soon.`);
       reset();
@@ -143,7 +147,13 @@ export default function SupportChatbot() {
       // Send user to their inbox so they can follow the ticket.
       window.location.href = '/account/support';
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Could not open ticket. Please try again.');
+      const data = err.response?.data || {};
+      const detail = data.detail
+        || data.body?.[0]
+        || data.subject?.[0]
+        || Object.values(data).flat()[0]
+        || 'Could not open ticket. Please try again.';
+      toast.error(typeof detail === 'string' ? detail : 'Could not open ticket. Please try again.');
     }
   };
 

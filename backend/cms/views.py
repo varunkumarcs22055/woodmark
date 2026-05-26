@@ -344,24 +344,97 @@ class AdminNewsletterSendView(APIView):
         # bulk row.
         from django.conf import settings as dj_settings
         from django.core.mail import EmailMultiAlternatives
-        import logging
+        from django.core.signing import TimestampSigner
+        from django.utils.html import escape as _esc
+        import logging, re
         log = logging.getLogger(__name__)
+
+        site = (dj_settings.SITE_URL or 'https://furnotech.in').rstrip('/')
+        signer = TimestampSigner(salt='newsletter-unsubscribe')
+
+        # Detect whether the admin pasted real HTML (has tags) or plain text.
+        # Sending the identical body as both 'plain' and 'HTML' is a known
+        # spam trigger — instead, generate a branded HTML wrapper around the
+        # plain text when no tags are present.
+        has_html = bool(re.search(r'<[a-zA-Z][^>]*>', body or ''))
+
+        def _build_plain(unsub_url):
+            # Strip tags for the plain alternative.
+            txt = re.sub(r'<[^>]+>', '', body or '')
+            return (
+                f'{txt}\n\n'
+                f'---\n'
+                f'You\'re receiving this because you opted in to FurnoTech updates.\n'
+                f'Unsubscribe: {unsub_url}\n'
+                f'FurnoTech, Nagpur · hello@furnotech.in'
+            )
+
+        def _build_html(unsub_url):
+            if has_html:
+                inner = body
+            else:
+                # Wrap plain text in a clean branded HTML shell.
+                paras = '\n'.join(
+                    f'<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#111827">{_esc(p)}</p>'
+                    for p in (body or '').split('\n\n') if p.strip()
+                )
+                inner = paras
+            return f"""<!doctype html>
+<html><body style="margin:0;padding:0;background:#F6F6F4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="padding:24px 0">
+    <tr><td align="center">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#FFFFFF;border-radius:12px;overflow:hidden;border:1px solid #E5E7EB">
+        <tr><td style="background:#2D2E5F;padding:20px 28px;color:#fff;font-size:20px;font-weight:800;letter-spacing:-0.01em">
+          Furno<span style="color:#E47D2A">Tech</span>
+        </td></tr>
+        <tr><td style="padding:28px">
+          {inner}
+        </td></tr>
+        <tr><td style="padding:0 28px 22px">
+          <hr style="border:0;border-top:1px solid #E5E7EB;margin:8px 0 14px"/>
+          <p style="margin:0;font-size:11px;color:#6B7280;line-height:1.5">
+            You're receiving this because you opted in to FurnoTech updates.
+            <a href="{unsub_url}" style="color:#6B7280">Unsubscribe</a> ·
+            <a href="mailto:hello@furnotech.in" style="color:#6B7280">Contact us</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+
+        # From header: include a display name (bare emails look spammy).
+        from_header = dj_settings.DEFAULT_FROM_EMAIL
+        if '<' not in from_header:
+            from_header = f'FurnoTech <{from_header}>'
 
         sent = 0
         failed = []
         clean_emails = [e for e in emails if e]
         for to_email in clean_emails:
             try:
+                # Signed token so the unsubscribe link can't be forged.
+                token = signer.sign(to_email)
+                unsub_url = f'{site}/api/notifications/unsubscribe/?token={token}'
+                # mailto+post version per RFC 8058 (Gmail/Yahoo one-click).
+                mailto_unsub = f'mailto:unsubscribe@furnotech.in?subject=unsubscribe%20{to_email}'
+
                 msg = EmailMultiAlternatives(
                     subject=subject,
-                    body=body,                     # plain-text / markdown fallback
-                    from_email=dj_settings.DEFAULT_FROM_EMAIL,
+                    body=_build_plain(unsub_url),
+                    from_email=from_header,
                     to=[to_email],
+                    reply_to=['hello@furnotech.in'],
+                    headers={
+                        # RFC 2369 + RFC 8058 — required by Gmail/Yahoo as of
+                        # Feb 2024 to clear the spam filter on bulk mail.
+                        'List-Unsubscribe': f'<{unsub_url}>, <{mailto_unsub}>',
+                        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+                        'Precedence': 'bulk',
+                        'X-Auto-Response-Suppress': 'OOF, AutoReply',
+                    },
                 )
-                # If admin pasted raw HTML / markdown, send it as the
-                # rich-text part too. Brevo + most clients render HTML
-                # when the part is attached.
-                msg.attach_alternative(body, 'text/html')
+                msg.attach_alternative(_build_html(unsub_url), 'text/html')
                 msg.send(fail_silently=False)
                 sent += 1
             except Exception as exc:

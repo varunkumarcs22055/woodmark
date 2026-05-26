@@ -164,12 +164,27 @@ export default function OrderDetailPage() {
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
-          <span className={`badge badge-${PAYMENT_BADGE_CLASS[order.payment_status] || 'info'}`}>
-            {order.payment_status}
-          </span>
-          <span className={`badge badge-${STATUS_BADGE_CLASS[order.order_status] || 'info'}`}>
-            {order.order_status}
-          </span>
+          {/* When the order is cancelled, suppress the payment_status badge
+              (which says 'FAILED' if a paid order was cancelled — confusing
+              to buyers who think payment failed). Show a single CANCELLED
+              badge plus a 'Refund pending' subtitle if money was taken. */}
+          {order.order_status === 'CANCELLED' ? (
+            <>
+              <span className="badge badge-error">CANCELLED</span>
+              {order.payment_status === 'FAILED' && (
+                <span style={{ fontSize: 11, color: '#92400E' }}>Refund pending</span>
+              )}
+            </>
+          ) : (
+            <>
+              <span className={`badge badge-${PAYMENT_BADGE_CLASS[order.payment_status] || 'info'}`}>
+                {order.payment_status}
+              </span>
+              <span className={`badge badge-${STATUS_BADGE_CLASS[order.order_status] || 'info'}`}>
+                {order.order_status}
+              </span>
+            </>
+          )}
         </div>
       </header>
 
@@ -307,12 +322,30 @@ export default function OrderDetailPage() {
       {/* Status timeline (simple inline pills) */}
       <section style={cardStyle}>
         <h3 style={{ marginTop: 0 }}>Status</h3>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <Pill icon={<FiCheckCircle />} active label="Placed" />
-          <Pill icon={<FiCheckCircle />} active={['CONFIRMED', 'SHIPPED', 'DELIVERED'].includes(order.order_status)} label="Confirmed" />
-          <Pill icon={<FiTruck />} active={['SHIPPED', 'DELIVERED'].includes(order.order_status)} label="Shipped" />
-          <Pill icon={<FiPackage />} active={order.order_status === 'DELIVERED'} label="Delivered" />
-        </div>
+        {order.order_status === 'CANCELLED' ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px', borderRadius: 999,
+              background: '#FEE2E2', color: '#B91C1C',
+              fontWeight: 700, fontSize: 13,
+            }}>
+              <FiXCircle /> Order Cancelled
+            </span>
+            {order.cancellation_reason && (
+              <span style={{ color: '#6B7280', fontSize: 13 }}>
+                Reason: <em>{order.cancellation_reason}</em>
+              </span>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <Pill icon={<FiCheckCircle />} active label="Placed" />
+            <Pill icon={<FiCheckCircle />} active={['CONFIRMED', 'SHIPPED', 'DELIVERED'].includes(order.order_status)} label="Confirmed" />
+            <Pill icon={<FiTruck />} active={['SHIPPED', 'DELIVERED'].includes(order.order_status)} label="Shipped" />
+            <Pill icon={<FiPackage />} active={order.order_status === 'DELIVERED'} label="Delivered" />
+          </div>
+        )}
         {(order.tracking_carrier || order.tracking_number) && (
           <p style={{ marginTop: 12, color: '#374151' }}>
             <strong>Tracking:</strong> {order.tracking_carrier || '—'}{' '}

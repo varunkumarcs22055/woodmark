@@ -10,4 +10,9 @@ urlpatterns = [
     path('newsletters/targets/', views.NewsletterTargetGroupView.as_view(), name='newsletter-targets'),
     path('newsletters/send/', views.NewsletterSendView.as_view(), name='newsletter-send'),
     path('subscribers/', views.SubscriberCreateView.as_view(), name='subscriber-create'),
+    # One-click unsubscribe (RFC 8058) — signed token, no auth needed.
+    # Used by the List-Unsubscribe header on every bulk newsletter so Gmail /
+    # Yahoo's Feb 2024 bulk-sender rules don't drop us straight into spam.
+    path('unsubscribe/', views.NewsletterUnsubscribeView.as_view(),
+         name='newsletter-unsubscribe'),
 ]

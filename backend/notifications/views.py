@@ -242,3 +242,83 @@ class SubscriberCreateView(APIView):
                 )
 
         return Response({'message': 'Subscribed successfully.'})
+
+
+class NewsletterUnsubscribeView(APIView):
+    """
+    GET  /api/notifications/unsubscribe/?token=...  → user-friendly confirm page
+    POST /api/notifications/unsubscribe/?token=...  → one-click (RFC 8058)
+
+    Token is a Django-signed string containing the recipient's email. Both
+    GET and POST flip NotificationPreference.email_marketing=False for that
+    user AND mark any matching NewsletterSubscriber as unsubscribed.
+    """
+    permission_classes = [AllowAny]
+
+    def _do(self, request):
+        from django.core.signing import TimestampSigner, BadSignature, SignatureExpired
+        from django.utils import timezone
+        token = request.query_params.get('token') or request.data.get('token')
+        if not token:
+            return None, 'Missing unsubscribe token.'
+        signer = TimestampSigner(salt='newsletter-unsubscribe')
+        try:
+            # 1-year window — links printed in old emails should still work.
+            email = signer.unsign(token, max_age=60 * 60 * 24 * 365)
+        except SignatureExpired:
+            return None, 'This unsubscribe link has expired. Open your account → notifications to manage preferences.'
+        except BadSignature:
+            return None, 'Invalid unsubscribe link.'
+
+        # Flip NotificationPreference if the user has one.
+        from users.models import User
+        user = User.objects.filter(email__iexact=email).first()
+        if user is not None:
+            pref, _ = NotificationPreference.objects.get_or_create(user=user)
+            if pref.email_marketing:
+                pref.email_marketing = False
+                pref.save(update_fields=['email_marketing'])
+
+        # Also deactivate any matching Subscriber row.
+        try:
+            Subscriber.objects.filter(email__iexact=email, is_active=True).update(
+                is_active=False,
+            )
+        except Exception:
+            pass
+
+        return email, None
+
+    def get(self, request):
+        email, err = self._do(request)
+        if err:
+            return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
+        # Simple branded HTML confirmation page so users see a nice screen,
+        # not a JSON blob.
+        from django.http import HttpResponse
+        html = f"""<!doctype html>
+<html><head><meta charset="utf-8"><title>Unsubscribed — FurnoTech</title></head>
+<body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#F6F6F4;display:flex;align-items:center;justify-content:center;min-height:100vh">
+  <div style="background:#fff;border-radius:12px;padding:40px 36px;max-width:480px;border:1px solid #E5E7EB;text-align:center">
+    <div style="font-size:22px;font-weight:800;color:#2D2E5F;margin-bottom:16px">
+      Furno<span style="color:#E47D2A">Tech</span>
+    </div>
+    <h1 style="font-size:24px;margin:8px 0 12px">You're unsubscribed</h1>
+    <p style="color:#6B7280;font-size:14px;line-height:1.6;margin:0 0 22px">
+      We've stopped marketing emails to <strong>{email}</strong>.
+      You'll still receive transactional messages (order confirmations,
+      shipping updates) since they're not marketing.
+    </p>
+    <a href="{settings.SITE_URL.rstrip('/')}/" style="display:inline-block;background:#2D2E5F;color:#fff;text-decoration:none;padding:10px 24px;border-radius:8px;font-weight:700">
+      Back to FurnoTech
+    </a>
+  </div>
+</body></html>"""
+        return HttpResponse(html, content_type='text/html')
+
+    def post(self, request):
+        # One-click path (RFC 8058 / Gmail-Yahoo bulk sender rules).
+        _, err = self._do(request)
+        if err:
+            return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail': 'Unsubscribed.'})

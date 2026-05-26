@@ -105,7 +105,11 @@ export default function SignupPage() {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = '/api/auth/google/';
+    // Navigate to the backend host (Render) so the OAuth redirect actually
+    // starts. The SPA catch-all on Vercel was eating /api/auth/google/ and
+    // showing a blank page.
+    const base = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
+    window.location.href = `${base}/auth/google/`;
   };
 
   return (

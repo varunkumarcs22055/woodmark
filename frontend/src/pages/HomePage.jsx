@@ -416,12 +416,9 @@ export default function HomePage() {
               {promo.cta_text}
             </button>
           </div>
-          <div className="promo-banner-visual">
-            <div className="promo-circle promo-circle-1" />
-            <div className="promo-circle promo-circle-2" />
-            <span className="promo-percent">{promo.percent}</span>
-            <span className="promo-off">OFF</span>
-          </div>
+          {/* Right-side visual removed — the redundant "40% OFF" circle
+              was overlapping the gradient and duplicating the title text
+              ("Up to 40% off on Best Sellers"). */}
         </div>
       </section>
 

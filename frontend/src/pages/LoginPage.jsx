@@ -138,7 +138,12 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = '/api/auth/google/';
+    // OAuth requires hitting the BACKEND host (Render) — not the frontend
+    // host. `/api/auth/google/` on Vercel falls into the SPA catch-all and
+    // returned index.html, so clicking previously showed a blank page.
+    // Use VITE_API_BASE_URL so the browser navigates straight to Render.
+    const base = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
+    window.location.href = `${base}/auth/google/`;
   };
 
   return (

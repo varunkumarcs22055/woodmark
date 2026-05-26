@@ -113,7 +113,11 @@ export default function BestSellersPage() {
                     #{i + 2}
                   </span>
                   <ProductCard product={p} />
-                  {p.units_sold_in_window > 0 && (
+                  {/* Only show the sold-count chip when it's a meaningful
+                      figure (5+); single-digit counts on a "Best Sellers"
+                      page hurt credibility more than they help. The #1
+                      champion card always shows its number, no threshold. */}
+                  {p.units_sold_in_window >= 5 && (
                     <span className="bs-units-chip">
                       {p.units_sold_in_window.toLocaleString()} sold
                     </span>

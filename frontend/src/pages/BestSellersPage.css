@@ -19,7 +19,10 @@
   padding: 28px 24px 36px;
 }
 .bs-back {
-  display: inline-flex;
+  /* `display: flex` (not inline-flex) so the back link occupies its own
+     row — the eyebrow chip beneath it was previously sitting on the same
+     line, intersecting the link's border-radius. */
+  display: flex;
   align-items: center;
   gap: 6px;
   color: #0E766E;
@@ -27,6 +30,7 @@
   font-size: 13px;
   font-weight: 500;
   margin-bottom: 18px;
+  width: fit-content;
 }
 .bs-back:hover { text-decoration: underline; }
 

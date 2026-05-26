@@ -319,11 +319,11 @@ export default function Navbar() {
   const handleSearch = (e) => {
     e.preventDefault();
     const q = searchQuery.trim();
-    if (q) {
-      navigate(`/?search=${encodeURIComponent(q)}`);
-      setSearchOpen(false);
-      setSearchQuery('');
-    }
+    // Empty query: just go to the catalog with no filter (was silently
+    // no-op, making the button look broken). With a query, narrow by it.
+    navigate(q ? `/?search=${encodeURIComponent(q)}` : '/');
+    setSearchOpen(false);
+    setSearchQuery('');
   };
 
   const handleLogout = async () => {

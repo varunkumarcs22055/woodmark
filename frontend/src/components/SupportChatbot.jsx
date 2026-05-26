@@ -75,6 +75,28 @@ export default function SupportChatbot() {
     }
   }, [messages, open]);
 
+  // Hard-coded local intents: things the bot should ALWAYS know about so
+  // the buyer never gets "I couldn't find an answer" for the most basic
+  // questions. Cheaper + faster than a round-trip to the backend matcher.
+  const SUPPORT_PHONE = '1800-123-4567';
+  const SUPPORT_EMAIL = 'hello@furnotech.in';
+  const LOCAL_INTENTS = [
+    {
+      patterns: [/contact\s*support|phone|call.*us|customer\s*care|helpline|talk\s*to\s*human|talk\s*to\s*a\s*human|speak\s*to\s*(a|an)?\s*agent/i],
+      reply: (
+        `You can reach FurnoTech support directly:\n\n` +
+        `📞 ${SUPPORT_PHONE} (Toll Free, 9am–9pm IST)\n` +
+        `✉️ ${SUPPORT_EMAIL}\n\n` +
+        `If you'd rather have us reach out, tap "Talk to a human (open a ticket)" below and we'll get back within a few hours.`
+      ),
+      escalate: true,
+    },
+    {
+      patterns: [/^hi$|^hello|^hey/i],
+      reply: 'Hi! I can help with orders, payments, shipping, returns, dealer credit, or product questions. What\'s on your mind?',
+    },
+  ];
+
   const send = async (rawText) => {
     const text = (rawText ?? input).trim();
     if (!text || sending) return;
@@ -84,6 +106,17 @@ export default function SupportChatbot() {
     setSending(true);
     setFollowUps([]);
     setCanEscalate(false);
+
+    // Try local intents first — instant reply, no network round-trip.
+    const intent = LOCAL_INTENTS.find((it) =>
+      it.patterns.some((p) => p.test(text)),
+    );
+    if (intent) {
+      setMessages((m) => [...m, { role: 'bot', text: intent.reply, ts: Date.now() }]);
+      setCanEscalate(!!intent.escalate);
+      setSending(false);
+      return;
+    }
 
     try {
       const res = await askBot(text);

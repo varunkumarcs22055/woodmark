@@ -40,8 +40,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--prefix', default='furnishop/',
-            help='Cloudinary prefix to scan (default: furnishop/).',
+            '--prefix', default='woodmark/',
+            help='Cloudinary prefix to scan (default: woodmark/).',
         )
         parser.add_argument(
             '--delete', action='store_true',

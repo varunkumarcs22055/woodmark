@@ -881,7 +881,7 @@ function NegotiatedPricesModal({ dealer, onClose }) { useModalDismiss(true, onCl
                           )}
                         </td>
                         <td>{formatPrice(mrp)}</td>
-                        <td><strong style={{ color: '#0E766E' }}>{formatPrice(agreed)}</strong></td>
+                        <td><strong style={{ color: '#2D2E5F' }}>{formatPrice(agreed)}</strong></td>
                         <td>
                           {saveAmt > 0 ? (
                             <span style={{ color: '#047857', fontWeight: 600 }}>

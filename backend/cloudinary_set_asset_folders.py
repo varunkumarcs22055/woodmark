@@ -1,11 +1,11 @@
 """
 Dynamic-folder accounts need the `asset_folder` field set explicitly
 (separate from public_id) for the Media Library to render the folder
-tree. Walks every furnishop/* asset and writes its asset_folder so the
+tree. Walks every woodmark/* asset and writes its asset_folder so the
 dashboard shows:
 
     Home
-    └── furnishop
+    └── woodmark
         ├── products
         │   ├── samir
         │   ├── oslo-velvet-sofa
@@ -29,20 +29,20 @@ cloudinary.config(
 
 def desired_folder(public_id):
     """
-    public_id `furnishop/products/samir/main` → asset_folder `furnishop/products/samir`
-    public_id `furnishop/banners/welcome-1`   → asset_folder `furnishop/banners`
+    public_id `woodmark/products/samir/main` → asset_folder `woodmark/products/samir`
+    public_id `woodmark/banners/welcome-1`   → asset_folder `woodmark/banners`
     """
     parts = public_id.rsplit('/', 1)
     return parts[0] if len(parts) == 2 else ''
 
 
 def main():
-    # Page through everything under furnishop/
+    # Page through everything under woodmark/
     next_cursor = None
     moved = 0
     skipped = 0
     while True:
-        kwargs = dict(type='upload', prefix='furnishop/', max_results=100)
+        kwargs = dict(type='upload', prefix='woodmark/', max_results=100)
         if next_cursor:
             kwargs['next_cursor'] = next_cursor
         result = cloudinary.api.resources(**kwargs)

@@ -46,6 +46,11 @@ class Order(models.Model):
     shipping_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     coupon_code = models.CharField(max_length=40, blank=True, db_index=True)
     coupon_discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    # Rewards redemption — loyalty points + gift card applied at checkout.
+    loyalty_points_used = models.PositiveIntegerField(default=0)
+    loyalty_discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    gift_card_code = models.CharField(max_length=19, blank=True, db_index=True)
+    gift_card_discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     # Pay-now incentive: when the buyer chooses to pay immediately (razorpay /
     # wallet) we apply EARLY_PAYMENT_DISCOUNT_PCT off the subtotal. Stored on
     # the order so invoices reflect the actual discount given.

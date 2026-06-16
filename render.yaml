@@ -1,4 +1,4 @@
-# Render Blueprint — one-click recreate of the FurniShop backend service.
+# Render Blueprint — one-click recreate of the Woodmark backend service.
 #
 # How to use:
 #   1. Push this repo to GitHub.
@@ -12,7 +12,7 @@
 
 services:
   - type: web
-    name: furnishop-backend
+    name: woodmark-backend
     runtime: python
     plan: free
     rootDir: backend
@@ -62,7 +62,7 @@ services:
       - key: EMAIL_HOST_PASSWORD
         sync: false
       - key: DEFAULT_FROM_EMAIL
-        value: "no-reply@furnishop.local"
+        value: "no-reply@woodmark.local"
       # Brevo (transactional email API) — set this in Render UI to use Brevo
       # instead of console / SMTP. core.settings auto-detects this var.
       - key: BREVO_API_KEY

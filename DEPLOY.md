@@ -1,4 +1,4 @@
-# FurniShop — Deployment Guide
+# Woodmark — Deployment Guide
 
 **Target stack:** Backend on **Render**, frontend on **Vercel**, MariaDB on
 **GoDaddy** (existing). Both providers give you provider subdomains for free
@@ -40,7 +40,7 @@ each one on the create-service screen:
 
 | Key                       | Value                                                              |
 | ------------------------- | ------------------------------------------------------------------ |
-| `DATABASE_URL`            | `mysql://furnotech:ecommerce%4012345@68.178.232.132:3306/ecommerce` (URL-encode `@` as `%40` in the password) |
+| `DATABASE_URL`            | `mysql://woodmark:ecommerce%4012345@68.178.232.132:3306/ecommerce` (URL-encode `@` as `%40` in the password) |
 | `CORS_ALLOWED_ORIGINS`    | Leave blank for now — we'll fill it after Vercel deploys           |
 | `CLOUDINARY_CLOUD_NAME`   | From your Cloudinary dashboard (or blank to disable image upload)  |
 | `CLOUDINARY_API_KEY`      | "                                                                  |
@@ -69,10 +69,10 @@ Then starts gunicorn. Watch the deploy logs — first build takes ~3-4 minutes.
 
 ### 1d. Verify it's up
 
-Render gives you a URL like `https://furnishop-backend.onrender.com`.
+Render gives you a URL like `https://woodmark-backend.onrender.com`.
 
 ```bash
-curl https://furnishop-backend.onrender.com/api/products/
+curl https://woodmark-backend.onrender.com/api/products/
 ```
 
 Should return JSON with a paginated product list (200 OK). If you get 500,
@@ -108,7 +108,7 @@ Apply to **Production**, **Preview**, and **Development** so PR previews work.
 ### 2c. Deploy
 
 Vercel builds: `npm ci` → `npm run build` → serves `dist/` from the edge CDN.
-Build takes ~30s. You get a URL like `https://furnishop-xyz.vercel.app`.
+Build takes ~30s. You get a URL like `https://woodmark-xyz.vercel.app`.
 
 ---
 
@@ -144,8 +144,8 @@ Or seed a dev admin via the existing management command:
 python manage.py seed_admin
 ```
 
-(That command creates `dev-admin@furnishop.local` / `dev-user@furnishop.local` /
-`dev-dealer@furnishop.local` — change the passwords immediately for prod.)
+(That command creates `dev-admin@woodmark.local` / `dev-user@woodmark.local` /
+`dev-dealer@woodmark.local` — change the passwords immediately for prod.)
 
 ---
 

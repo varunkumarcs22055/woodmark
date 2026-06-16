@@ -26,7 +26,7 @@ const PRESETS = {
 
 /**
  * Extract a public_id from either:
- *   - a bare public_id ('furnishop/products/samir/main')
+ *   - a bare public_id ('woodmark/products/samir/main')
  *   - a full Cloudinary URL ('https://res.cloudinary.com/.../upload/v123/x/y.jpg')
  *
  * Returns '' if the input doesn't look like a Cloudinary asset.

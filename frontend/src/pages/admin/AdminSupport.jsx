@@ -41,7 +41,7 @@ const STATUS_COLOR = {
 };
 const PRIORITY_COLOR = {
   low:    '#9CA3AF',
-  normal: '#0E766E',
+  normal: '#2D2E5F',
   high:   '#D97706',
   urgent: '#DC2626',
 };
@@ -64,7 +64,7 @@ function initials(nameOrEmail = '') {
 }
 
 function avatarColor(seed = '') {
-  const palette = ['#0E766E', '#0891B2', '#7C3AED', '#DB2777', '#EA580C', '#65A30D'];
+  const palette = ['#2D2E5F', '#0891B2', '#7C3AED', '#DB2777', '#EA580C', '#65A30D'];
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
   return palette[Math.abs(h) % palette.length];

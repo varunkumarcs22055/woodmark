@@ -527,8 +527,8 @@ export default function AdminProducts() {
                     style={{
                       padding: '10px 14px', border: 0, background: 'transparent',
                       cursor: 'pointer', fontSize: 13, fontWeight: 500,
-                      color: activeTab === t.key ? '#0E766E' : '#6B7280',
-                      borderBottom: activeTab === t.key ? '2px solid #0E766E' : '2px solid transparent',
+                      color: activeTab === t.key ? '#2D2E5F' : '#6B7280',
+                      borderBottom: activeTab === t.key ? '2px solid #2D2E5F' : '2px solid transparent',
                       whiteSpace: 'nowrap',
                     }}
                   >{t.label}</button>
@@ -1099,7 +1099,7 @@ function ExtrasTab({ form, setForm }) {
 const chipStyle = {
   display: 'inline-flex', alignItems: 'center', gap: 4,
   padding: '4px 8px', borderRadius: 14,
-  background: '#0E766E', color: '#fff', fontSize: 12, fontWeight: 500,
+  background: '#2D2E5F', color: '#fff', fontSize: 12, fontWeight: 500,
 };
 const chipCloseStyle = {
   border: 0, background: 'transparent', color: '#fff',

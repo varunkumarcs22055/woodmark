@@ -195,7 +195,7 @@ export default function AdminAuditLogs() {
                     <td>
                       {r.payload && Object.keys(r.payload).length > 0 ? (
                         <details>
-                          <summary style={{ cursor: 'pointer', fontSize: 12, color: '#0E766E' }}>
+                          <summary style={{ cursor: 'pointer', fontSize: 12, color: '#2D2E5F' }}>
                             View
                           </summary>
                           <pre style={{

@@ -83,7 +83,7 @@ class ContactListCreateView(generics.ListCreateAPIView):
             return Response(
                 ContactSerializer(existing).data,
                 status=status.HTTP_200_OK,
-                headers={'X-Furnishop-Duplicate': '1'},
+                headers={'X-Woodmark-Duplicate': '1'},
             )
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

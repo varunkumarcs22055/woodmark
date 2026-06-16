@@ -38,7 +38,7 @@ def _send_email(user, kind, title, body, payload):
         send_mail(
             subject=title or kind,
             message=body or '',
-            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@furnishop.local'),
+            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@woodmark.local'),
             recipient_list=[user.email],
             fail_silently=True,
         )

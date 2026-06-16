@@ -106,7 +106,7 @@ export default function DealerBulkUpload() {
     const blob = new Blob([SAMPLE], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'furnotech-bulk-template.csv';
+    a.href = url; a.download = 'woodmark-bulk-template.csv';
     a.click();
     URL.revokeObjectURL(url);
   };

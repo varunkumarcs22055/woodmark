@@ -19,10 +19,11 @@
  *   - clearCart()
  */
 
-import { createContext, useContext, useReducer } from 'react';
+import { createContext, useContext, useReducer, useState } from 'react';
 
 const CartContext = createContext();
-const STORAGE_KEY = 'furnishop_cart';
+const STORAGE_KEY = 'woodmark_cart';
+const SAVED_KEY = 'woodmark_saved';
 
 /**
  * Trim an API product down to only the fields the cart actually renders.
@@ -71,6 +72,27 @@ const saveCart = (items) => {
     // Most likely QuotaExceededError. Don't crash the app — log and continue.
     // The in-memory cart still works for this session.
     console.warn('Cart could not be persisted to localStorage:', err?.name || err);
+  }
+};
+
+// ─── Saved-for-later (separate slim list) ──────────────────────────
+const loadSaved = () => {
+  try {
+    const stored = localStorage.getItem(SAVED_KEY);
+    const parsed = stored ? JSON.parse(stored) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((p) => p && p.id).map(slimProduct);
+  } catch {
+    try { localStorage.removeItem(SAVED_KEY); } catch { /* ignore */ }
+    return [];
+  }
+};
+
+const saveSavedList = (items) => {
+  try {
+    localStorage.setItem(SAVED_KEY, JSON.stringify(items));
+  } catch (err) {
+    console.warn('Saved list could not be persisted:', err?.name || err);
   }
 };
 
@@ -140,6 +162,15 @@ const cartReducer = (state, action) => {
 
 export function CartProvider({ children }) {
   const [cartItems, dispatch] = useReducer(cartReducer, [], loadCart);
+  const [savedItems, setSavedItems] = useState(loadSaved);
+
+  const persistSaved = (updater) => {
+    setSavedItems((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      saveSavedList(next);
+      return next;
+    });
+  };
 
   // Discount-aware totals
   const cartTotal = cartItems.reduce(
@@ -193,6 +224,26 @@ export function CartProvider({ children }) {
     dispatch({ type: 'CLEAR_CART' });
   };
 
+  // ── Save for later ──────────────────────────────────────────────
+  const saveForLater = (productId) => {
+    const item = cartItems.find((it) => it.product.id === productId);
+    if (!item) return;
+    dispatch({ type: 'REMOVE_ITEM', payload: productId });
+    persistSaved((prev) =>
+      prev.some((p) => p.id === productId) ? prev : [item.product, ...prev]
+    );
+  };
+
+  const moveToCart = (productId) => {
+    const product = savedItems.find((p) => p.id === productId);
+    if (!product) return;
+    persistSaved((prev) => prev.filter((p) => p.id !== productId));
+    dispatch({ type: 'ADD_ITEM', payload: { product, quantity: 1 } });
+  };
+
+  const removeSaved = (productId) => {
+    persistSaved((prev) => prev.filter((p) => p.id !== productId));
+  };
 
   return (
     <CartContext.Provider
@@ -204,6 +255,11 @@ export function CartProvider({ children }) {
         removeFromCart,
         updateQuantity,
         clearCart,
+        savedItems,
+        savedCount: savedItems.length,
+        saveForLater,
+        moveToCart,
+        removeSaved,
       }}
     >
       {children}

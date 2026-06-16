@@ -177,3 +177,17 @@
   text-decoration: line-through;
   font-size: var(--text-xs);
 }
+
+.cart-item-save {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: transparent;
+  padding: 4px 0;
+  transition: color 140ms ease;
+}
+.cart-item-save:hover { color: var(--color-brand); }

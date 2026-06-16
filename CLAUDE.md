@@ -1,4 +1,4 @@
-# FurniShop — Claude Code working rules
+# Woodmark — Claude Code working rules
 
 This file is read at the start of every Claude Code session in this repo.
 Keep it tight — every line here is sent to the model on every turn.
@@ -42,10 +42,10 @@ When you finish executing a prompt file (e.g., `frontend_prompt5.md`):
   `cd frontend && npm run dev`
 - **Backend currently running?** Check with `curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/api/products/` — 200 = up, 000 = down.
 - **Seed data slugs:** `sofas, tables, chairs, beds, storage, desks, dining-sets, outdoor` — use these EXACTLY in nav links and category filters
-- **Cart storage key:** `furnishop_cart` in localStorage. Stored items are SLIM
+- **Cart storage key:** `woodmark_cart` in localStorage. Stored items are SLIM
   (no `description` field) per CartContext.slimProduct
 - **JWT:** access token in `window.__accessToken` (memory), refresh token in
-  `localStorage.furnishop_refresh_token`
+  `localStorage.woodmark_refresh_token`
 - **Dev quick-login:** LoginPage has yellow panel (only visible when
   `import.meta.env.DEV`). 3 buttons: As User / As Dealer / As Admin. Synthesizes
   fake JWT, no backend needed.

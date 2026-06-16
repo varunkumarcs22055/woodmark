@@ -69,7 +69,7 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const refreshToken = localStorage.getItem('furnishop_refresh_token');
+      const refreshToken = localStorage.getItem('woodmark_refresh_token');
       if (!refreshToken) {
         isRefreshing = false;
         return Promise.reject(error);
@@ -87,7 +87,7 @@ api.interceptors.response.use(
         // refresh with a blacklisted token and the user gets bounced to /login.
         const newRefreshToken = res.data.refresh;
         if (newRefreshToken) {
-          localStorage.setItem('furnishop_refresh_token', newRefreshToken);
+          localStorage.setItem('woodmark_refresh_token', newRefreshToken);
         }
         window.__accessToken = newAccessToken;
         processQueue(null, newAccessToken);
@@ -96,7 +96,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         window.__accessToken = null;
-        localStorage.removeItem('furnishop_refresh_token');
+        localStorage.removeItem('woodmark_refresh_token');
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -116,6 +116,22 @@ export const fetchProduct = (slug) =>
 
 export const fetchSimilarProducts = (productId) =>
   api.get(`/products/similar/${productId}/`).then((r) => r.data);
+
+export const fetchSearchSuggestions = (q) =>
+  api.get('/products/suggest/', { params: { q } }).then((r) => r.data);
+
+// ─── Rewards (loyalty / referral / gift cards) ─────────────────────
+export const fetchLoyalty = () =>
+  api.get('/rewards/loyalty/').then((r) => r.data);
+
+export const fetchReferral = () =>
+  api.get('/rewards/referral/').then((r) => r.data);
+
+export const checkGiftCard = (code) =>
+  api.post('/rewards/giftcards/check/', { code }).then((r) => r.data);
+
+export const buyGiftCard = (payload) =>
+  api.post('/rewards/giftcards/buy/', payload).then((r) => r.data);
 
 export const fetchLimitedOffers = (params = {}) =>
   api.get('/products/limited-offers/', { params }).then((r) => r.data);

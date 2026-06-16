@@ -111,7 +111,7 @@ def upload(file, *, folder: str, kind: str = 'image',
 
     Args:
         file:      file-like / path / URL.
-        folder:    target folder, e.g. 'furnishop/products/samir'. Used
+        folder:    target folder, e.g. 'woodmark/products/samir'. Used
                    for BOTH fixed-mode `folder` AND dynamic-mode
                    `asset_folder` so the Media Library tree is always
                    correct regardless of account mode.
@@ -238,7 +238,7 @@ def pin_asset_folder(public_id: str, folder: str) -> bool:
 def transform_url(public_id: str, **transformations) -> str:
     """
     Build a delivery URL with on-the-fly transformations. Example:
-        transform_url('furnishop/products/samir/main', width=600, crop='fill')
+        transform_url('woodmark/products/samir/main', width=600, crop='fill')
     """
     if not public_id:
         return ''

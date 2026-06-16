@@ -281,7 +281,7 @@ function PayCreditModal({ maxAmount, defaultAmount, dealerEmail, dealerName, onC
         amount: init.amount_paise,
         currency: init.currency,
         order_id: init.razorpay_order_id,
-        name: 'FurnoTech — Credit Repayment',
+        name: 'Woodmark — Credit Repayment',
         description: 'Pay back your used dealer credit',
         prefill: init.prefill || { name: dealerName, email: dealerEmail },
         theme: { color: '#2D2E5F' },

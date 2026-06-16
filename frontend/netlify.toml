@@ -1,0 +1,22 @@
+# Netlify config for the Woodmark React (Vite) frontend.
+#
+# If you connect this repo to Netlify, set the "Base directory" to
+# `furnotech_ecommerce/frontend` in the Netlify UI (or it's inferred from
+# this file's location). Set VITE_API_BASE_URL in Netlify → Site settings →
+# Environment variables to your Render backend URL **with /api**, e.g.
+#   https://woodmark-backend.onrender.com/api
+# and VITE_RAZORPAY_ENABLED=true.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA fallback — every route serves index.html so React Router handles deep
+# links (e.g. /product/oslo-velvet-sofa) without a 404 on refresh.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

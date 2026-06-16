@@ -1,0 +1,68 @@
+.compare-page { padding-top: var(--space-8); padding-bottom: var(--space-16); min-height: 60vh; }
+
+.compare-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+.compare-head h1 {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 700;
+  flex: 1;
+}
+.compare-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--text-sm); font-weight: 600; color: var(--color-text-secondary);
+}
+.compare-back:hover { color: var(--color-brand); }
+.compare-clear {
+  font-size: var(--text-sm); font-weight: 600; color: var(--color-error); background: transparent;
+}
+
+.compare-scroll { overflow-x: auto; }
+
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: calc(160px + var(--cols) * 200px);
+}
+.compare-table th, .compare-table td {
+  border: 1px solid var(--color-border);
+  padding: 14px;
+  text-align: center;
+  vertical-align: middle;
+}
+.cmp-rowhead {
+  text-align: left;
+  font-weight: 700;
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  font-size: var(--text-sm);
+  width: 160px;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+.cmp-prodhead { position: relative; vertical-align: top; background: var(--color-white); }
+.cmp-remove {
+  position: absolute; top: 8px; right: 8px;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--color-surface-2); color: var(--color-text-secondary);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.cmp-remove:hover { background: var(--color-error-bg); color: var(--color-error); }
+.cmp-img {
+  width: 130px; height: 130px; object-fit: cover; border-radius: var(--radius-md);
+  margin: 0 auto 10px;
+}
+.cmp-name {
+  display: block; font-size: var(--text-sm); font-weight: 600; color: var(--color-text);
+  margin-bottom: 10px; line-height: 1.3;
+}
+.cmp-add { width: 100%; gap: 6px; font-size: var(--text-xs); padding: 9px 12px; }
+.cmp-add:disabled { opacity: 0.55; cursor: not-allowed; }
+.cmp-cell { font-size: var(--text-sm); color: var(--color-text-secondary); }
+.cmp-instock { color: var(--color-success); font-weight: 600; }
+.cmp-oos { color: var(--color-error); font-weight: 600; }

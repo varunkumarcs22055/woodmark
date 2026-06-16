@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { FiFacebook, FiInstagram, FiTwitter, FiYoutube } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { subscribeNewsletter, fetchContentBlock } from '../api';
+import Logo from './Logo';
 import './Footer.css';
 
 const FOOTER_LINKS = [
@@ -91,14 +92,8 @@ export default function Footer() {
           <div className="footer-grid">
             {/* Brand column */}
             <div className="footer-brand-col">
-              <Link to="/" className="footer-logo" id="footer-logo">
-                <div className="footer-logo-mark">
-                  <svg width="32" height="32" viewBox="0 0 28 28" fill="none">
-                    <rect width="28" height="28" rx="6" fill="#2D2E5F"/>
-                    <path d="M7 20V12L14 7L21 12V20H16V15H12V20H7Z" fill="white"/>
-                  </svg>
-                </div>
-                <span className="footer-logo-text">FurnoTech</span>
+              <Link to="/" className="footer-logo" id="footer-logo" aria-label="Woodmark home">
+                <Logo variant="inverse" markSize={34} />
               </Link>
               <p className="footer-tagline">
                 Premium furniture &amp; home essentials — crafted for the Indian home. Trusted by over 1 lakh happy families.
@@ -111,7 +106,7 @@ export default function Footer() {
               </div>
               <div className="footer-contact">
                 <p className="footer-contact-item">📞 1800-123-4567 (Toll Free)</p>
-                <p className="footer-contact-item">✉️ hello@furnishop.in</p>
+                <p className="footer-contact-item">✉️ hello@woodmark.in</p>
                 <p className="footer-contact-item">📍 Mumbai, India</p>
               </div>
             </div>
@@ -164,7 +159,7 @@ export default function Footer() {
       <div className="footer-bottom">
         <div className="footer-bottom-inner container">
           <p className="footer-copyright">
-            © {new Date().getFullYear()} FurnoTech. All rights reserved.
+            © {new Date().getFullYear()} Woodmark. All rights reserved.
           </p>
           <div className="footer-payments">
             {['Visa', 'Mastercard', 'UPI', 'PayTM', 'Net Banking'].map(p => (

@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { FiTrendingUp, FiAward, FiArrowLeft } from 'react-icons/fi';
 import { fetchBestSellers } from '../api';
 import ProductCard from '../components/ProductCard';
+import Reveal from '../components/Reveal';
 import './BestSellersPage.css';
 
 const WINDOWS = [
@@ -49,7 +50,7 @@ export default function BestSellersPage() {
           <h1 className="bs-title">Best Sellers</h1>
           <p className="bs-sub">
             Ranked live by units actually shipped. No editorial picks, no
-            promoted slots — just what the most FurnoTech customers bought.
+            promoted slots — just what the most Woodmark customers bought.
           </p>
 
           <div className="bs-windows">
@@ -84,7 +85,7 @@ export default function BestSellersPage() {
           <>
             {/* Hero card for #1 */}
             {top && (
-              <div className="bs-champion">
+              <Reveal className="bs-champion" variant="scale">
                 <div className="bs-champion__crown">
                   <FiAward size={18} /> Bestselling product
                 </div>
@@ -97,12 +98,12 @@ export default function BestSellersPage() {
                     <p className="bs-units">
                       {top.units_sold_in_window > 0
                         ? `${top.units_sold_in_window.toLocaleString()} units sold in the last ${windowDays} days`
-                        : 'Top-rated by FurnoTech customers'}
+                        : 'Top-rated by Woodmark customers'}
                     </p>
                     <span className="bs-cta">View product →</span>
                   </div>
                 </Link>
-              </div>
+              </Reveal>
             )}
 
             {/* Rest of the chart */}

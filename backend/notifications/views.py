@@ -211,7 +211,7 @@ class SubscriberCreateView(APIView):
                     '<div style="font-family:sans-serif;padding:24px;background:#f6f6f4">'
                     '<div style="max-width:480px;margin:auto;background:#fff;padding:28px;'
                     'border-radius:8px;border:1px solid #eee">'
-                    '<h2 style="color:#00736A;margin:0 0 12px">Welcome to FurnoTech</h2>'
+                    '<h2 style="color:#00736A;margin:0 0 12px">Welcome to Woodmark</h2>'
                     '<p>Thanks for subscribing. You\'ll be the first to hear about new '
                     'collections, dealer offers, and seasonal sales.</p>'
                     '<p style="margin-top:24px">'
@@ -224,8 +224,8 @@ class SubscriberCreateView(APIView):
                     'send any more.</p></div></div>'
                 )
                 msg = EmailMultiAlternatives(
-                    subject='Welcome to FurnoTech',
-                    body='Thanks for subscribing to FurnoTech. You\'ll be the first '
+                    subject='Welcome to Woodmark',
+                    body='Thanks for subscribing to Woodmark. You\'ll be the first '
                          'to hear about new collections, dealer offers, and seasonal '
                          'sales.\n\nBrowse: ' + settings.SITE_URL,
                     from_email=settings.DEFAULT_FROM_EMAIL,
@@ -297,7 +297,7 @@ class NewsletterUnsubscribeView(APIView):
         # not a JSON blob.
         from django.http import HttpResponse
         html = f"""<!doctype html>
-<html><head><meta charset="utf-8"><title>Unsubscribed — FurnoTech</title></head>
+<html><head><meta charset="utf-8"><title>Unsubscribed — Woodmark</title></head>
 <body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#F6F6F4;display:flex;align-items:center;justify-content:center;min-height:100vh">
   <div style="background:#fff;border-radius:12px;padding:40px 36px;max-width:480px;border:1px solid #E5E7EB;text-align:center">
     <div style="font-size:22px;font-weight:800;color:#2D2E5F;margin-bottom:16px">
@@ -310,7 +310,7 @@ class NewsletterUnsubscribeView(APIView):
       shipping updates) since they're not marketing.
     </p>
     <a href="{settings.SITE_URL.rstrip('/')}/" style="display:inline-block;background:#2D2E5F;color:#fff;text-decoration:none;padding:10px 24px;border-radius:8px;font-weight:700">
-      Back to FurnoTech
+      Back to Woodmark
     </a>
   </div>
 </body></html>"""

@@ -10,6 +10,7 @@ import { Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import CompareBar from './components/CompareBar';
 import SupportChatbot from './components/SupportChatbot';
 import './components/SupportChatbot.css';
 import ScrollToTop from './components/ScrollToTop';
@@ -21,6 +22,8 @@ import './App.css';
 const HomePage = lazy(() => import('./pages/HomePage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const CartPage = lazy(() => import('./pages/CartPage'));
+const ComparePage = lazy(() => import('./pages/ComparePage'));
+const RewardsPage = lazy(() => import('./pages/RewardsPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const OrdersPage = lazy(() => import('./pages/OrdersPage'));
 const OrderDetailPage = lazy(() => import('./pages/OrderDetailPage'));
@@ -83,6 +86,8 @@ export default function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/product/:slug" element={<ProductDetailPage />} />
               <Route path="/cart" element={<CartPage />} />
+              <Route path="/compare" element={<ComparePage />} />
+              <Route path="/rewards" element={<RewardsPage />} />
               <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/account" element={<AccountPage />} />
               <Route
@@ -137,6 +142,7 @@ export default function App() {
         </ErrorBoundary>
       </main>
 
+      {!isFullscreenLayout && <CompareBar />}
       {!isFullscreenLayout && <Footer />}
       {/* Floating support chatbot — public storefront only, never on the
           admin / dealer dashboards (those have their own support inbox). */}

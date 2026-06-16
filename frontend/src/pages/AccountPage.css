@@ -3,7 +3,7 @@
 .account-page {
   --ink: #111111;
   --muted: #5F6368;
-  --brand: #0E766E;
+  --brand: #2D2E5F;
   --brand-2: #F97316;
   --paper: #FAFAF7;
   --card: #FFFFFF;
@@ -13,7 +13,7 @@
   min-height: 60vh;
   font-family: "Work Sans", "Segoe UI", sans-serif;
   background:
-    radial-gradient(1200px 420px at 8% -10%, rgba(14, 118, 110, 0.18), transparent 60%),
+    radial-gradient(1200px 420px at 8% -10%, rgba(45, 46, 95, 0.18), transparent 60%),
     radial-gradient(900px 380px at 92% 0%, rgba(249, 115, 22, 0.16), transparent 65%),
     repeating-linear-gradient(45deg, rgba(17, 24, 39, 0.03) 0 2px, transparent 2px 14px),
     var(--paper);
@@ -27,7 +27,7 @@
   padding: 30px 32px;
   border-radius: 20px;
   background:
-    linear-gradient(120deg, rgba(14, 118, 110, 0.12), transparent 55%),
+    linear-gradient(120deg, rgba(45, 46, 95, 0.12), transparent 55%),
     linear-gradient(200deg, rgba(249, 115, 22, 0.12), transparent 60%),
     var(--card);
   border: 1px solid var(--line);
@@ -45,7 +45,7 @@
   width: 240px;
   height: 240px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(14, 118, 110, 0.22), transparent 70%);
+  background: radial-gradient(circle, rgba(45, 46, 95, 0.22), transparent 70%);
   filter: blur(1px);
 }
 
@@ -84,7 +84,7 @@
   min-width: 140px;
   display: grid;
   gap: 4px;
-  box-shadow: 0 8px 20px -18px rgba(14, 118, 110, 0.45);
+  box-shadow: 0 8px 20px -18px rgba(45, 46, 95, 0.45);
 }
 
 .account-meta-label {
@@ -123,7 +123,7 @@
   background: linear-gradient(120deg, var(--brand), #0B5C56);
   color: #ffffff;
   border-color: #0B5C56;
-  box-shadow: 0 14px 28px -20px rgba(14, 118, 110, 0.65);
+  box-shadow: 0 14px 28px -20px rgba(45, 46, 95, 0.65);
 }
 
 .account-grid {
@@ -312,7 +312,7 @@
 .account-address-badges span {
   font-size: 11px;
   font-weight: 700;
-  color: #0E766E;
+  color: #2D2E5F;
   background: #ECFDF5;
   border-radius: 999px;
   padding: 3px 8px;
@@ -360,7 +360,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #0E766E;
+  background: #2D2E5F;
   margin-top: 6px;
   flex-shrink: 0;
 }

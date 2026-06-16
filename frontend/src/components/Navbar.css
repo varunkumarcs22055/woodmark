@@ -511,7 +511,7 @@
 .search-form:focus-within {
   border-color: var(--color-brand);
   background: var(--color-white);
-  box-shadow: 0 0 0 3px rgba(0, 115, 106, 0.1);
+  box-shadow: 0 0 0 3px rgba(45, 46, 95, 0.1);
 }
 
 .search-form-icon {
@@ -962,4 +962,60 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+/* ─── Search autocomplete ──────────────────────────────────────────── */
+.search-autocomplete {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.search-ac-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.search-ac-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  transition: background 140ms ease;
+}
+.search-ac-row:hover {
+  background: var(--color-surface-2);
+}
+.search-ac-thumb {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: var(--color-surface-2);
+}
+.search-ac-name {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-ac-price {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-brand);
+  flex-shrink: 0;
+}
+.search-ac-empty {
+  margin-top: 14px;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
 }

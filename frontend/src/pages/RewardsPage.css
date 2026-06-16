@@ -1,0 +1,79 @@
+.rewards-page { padding-top: var(--space-8); padding-bottom: var(--space-16); min-height: 60vh; }
+.rewards-title {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 700;
+  margin-bottom: var(--space-6);
+}
+.rewards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+.rewards-card {
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+}
+.rewards-card--accent {
+  background: linear-gradient(150deg, var(--color-brand) 0%, var(--color-brand-dark) 100%);
+  color: #fff;
+  border: none;
+}
+.rewards-card-head {
+  display: flex; align-items: center; gap: 8px;
+  font-size: var(--text-sm); font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; margin-bottom: var(--space-4); opacity: 0.95;
+}
+.rewards-balance {
+  font-size: 3rem; font-weight: 800; line-height: 1; display: flex; align-items: baseline; gap: 8px;
+}
+.rewards-balance small { font-size: var(--text-sm); font-weight: 600; opacity: 0.8; }
+.rewards-card--accent .rewards-sub { color: rgba(255,255,255,0.85); }
+.rewards-sub { font-size: var(--text-sm); color: var(--color-text-secondary); margin: 10px 0 14px; line-height: 1.5; }
+.rewards-history { display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow-y: auto; }
+.rewards-row {
+  display: flex; justify-content: space-between; gap: 10px;
+  font-size: var(--text-sm); padding: 7px 0; border-top: 1px solid rgba(255,255,255,0.15);
+}
+.rewards-row span { opacity: 0.9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rewards-row .pos { color: #86EFAC; } .rewards-row .neg { color: #FCA5A5; }
+.rewards-empty { font-size: var(--text-sm); opacity: 0.8; }
+
+.rewards-code-box { display: flex; gap: 8px; margin-bottom: var(--space-4); }
+.rewards-code-box input {
+  flex: 1; border: 1.5px solid var(--color-border); border-radius: var(--radius-md);
+  padding: 10px 12px; font-size: var(--text-sm); background: var(--color-surface-2); min-width: 0;
+}
+.rewards-code-box button { padding: 10px 14px; flex-shrink: 0; }
+.rewards-refstats { display: flex; gap: 12px; }
+.rewards-refstats div {
+  flex: 1; text-align: center; background: var(--color-surface-2);
+  border-radius: var(--radius-md); padding: 12px 8px;
+}
+.rewards-refstats strong { display: block; font-size: var(--text-lg); color: var(--color-brand); }
+.rewards-refstats span { font-size: var(--text-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+.rewards-amounts { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: var(--space-3); }
+.rewards-amount {
+  border: 1.5px solid var(--color-border); border-radius: var(--radius-full);
+  padding: 7px 14px; font-size: var(--text-sm); font-weight: 600; color: var(--color-text);
+  transition: all var(--transition-fast);
+}
+.rewards-amount.active { background: var(--color-brand); color: #fff; border-color: var(--color-brand); }
+.rewards-input { margin-bottom: 10px; }
+.rewards-buy { width: 100%; }
+.rewards-issued { text-align: center; }
+.rewards-giftcode {
+  font-family: monospace; font-size: var(--text-lg); font-weight: 700; letter-spacing: 0.08em;
+  background: var(--color-surface-2); border-radius: var(--radius-md); padding: 14px; margin: 12px 0;
+  color: var(--color-brand);
+}
+.rewards-check { display: flex; gap: 8px; margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--color-border); }
+.rewards-check .rewards-input { margin-bottom: 0; flex: 1; }
+.rewards-check button { flex-shrink: 0; }
+.rewards-checkres { margin-top: 8px; font-size: var(--text-sm); font-weight: 600; }
+.rewards-checkres.ok { color: var(--color-success); }
+.rewards-checkres.bad { color: var(--color-error); }

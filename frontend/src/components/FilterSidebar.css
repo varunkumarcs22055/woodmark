@@ -129,7 +129,7 @@
   background: var(--color-brand-pale);
   color: var(--color-brand);
   font-weight: 700;
-  border-color: rgba(0, 115, 106, 0.2);
+  border-color: rgba(45, 46, 95, 0.2);
 }
 
 .filter-chip.active::before {
@@ -152,7 +152,7 @@
 }
 
 .filter-chip.active .filter-chip-count {
-  background: rgba(0, 115, 106, 0.15);
+  background: rgba(45, 46, 95, 0.15);
   color: var(--color-brand);
 }
 

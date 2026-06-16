@@ -50,7 +50,7 @@ export default function DealerPendingScreen() {
 
         <div className="dealer-status-screen__actions">
           <Link to="/" className="btn-primary">Browse as Customer</Link>
-          <a href="mailto:dealers@furnishop.com" className="btn-outline">
+          <a href="mailto:dealers@woodmark.in" className="btn-outline">
             <FiMail size={14} /> Contact Support
           </a>
           <button onClick={logout} className="dealer-status-screen__signout">Sign Out</button>

@@ -69,7 +69,7 @@
 }
 
 .product-card:hover .product-card-img {
-  transform: scale(1.04);
+  transform: scale(1.07);
 }
 
 /* ─── Overlay ────────────────────────────────────────────────────────── */
@@ -111,7 +111,7 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   background: rgba(255, 255, 255, 0.96);
-  color: #0E766E;
+  color: var(--color-brand);
   border: none;
   border-radius: 999px;
   cursor: pointer;
@@ -123,7 +123,7 @@
 }
 
 .pc-add-btn:hover {
-  background: #0E766E;
+  background: var(--color-brand);
   color: #fff;
   transform: translateY(-1px);
 }
@@ -198,6 +198,33 @@
   top: var(--space-3);
   right: var(--space-3);
   z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pc-compare-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(4px);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: all var(--transition-fast);
+}
+.product-card:hover .pc-compare-btn { opacity: 1; transform: scale(1); }
+.pc-compare-btn:hover { color: var(--color-brand); background: #fff; }
+.pc-compare-btn.active {
+  opacity: 1;
+  transform: scale(1);
+  background: var(--color-brand);
+  color: #fff;
 }
 .pc-wishlist-wrap .wishlist-btn {
   width: 32px;

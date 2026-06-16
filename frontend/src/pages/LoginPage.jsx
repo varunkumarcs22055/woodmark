@@ -156,7 +156,7 @@ export default function LoginPage() {
         />
         <div className="auth-page__overlay">
           <div className="auth-page__brand">
-            <h1>FurnoTech</h1>
+            <h1>Woodmark</h1>
             <blockquote>"Your home, your story."</blockquote>
             <p>Premium furniture crafted for the modern Indian home.</p>
           </div>
@@ -167,7 +167,7 @@ export default function LoginPage() {
         <div className="auth-form-container">
           <div className="auth-form-header">
             <h2>Welcome Back</h2>
-            <p>Sign in to your FurnoTech account</p>
+            <p>Sign in to your Woodmark account</p>
           </div>
 
           <button

@@ -34,8 +34,8 @@
   transition: border-color 140ms, color 140ms;
 }
 .erp-refresh:hover {
-  border-color: #0E766E;
-  color: #0E766E;
+  border-color: #2D2E5F;
+  color: #2D2E5F;
 }
 
 /* ─── Stat tiles ────────────────────────────────────────────────────── */
@@ -76,7 +76,7 @@
 .erp-tile--success { color: #047857; }
 .erp-tile--danger  { color: #DC2626; }
 .erp-tile--muted   { color: #6B7280; }
-.erp-tile--brand   { color: #0E766E; }
+.erp-tile--brand   { color: #2D2E5F; }
 
 .erp-tile__icon {
   width: 38px;
@@ -167,8 +167,8 @@
 .erp-search input:focus {
   outline: none;
   background: #fff;
-  border-color: #0E766E;
-  box-shadow: 0 0 0 3px rgba(14, 118, 110, 0.12);
+  border-color: #2D2E5F;
+  box-shadow: 0 0 0 3px rgba(45, 46, 95, 0.12);
 }
 
 .erp-chips {
@@ -207,8 +207,8 @@
 .erp-chip--active.erp-chip--danger  .erp-chip__count { background: #DC2626; color: #fff; }
 .erp-chip--active.erp-chip--success { background: #D1FAE5; color: #047857; border-color: #A7F3D0; }
 .erp-chip--active.erp-chip--success .erp-chip__count { background: #10B981; color: #fff; }
-.erp-chip--active.erp-chip--brand   { background: #F0FDFA; color: #0E766E; border-color: #99E1D6; }
-.erp-chip--active.erp-chip--brand   .erp-chip__count { background: #0E766E; color: #fff; }
+.erp-chip--active.erp-chip--brand   { background: #EFF0F7; color: #2D2E5F; border-color: #C7C9E6; }
+.erp-chip--active.erp-chip--brand   .erp-chip__count { background: #2D2E5F; color: #fff; }
 .erp-chip--active.erp-chip--muted   { background: #F3F4F6; color: #1F2937; border-color: #D1D5DB; }
 .erp-chip--active.erp-chip--muted   .erp-chip__count { background: #4B5563; color: #fff; }
 
@@ -345,9 +345,9 @@
   color: #4B5563;
 }
 .erp-action--ghost:hover:not(:disabled) {
-  border-color: #0E766E;
-  color: #0E766E;
-  background: #F0FDFA;
+  border-color: #2D2E5F;
+  color: #2D2E5F;
+  background: #EFF0F7;
 }
 
 .erp-action--danger {
@@ -378,8 +378,8 @@
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: #F0FDFA;
-  color: #0E766E;
+  background: #EFF0F7;
+  color: #2D2E5F;
   margin-bottom: 4px;
 }
 .erp-empty strong { color: #111827; font-size: 1.05rem; }

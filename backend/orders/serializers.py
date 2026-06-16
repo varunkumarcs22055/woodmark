@@ -98,6 +98,8 @@ class OrderSerializer(serializers.ModelSerializer):
             'id', 'order_id', 'user_name', 'user_email', 'phone', 'address',
             'subtotal_amount', 'gst_percent', 'gst_amount', 'shipping_amount',
             'coupon_code', 'coupon_discount',
+            'loyalty_points_used', 'loyalty_discount',
+            'gift_card_code', 'gift_card_discount',
             'payment_type', 'early_payment_discount',
             'total_amount', 'payment_status', 'order_status',
             'packing_status', 'shipping_status',
@@ -132,6 +134,10 @@ class OrderCreateSerializer(serializers.Serializer):
     preferred_carrier = serializers.CharField(max_length=80, required=False, allow_blank=True)
     coupon_code = serializers.CharField(max_length=40, required=False, allow_blank=True)
     pincode = serializers.CharField(max_length=6, required=False, allow_blank=True)
+    # Rewards redemption (B2C). Loyalty points convert to a rupee discount;
+    # a gift card draws down its balance against the bill.
+    redeem_points = serializers.IntegerField(required=False, min_value=0, default=0)
+    gift_card_code = serializers.CharField(max_length=19, required=False, allow_blank=True)
     # When omitted, derived from payment_method: razorpay/wallet→immediate,
     # credit→credit, cod→cod. Front-end can also set explicitly.
     payment_type = serializers.ChoiceField(
@@ -289,6 +295,38 @@ class OrderCreateSerializer(serializers.Serializer):
         gst_amount = (adjusted_subtotal * gst_percent / 100).quantize(Decimal('0.01'))
         total_amount = adjusted_subtotal + gst_amount + shipping_amount
 
+        # ── Rewards redemption (loyalty points + gift card) ──────────────
+        # Both reduce the payable total. Loyalty is a B2C perk (retail users
+        # only); gift cards work for anyone with a valid code. Applied before
+        # the credit/wallet balance checks so those validate the real amount.
+        redeem_points = int(validated_data.pop('redeem_points', 0) or 0)
+        gift_card_code_input = (validated_data.pop('gift_card_code', '') or '').strip().upper()
+        loyalty_points_used = 0
+        loyalty_discount = Decimal('0')
+        loyalty_account = None
+        gift_card_obj = None
+        gift_card_discount = Decimal('0')
+
+        if redeem_points > 0 and user is not None and user_role != 'dealer':
+            from rewards.models import LoyaltyAccount, POINT_VALUE, MAX_REDEEM_FRACTION
+            loyalty_account = LoyaltyAccount.for_user(user)
+            cap_by_bill = int((total_amount * MAX_REDEEM_FRACTION / POINT_VALUE)
+                              .to_integral_value(rounding='ROUND_DOWN'))
+            loyalty_points_used = max(0, min(redeem_points,
+                                             loyalty_account.points_balance, cap_by_bill))
+            loyalty_discount = (Decimal(loyalty_points_used) * POINT_VALUE).quantize(Decimal('0.01'))
+            total_amount = max(total_amount - loyalty_discount, Decimal('0'))
+
+        if gift_card_code_input:
+            from rewards.models import GiftCard
+            try:
+                gift_card_obj = GiftCard.objects.get(code=gift_card_code_input, is_active=True)
+            except GiftCard.DoesNotExist:
+                raise serializers.ValidationError(
+                    {'gift_card_code': 'Invalid or inactive gift card.'})
+            gift_card_discount = min(Decimal(str(gift_card_obj.balance)), total_amount)
+            total_amount = max(total_amount - gift_card_discount, Decimal('0'))
+
         # B2B: payment_method='credit' is dealer-only and must fit in the
         # dealer's remaining credit. Reject before creating the Order.
         if payment_method in ('credit', 'wallet'):
@@ -346,6 +384,10 @@ class OrderCreateSerializer(serializers.Serializer):
             shipping_amount=shipping_amount,
             coupon_code=coupon_obj.code if coupon_obj else '',
             coupon_discount=coupon_discount,
+            loyalty_points_used=loyalty_points_used,
+            loyalty_discount=loyalty_discount,
+            gift_card_code=gift_card_obj.code if gift_card_obj else '',
+            gift_card_discount=gift_card_discount,
             payment_type=payment_type,
             early_payment_discount=early_payment_discount,
             total_amount=total_amount,
@@ -405,6 +447,24 @@ class OrderCreateSerializer(serializers.Serializer):
                 logging.getLogger(__name__).exception(
                     'low-stock admin notify failed for order %s', order.order_id,
                 )
+
+        # Draw down rewards now that the order is written. Failures here must
+        # not unwind the order — log and continue (admin can reconcile).
+        if loyalty_account is not None and loyalty_points_used > 0:
+            try:
+                loyalty_account.redeem(loyalty_points_used, order=order,
+                                       reason=f'Redeemed on {order.order_id}')
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception(
+                    'loyalty redeem failed for order %s', order.order_id)
+        if gift_card_obj is not None and gift_card_discount > 0:
+            try:
+                gift_card_obj.redeem(gift_card_discount, order=order)
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception(
+                    'gift card redeem failed for order %s', order.order_id)
 
         # Redeem coupon now that the order is fully written.
         if coupon_obj is not None:

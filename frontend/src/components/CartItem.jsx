@@ -5,13 +5,13 @@
  */
 
 import { Link } from 'react-router-dom';
-import { FiMinus, FiPlus, FiX } from 'react-icons/fi';
+import { FiMinus, FiPlus, FiX, FiBookmark } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
 import { formatPrice } from '../utils/format';
 import './CartItem.css';
 
 export default function CartItem({ item }) {
-  const { updateQuantity, removeFromCart } = useCart();
+  const { updateQuantity, removeFromCart, saveForLater } = useCart();
   const { product, quantity } = item;
 
   const mrp = parseFloat(product.price);
@@ -77,6 +77,14 @@ export default function CartItem({ item }) {
           </div>
           <span className="cart-item-price">{formatPrice(subtotal)}</span>
         </div>
+
+        <button
+          type="button"
+          className="cart-item-save"
+          onClick={() => saveForLater(product.id)}
+        >
+          <FiBookmark size={13} /> Save for later
+        </button>
       </div>
     </div>
   );

@@ -12,7 +12,7 @@
  *     Clicking it creates a SupportTicket with the full conversation history
  *     prefilled into the first message, then closes the chat.
  *
- * State lives in localStorage (`furnishop_chat_history`) so refreshing the
+ * State lives in localStorage (`woodmark_chat_history`) so refreshing the
  * page doesn't lose the conversation.
  */
 import { useEffect, useRef, useState } from 'react';
@@ -24,7 +24,7 @@ import { askBot, fetchBotTopics, createTicket } from '../api';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
-const STORAGE_KEY = 'furnishop_chat_history';
+const STORAGE_KEY = 'woodmark_chat_history';
 
 function loadHistory() {
   try {
@@ -40,7 +40,7 @@ function saveHistory(messages) {
 
 const GREETING = {
   role: 'bot',
-  text: "Hi! I'm FurnoTech's assistant. Pick a topic below, or just type your question.",
+  text: "Hi! I'm Woodmark's assistant. Pick a topic below, or just type your question.",
   ts: Date.now(),
 };
 
@@ -79,12 +79,12 @@ export default function SupportChatbot() {
   // the buyer never gets "I couldn't find an answer" for the most basic
   // questions. Cheaper + faster than a round-trip to the backend matcher.
   const SUPPORT_PHONE = '1800-123-4567';
-  const SUPPORT_EMAIL = 'hello@furnotech.in';
+  const SUPPORT_EMAIL = 'hello@woodmark.in';
   const LOCAL_INTENTS = [
     {
       patterns: [/contact\s*support|phone|call.*us|customer\s*care|helpline|talk\s*to\s*human|talk\s*to\s*a\s*human|speak\s*to\s*(a|an)?\s*agent/i],
       reply: (
-        `You can reach FurnoTech support directly:\n\n` +
+        `You can reach Woodmark support directly:\n\n` +
         `📞 ${SUPPORT_PHONE} (Toll Free, 9am–9pm IST)\n` +
         `✉️ ${SUPPORT_EMAIL}\n\n` +
         `If you'd rather have us reach out, tap "Talk to a human (open a ticket)" below and we'll get back within a few hours.`
@@ -210,7 +210,7 @@ export default function SupportChatbot() {
           <header className="chatbot-header">
             <div className="chatbot-header__avatar"><FiCpu size={18} /></div>
             <div className="chatbot-header__title">
-              <strong>FurnoTech Help</strong>
+              <strong>Woodmark Help</strong>
               <span>Typical reply: instant</span>
             </div>
             <button

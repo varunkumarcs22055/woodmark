@@ -59,7 +59,7 @@ export default function ResetPasswordPage() {
         />
         <div className="auth-page__overlay">
           <div className="auth-page__brand">
-            <h1>FurnoTech</h1>
+            <h1>Woodmark</h1>
             <blockquote>"Your home, your story."</blockquote>
           </div>
         </div>

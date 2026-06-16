@@ -1,5 +1,5 @@
 """
-Root URL configuration for FurnoTech.
+Root URL configuration for Woodmark.
 
 All API endpoints are mounted under /api/.
 Django admin is available at /admin/.
@@ -45,6 +45,7 @@ urlpatterns = [
     path('api/support/', include('support.urls')),
     path('api/audit/', include('audit.urls')),
     path('api/sms/', include('sms_campaigns.urls')),
+    path('api/rewards/', include('rewards.urls')),
 
     # Admin-only consolidated endpoints
     path('api/admin/dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),

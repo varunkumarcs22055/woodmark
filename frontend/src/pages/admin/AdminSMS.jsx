@@ -288,10 +288,10 @@ function ContactsTab() {
       const res = await api.post('/sms/contacts/', {
         phone: singlePhone, name: singleName, tag: singleTag,
       });
-      // Backend returns header 'X-Furnishop-Duplicate: 1' when the phone
+      // Backend returns header 'X-Woodmark-Duplicate: 1' when the phone
       // already existed; we still get 200 with the existing row so the
       // admin gets a friendly "already on file" message instead of an error.
-      if (res.headers && res.headers['x-furnishop-duplicate']) {
+      if (res.headers && res.headers['x-woodmark-duplicate']) {
         toast(`${res.data.phone} is already on file.`);
       } else {
         toast.success('Contact added');
@@ -745,7 +745,7 @@ function CampaignsTab() {
           Message body *
           <textarea className="admin-input" rows={4} value={form.message}
                     onChange={(e) => setForm({ ...form, message: e.target.value })}
-                    placeholder="Hi {name}, great offers at FurnoTech! Visit now."
+                    placeholder="Hi {name}, great offers at Woodmark! Visit now."
                     style={{ width: '100%' }} />
           <span className="admin-meta-line">Use {'{name}'} for personalisation. Max 1000 chars.</span>
         </label>

@@ -1,10 +1,45 @@
 import { Link } from 'react-router-dom';
-import { FiArrowRight, FiChevronLeft } from 'react-icons/fi';
+import { FiArrowRight, FiChevronLeft, FiShoppingBag, FiTrash2 } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
 import { useSettings } from '../context/SettingsContext';
 import { formatPrice } from '../utils/format';
 import CartItem from '../components/CartItem';
 import './CartPage.css';
+
+function SavedForLater() {
+  const { savedItems, moveToCart, removeSaved } = useCart();
+  if (!savedItems || savedItems.length === 0) return null;
+  return (
+    <section className="saved-section">
+      <h2 className="saved-section-title">
+        Saved for later ({savedItems.length})
+      </h2>
+      <div className="saved-grid">
+        {savedItems.map((p) => (
+          <div className="saved-card" key={p.id}>
+            <Link to={`/product/${p.slug}`} className="saved-card-img">
+              <img src={p.image_url} alt={p.name} loading="lazy" />
+            </Link>
+            <div className="saved-card-body">
+              <Link to={`/product/${p.slug}`} className="saved-card-name">{p.name}</Link>
+              <span className="saved-card-price">
+                {formatPrice(p.effective_price ?? p.price)}
+              </span>
+              <div className="saved-card-actions">
+                <button type="button" className="btn-secondary saved-move" onClick={() => moveToCart(p.id)}>
+                  <FiShoppingBag size={13} /> Move to cart
+                </button>
+                <button type="button" className="saved-remove" onClick={() => removeSaved(p.id)} aria-label="Remove">
+                  <FiTrash2 size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default function CartPage() {
   const { cartItems, cartTotal, cartCount, clearCart } = useCart();
@@ -36,6 +71,7 @@ export default function CartPage() {
             Browse Products <FiArrowRight />
           </Link>
         </div>
+        <SavedForLater />
       </div>
     );
   }
@@ -134,6 +170,8 @@ export default function CartPage() {
           </Link>
         </aside>
       </div>
+
+      <SavedForLater />
     </div>
   );
 }

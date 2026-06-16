@@ -16,7 +16,7 @@ client = Client()
 
 # 1. Setup Dealer
 try:
-    dealer = User.objects.get(email='dev-dealer@furnishop.local')
+    dealer = User.objects.get(email='dev-dealer@woodmark.local')
 except User.DoesNotExist:
     print("[-] Dealer not found.")
     sys.exit(1)

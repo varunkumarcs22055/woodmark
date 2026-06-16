@@ -89,10 +89,15 @@ class Migration(migrations.Migration):
             field=models.PositiveIntegerField(default=0),
         ),
         # SKU: add nullable first, backfill, then enforce unique.
+        # NOTE: no db_index here — the later unique=True alter already creates
+        # the index (incl. Postgres' varchar_pattern_ops `_like` index). Having
+        # db_index=True here too made Postgres try to create that `_like` index
+        # twice ("relation products_sku_..._like already exists"). SQLite/MySQL
+        # tolerated it; Postgres (Neon) does not.
         migrations.AddField(
             model_name='product',
             name='sku',
-            field=models.CharField(blank=True, db_index=True, max_length=32, null=True),
+            field=models.CharField(blank=True, max_length=32, null=True),
         ),
         migrations.RunPython(backfill_product_skus, reverse_code=noop),
         migrations.AlterField(

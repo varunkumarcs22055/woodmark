@@ -11,9 +11,10 @@
 
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
-import { FiShoppingBag, FiCheck } from 'react-icons/fi';
+import { FiShoppingBag, FiCheck, FiBarChart2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useCart } from '../context/CartContext';
+import { useCompare } from '../context/CompareContext';
 import useAddToCartGuarded from '../utils/useAddToCartGuarded';
 import { formatPrice, calcDiscountPercent } from '../utils/format';
 import StarRating from './StarRating';
@@ -22,10 +23,23 @@ import './ProductCard.css';
 
 export default function ProductCard({ product }) {
   const { cartItems } = useCart();
+  const { isComparing, toggleCompare } = useCompare();
   const addToCart = useAddToCartGuarded();
   const [added, setAdded] = useState(false);
 
   const isInCart = cartItems.some((item) => item.product.id === product.id);
+  const comparing = isComparing(product.id);
+
+  const handleCompare = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const ok = toggleCompare(product);
+    if (!ok) {
+      toast.error('You can compare up to 4 products at a time.');
+    } else {
+      toast.success(comparing ? 'Removed from compare' : 'Added to compare');
+    }
+  };
 
   const mrp = parseFloat(product.price);
   const effective = parseFloat(product.effective_price ?? product.price);
@@ -97,9 +111,19 @@ export default function ProductCard({ product }) {
           )}
         </div>
 
-        {/* Wishlist */}
+        {/* Wishlist + Compare */}
         <div className="pc-wishlist-wrap">
           <WishlistButton productId={product.id} />
+          <button
+            type="button"
+            className={`pc-compare-btn ${comparing ? 'active' : ''}`}
+            onClick={handleCompare}
+            title={comparing ? 'Remove from compare' : 'Add to compare'}
+            aria-label={comparing ? 'Remove from compare' : 'Add to compare'}
+            aria-pressed={comparing}
+          >
+            <FiBarChart2 size={15} />
+          </button>
         </div>
       </div>
 

@@ -2,7 +2,7 @@
  * Auth Context — JWT session state.
  *
  * - Access token kept in window.__accessToken (memory only, not localStorage).
- * - Refresh token stored in localStorage as 'furnishop_refresh_token'.
+ * - Refresh token stored in localStorage as 'woodmark_refresh_token'.
  * - On mount, attempts to restore the session by calling /auth/profile/ — the
  *   request interceptor will trigger an auto-refresh if the access token is
  *   missing/expired and a refresh token is available.
@@ -13,7 +13,7 @@ import api, { fetchProfile, logoutUser } from '../api';
 
 const AuthContext = createContext();
 
-const PROFILE_CACHE_KEY = 'furnishop_user_profile';
+const PROFILE_CACHE_KEY = 'woodmark_user_profile';
 
 // Read cached user from localStorage *synchronously* (so first render already
 // has it). Returns null if missing or malformed.
@@ -48,7 +48,7 @@ export function AuthProvider({ children }) {
   // This makes session restore feel instant on every page navigation / reload.
   const initialUser = (() => {
     if (typeof window === 'undefined') return null;
-    if (!localStorage.getItem('furnishop_refresh_token')) return null;
+    if (!localStorage.getItem('woodmark_refresh_token')) return null;
     return readCachedUser();
   })();
   const [user, setUser] = useState(initialUser);
@@ -57,12 +57,12 @@ export function AuthProvider({ children }) {
   // we have a cached user, the UI is already correct — no need to gate it.
   const [loading, setLoading] = useState(!initialUser
     && typeof window !== 'undefined'
-    && !!localStorage.getItem('furnishop_refresh_token'));
+    && !!localStorage.getItem('woodmark_refresh_token'));
 
   // Background validate: refresh the profile so any stale data (role change,
   // dealer approval, etc.) reconciles. Failures = token dead -> log out.
   useEffect(() => {
-    const refresh = localStorage.getItem('furnishop_refresh_token');
+    const refresh = localStorage.getItem('woodmark_refresh_token');
     if (!refresh) {
       setLoading(false);
       return;
@@ -77,7 +77,7 @@ export function AuthProvider({ children }) {
       .catch(() => {
         if (cancelled) return;
         // Refresh path failed -> token is dead. Clear everything.
-        localStorage.removeItem('furnishop_refresh_token');
+        localStorage.removeItem('woodmark_refresh_token');
         writeCachedUser(null);
         window.__accessToken = null;
         setUser(null);
@@ -90,13 +90,13 @@ export function AuthProvider({ children }) {
 
   const login = useCallback((tokens, userProfile) => {
     window.__accessToken = tokens.access;
-    localStorage.setItem('furnishop_refresh_token', tokens.refresh);
+    localStorage.setItem('woodmark_refresh_token', tokens.refresh);
     writeCachedUser(userProfile);
     setUser(userProfile);
   }, []);
 
   const logout = useCallback(async () => {
-    const refresh = localStorage.getItem('furnishop_refresh_token');
+    const refresh = localStorage.getItem('woodmark_refresh_token');
     if (refresh) {
       try {
         await logoutUser(refresh);
@@ -105,7 +105,7 @@ export function AuthProvider({ children }) {
       }
     }
     window.__accessToken = null;
-    localStorage.removeItem('furnishop_refresh_token');
+    localStorage.removeItem('woodmark_refresh_token');
     writeCachedUser(null);
     setUser(null);
   }, []);
@@ -113,7 +113,7 @@ export function AuthProvider({ children }) {
   // Used by AuthCallbackPage after Google OAuth redirect
   const loginFromTokens = useCallback(async (tokens) => {
     window.__accessToken = tokens.access;
-    localStorage.setItem('furnishop_refresh_token', tokens.refresh);
+    localStorage.setItem('woodmark_refresh_token', tokens.refresh);
     try {
       const profile = await fetchProfile();
       writeCachedUser(profile);
@@ -121,7 +121,7 @@ export function AuthProvider({ children }) {
       return profile;
     } catch (err) {
       window.__accessToken = null;
-      localStorage.removeItem('furnishop_refresh_token');
+      localStorage.removeItem('woodmark_refresh_token');
       writeCachedUser(null);
       throw err;
     }
@@ -141,7 +141,7 @@ export function AuthProvider({ children }) {
     try {
       const { data } = await api.post('/auth/dev-login/', { role });
       window.__accessToken = data.access;
-      localStorage.setItem('furnishop_refresh_token', data.refresh);
+      localStorage.setItem('woodmark_refresh_token', data.refresh);
       writeCachedUser(data.user);
       setUser(data.user);
       return data.user;

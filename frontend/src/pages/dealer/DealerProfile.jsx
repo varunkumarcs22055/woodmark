@@ -140,7 +140,7 @@ export default function DealerProfile() {
           </dl>
           <p className="dealer-profile__note">
             To update business details (company name, GST), please contact{' '}
-            <a href="mailto:dealers@furnishop.com">dealers@furnishop.com</a>.
+            <a href="mailto:dealers@woodmark.in">dealers@woodmark.in</a>.
             Changes require re-verification.
           </p>
         </div>

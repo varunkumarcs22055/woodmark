@@ -60,7 +60,7 @@ def _pin_and_swap_on_save(sender, instance, **kwargs):
     new_pid = _public_id(instance.file)
     if new_pid:
         slug = instance.product.slug or slugify(instance.product.name)
-        target = f'furnishop/products/{slug}'
+        target = f'woodmark/products/{slug}'
         cdn.pin_asset_folder(new_pid, target)
 
 
@@ -78,7 +78,7 @@ def _delete_folder_for_product(sender, instance, **kwargs):
     if not cdn.is_configured():
         return
     slug = instance.slug or slugify(instance.name)
-    folder = f'furnishop/products/{slug}'
+    folder = f'woodmark/products/{slug}'
     summary = cdn.destroy_folder(folder)
     logger.info('Product %s deleted; folder %s -> %s',
                 instance.pk, folder, summary)

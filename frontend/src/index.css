@@ -1,5 +1,5 @@
 /*
- * FurnoTech — Design System
+ * Woodmark — Design System
  * Brand: deep indigo-navy (logo wordmark) + warm furniture-orange (logo mark)
  * Typography: Nunito Sans (body) + Playfair Display (headings)
  */
@@ -8,8 +8,8 @@
 
 /* ─── Design Tokens ─────────────────────────────────────────────────── */
 :root {
-  /* Brand colours — sampled from the FurnoTech logo.
-     The wordmark "FurnoTech" is a deep indigo navy; the F mark is a warm
+  /* Brand colours — sampled from the Woodmark logo.
+     The wordmark "Woodmark" is a deep indigo navy; the F mark is a warm
      furniture orange. We keep navy as `--color-brand` (the primary surface
      colour for headings + buttons in calm areas) and expose orange via
      `--color-accent` for CTAs and highlight ribbons. */
@@ -105,7 +105,7 @@
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.06);
   --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
-  --shadow-brand: 0 4px 16px rgba(0, 115, 106, 0.25);
+  --shadow-brand: 0 4px 16px rgba(45, 46, 95, 0.28);
   --shadow-card-hover: 0 12px 32px rgba(0, 0, 0, 0.12);
 
   /* Transitions */
@@ -361,7 +361,7 @@ ul, ol { list-style: none; }
 
 .form-input:focus {
   border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px rgba(0, 115, 106, 0.12);
+  box-shadow: 0 0 0 3px rgba(45, 46, 95, 0.12);
 }
 
 .form-input::placeholder {
@@ -423,6 +423,82 @@ ul, ol { list-style: none; }
 .stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
 .stagger-children > *:nth-child(6) { animation-delay: 0.30s; }
 
+/* ─── Scroll Reveal (IntersectionObserver-driven) ────────────────────────
+   Elements wrapped in <Reveal> (src/components/Reveal.jsx) start hidden and
+   transition to visible the first time they enter the viewport. */
+.reveal {
+  opacity: 0;
+  transition:
+    opacity 0.5s var(--ease-out),
+    transform 0.5s var(--ease-out);
+}
+.reveal--up    { transform: translateY(20px); }
+.reveal--fade  { transform: none; }
+.reveal--left  { transform: translateX(-26px); }
+.reveal--right { transform: translateX(26px); }
+.reveal--scale { transform: scale(0.96); }
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ─── Route / page entrance ──────────────────────────────────────────────
+   Applied by the route wrapper so each navigation gently fades + lifts in. */
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-transition {
+  animation: pageEnter 0.45s var(--ease-out) both;
+}
+
+/* Floating / ambient motion for hero accents and decorative blobs. */
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 0.9;  transform: scale(1.06); }
+}
+
+/* Shine sweep used on primary CTAs (.btn-shine) for a premium hover. */
+.btn-shine { position: relative; overflow: hidden; }
+.btn-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 100%
+  );
+  transform: skewX(-18deg);
+  transition: left 0.6s var(--ease-out);
+  pointer-events: none;
+}
+.btn-shine:hover::after { left: 130%; }
+
+/* ─── Reduced-motion: accessibility guard ────────────────────────────────
+   Respect users who ask the OS to minimise motion. We flatten transitions,
+   animations and smooth scrolling so nothing moves involuntarily. The
+   Reveal hook also short-circuits to is-visible immediately in this mode. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal { opacity: 1 !important; transform: none !important; }
+}
+
 /* ─── Scrollbar ──────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--color-bg); }
@@ -461,7 +537,7 @@ ul, ol { list-style: none; }
   gap: 6px;
   padding: 4px 12px;
   border-radius: 999px;
-  background: rgba(14, 118, 110, 0.08);
+  background: var(--color-brand-50);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.10em;

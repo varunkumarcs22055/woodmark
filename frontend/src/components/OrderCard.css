@@ -164,7 +164,7 @@
   transition: gap 160ms ease, color 160ms ease;
 }
 .order-card > div:last-child a:hover {
-  color: #115E59 !important;
+  color: #1B1C42 !important;
   gap: 8px !important;
 }
 

@@ -8,7 +8,7 @@ print(f"Testing connection to: {db_url.split('@')[-1]}")
 
 try:
     # Manual parse for simple test
-    # mysql://furnotech:ecommerce%4012345@68.178.232.132:3306/ecommerce
+    # mysql://woodmark:ecommerce%4012345@68.178.232.132:3306/ecommerce
     user_pass, host_db = db_url.replace('mysql://', '').split('@')
     user, password = user_pass.split(':')
     password = password.replace('%40', '@')

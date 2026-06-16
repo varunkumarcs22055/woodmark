@@ -103,6 +103,41 @@ class ProductListView(generics.ListAPIView):
         return qs
 
 
+class ProductSuggestView(APIView):
+    """Lightweight typeahead for the navbar search box.
+
+    GET /api/products/suggest/?q=<term>
+    Returns up to 6 matching products (name/slug/image/price) and up to 4
+    matching categories. Kept deliberately small so it can fire on keystroke.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        q = (request.query_params.get('q') or '').strip()
+        if len(q) < 2:
+            return Response({'products': [], 'categories': []})
+        qs = (Product.objects.select_related('category')
+              .filter(is_deleted=False)
+              .filter(Q(name__icontains=q) | Q(brand__icontains=q) | Q(tags__name__icontains=q))
+              .distinct())
+        if _hide_dealer_only_for(request.user):
+            qs = qs.filter(dealer_only=False)
+        rows = ProductListSerializer(qs[:6], many=True, context={'request': request}).data
+        cats = list(Category.objects.filter(name__icontains=q).values('name', 'slug')[:4])
+        return Response({
+            'products': [
+                {
+                    'name': p['name'],
+                    'slug': p['slug'],
+                    'image_url': p.get('image_url'),
+                    'price': p.get('effective_price') or p.get('price'),
+                }
+                for p in rows
+            ],
+            'categories': cats,
+        })
+
+
 class LimitedOffersView(APIView):
     """
     Products that currently have at least one ACTIVE time-bound discount
@@ -650,12 +685,12 @@ class ProductAdminViewSet(APIView):
                     pass  # PIL unavailable or unreadable — don't block upload
 
             # Per-product Cloudinary folder so every product keeps its
-            # media tidily grouped under furnishop/products/<slug>/.
+            # media tidily grouped under woodmark/products/<slug>/.
             # Cloudinary auto-generates a public_id inside that folder so
             # multiple uploads with the same filename don't collide.
             from django.utils.text import slugify
             slug = product.slug or slugify(product.name)
-            folder = f'furnishop/products/{slug}'
+            folder = f'woodmark/products/{slug}'
             kind = 'video' if f.content_type.startswith('video') else 'image'
 
             # Route through the central helper so eager thumb/card

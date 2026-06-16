@@ -46,7 +46,7 @@
 .hero-overlay {
   position: absolute;
   inset: 0;
-  /* Navy gradient overlay matching the FurnoTech brand mockups —
+  /* Navy gradient overlay matching the Woodmark brand mockups —
      deep on the left where the title/search live, fades to the right
      so the background image stays visible. A subtle warm-orange glow
      in the corner ties the page back to the accent palette. */
@@ -71,6 +71,19 @@
 
 .hero-text {
   max-width: 600px;
+}
+
+/* Hero entrance — staggered fade-up on first paint (keyframe in index.css). */
+.hero-text > * { animation: fadeUp 0.7s var(--ease-out) both; }
+.hero-text > .hero-eyebrow     { animation-delay: 0.05s; }
+.hero-text > .hero-title       { animation-delay: 0.16s; }
+.hero-text > .hero-desc        { animation-delay: 0.27s; }
+.hero-text > .hero-search-form { animation-delay: 0.38s; }
+.hero-text > .hero-tags        { animation-delay: 0.49s; }
+.hero-stats { animation: fadeUp 0.7s var(--ease-out) 0.55s both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-text > *, .hero-stats { animation: none; }
 }
 
 .hero-eyebrow {
@@ -244,7 +257,7 @@
 .hero-swiper .swiper-pagination-bullet-active {
   background: var(--color-brand, #00736a);
   opacity: 1;
-  box-shadow: 0 2px 8px rgba(0, 115, 106, 0.18);
+  box-shadow: 0 2px 8px rgba(45, 46, 95, 0.18);
 }
 .hero-swiper .swiper-slide {
   display: flex;
@@ -301,7 +314,7 @@
 .why-us-item:hover {
   background: #fff;
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px -8px rgba(0, 115, 106, 0.18);
+  box-shadow: 0 4px 16px -8px rgba(45, 46, 95, 0.18);
 }
 
 .why-us-icon {
@@ -397,7 +410,7 @@
 
 .category-chip.active {
   border-color: var(--color-brand);
-  box-shadow: 0 0 0 2px rgba(0, 115, 106, 0.2);
+  box-shadow: 0 0 0 2px rgba(45, 46, 95, 0.2);
 }
 
 .chip-emoji {
@@ -537,7 +550,7 @@
   padding: 48px 56px;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 18px 36px -16px rgba(0, 115, 106, 0.45);
+  box-shadow: 0 18px 36px -16px rgba(45, 46, 95, 0.45);
 }
 .promo-banner::after {
   content: "";

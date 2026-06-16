@@ -5,8 +5,8 @@ account so they're visible in the Media Library and served from the CDN
 going forward.
 
 Idempotent: skips anything already hosted on res.cloudinary.com.
-Meaningful public IDs: products → furnishop/products/<slug>,
-banners → furnishop/banners/<slug>, so the Media Library is readable.
+Meaningful public IDs: products → woodmark/products/<slug>,
+banners → woodmark/banners/<slug>, so the Media Library is readable.
 """
 import django, os, sys, requests, time
 
@@ -93,7 +93,7 @@ def migrate_products():
             count_failed += 1
             continue
 
-        public_id = f'furnishop/products/{_slug(p.slug or p.name)}'
+        public_id = f'woodmark/products/{_slug(p.slug or p.name)}'
         try:
             cdn_url = upload_to_cloudinary(blob, public_id)
         except Exception as e:
@@ -139,7 +139,7 @@ def migrate_banners():
             count_failed += 1
             continue
 
-        public_id = f'furnishop/banners/{_slug(b.title)}-{b.id}'
+        public_id = f'woodmark/banners/{_slug(b.title)}-{b.id}'
         try:
             cdn_url = upload_to_cloudinary(blob, public_id)
         except Exception as e:
@@ -163,5 +163,5 @@ if __name__ == '__main__':
     print('\n=== Summary ===')
     print(f'  Products: {pu} uploaded, {ps} skipped, {pf} failed')
     print(f'  Banners:  {bu} uploaded, {bs} skipped, {bf} failed')
-    print('\nOpen https://console.cloudinary.com → Media Library → "furnishop"')
+    print('\nOpen https://console.cloudinary.com → Media Library → "woodmark"')
     print('folder to see them all.')

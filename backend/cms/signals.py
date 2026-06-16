@@ -7,7 +7,7 @@ Three behaviours, mirroring the products app:
                           previous asset BEFORE the row is updated, so the
                           swap doesn't leave an orphan in the Media Library.
   2. post_save(Banner) -> pin the new asset's `asset_folder` to
-                          `furnishop/banners` so the dashboard tree is
+                          `woodmark/banners` so the dashboard tree is
                           correct on dynamic-folder accounts.
   3. post_delete(Banner) -> destroy the asset behind .image.
 
@@ -23,7 +23,7 @@ from services import cloudinary as cdn
 from .models import Banner
 
 logger = logging.getLogger(__name__)
-TARGET_FOLDER = 'furnishop/banners'
+TARGET_FOLDER = 'woodmark/banners'
 
 
 def _public_id(field) -> str:

@@ -149,7 +149,7 @@ class CreateRazorpayOrderView(APIView):
                 'currency': 'INR',
                 'receipt': order.order_id,
                 'notes': {
-                    'furnishop_order_id': order.order_id,
+                    'woodmark_order_id': order.order_id,
                     'customer_email': order.user_email,
                 },
             })
@@ -279,7 +279,7 @@ class RazorpayWebhookView(APIView):
                     )
                     o = pr.order
                 except Payment.DoesNotExist:
-                    fid = payment_data.get('notes', {}).get('furnishop_order_id')
+                    fid = payment_data.get('notes', {}).get('woodmark_order_id')
                     o = Order.objects.filter(order_id=fid).first() if fid else None
                 if o is not None and o.payment_status != 'SUCCESS':
                     o.payment_status = 'FAILED'
@@ -300,11 +300,11 @@ class RazorpayWebhookView(APIView):
                 )
                 order = payment_record.order
             except Payment.DoesNotExist:
-                furnishop_order_id = payment_data.get('notes', {}).get('furnishop_order_id')
-                if not furnishop_order_id:
+                woodmark_order_id = payment_data.get('notes', {}).get('woodmark_order_id')
+                if not woodmark_order_id:
                     return Response({'status': 'order not found'})
                 try:
-                    order = Order.objects.get(order_id=furnishop_order_id)
+                    order = Order.objects.get(order_id=woodmark_order_id)
                 except Order.DoesNotExist:
                     return Response({'status': 'order not found'})
 

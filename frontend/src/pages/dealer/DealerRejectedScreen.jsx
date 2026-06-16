@@ -38,7 +38,7 @@ export default function DealerRejectedScreen() {
 
         <div className="dealer-status-screen__actions">
           <Link to="/" className="btn-primary">Continue as Customer</Link>
-          <a href="mailto:dealers@furnishop.com" className="btn-outline">
+          <a href="mailto:dealers@woodmark.in" className="btn-outline">
             <FiMail size={14} /> Contact Dealer Team
           </a>
           <button onClick={logout} className="dealer-status-screen__signout">Sign Out</button>

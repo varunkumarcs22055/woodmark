@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 # ── Brand palette ──────────────────────────────────────────────────────
-BRAND_NAVY = '#2D2E5F'      # primary indigo (matches FurnoTech wordmark)
+BRAND_NAVY = '#2D2E5F'      # primary indigo (matches Woodmark wordmark)
 BRAND_NAVY_DARK = '#1B1C42'
 BRAND_ORANGE = '#E47D2A'    # accent (the "F" mark)
 INK = '#111827'
@@ -89,7 +89,7 @@ def _payment_context(order):
     """
     method = (getattr(order, 'payment_method', '') or '').lower()
     paid = (getattr(order, 'payment_status', '') == 'SUCCESS')
-    site = (getattr(settings, 'SITE_URL', '') or 'https://furnotech.in').rstrip('/')
+    site = (getattr(settings, 'SITE_URL', '') or 'https://woodmark.in').rstrip('/')
     track = f'{site}/orders/{order.order_id}'
 
     if method == 'cod':
@@ -287,11 +287,11 @@ def _build_html(order) -> str:
           <hr style="border:0;border-top:1px solid {LINE};margin:0 0 14px"/>
           <p style="margin:0 0 6px;font-size:12px;color:{MUTED};line-height:1.55">
             Questions about this order? Reply directly to this email or write to
-            <a href="mailto:hello@furnotech.in" style="color:{BRAND_NAVY}">hello@furnotech.in</a>.
+            <a href="mailto:hello@woodmark.in" style="color:{BRAND_NAVY}">hello@woodmark.in</a>.
             Quote your order number for the fastest response.
           </p>
           <p style="margin:0;font-size:11px;color:{MUTED}">
-            FurnoTech • Premium furniture for the modern Indian home •
+            Woodmark • Premium furniture for the modern Indian home •
             This is a transactional email about your purchase.
           </p>
         </td></tr>
@@ -328,9 +328,9 @@ def _build_text(order) -> str:
         '',
         f'Track your order: {ctx["track_url"]}',
         '',
-        'Reply to this email for help, or write to hello@furnotech.in.',
+        'Reply to this email for help, or write to hello@woodmark.in.',
         '',
-        '— FurnoTech',
+        '— Woodmark',
     ]
     return '\n'.join(lines)
 
@@ -354,8 +354,8 @@ def send_order_confirmation_sms(order) -> bool:
         tag = f'{_fmt_money(order.total_amount)} debited from wallet'
     else:
         tag = f'paid {_fmt_money(order.total_amount)}'
-    site = (settings.SITE_URL or '').rstrip('/') or 'https://furnotech.in'
-    msg = (f'FurnoTech: Order {order.order_id} confirmed ({tag}). '
+    site = (settings.SITE_URL or '').rstrip('/') or 'https://woodmark.in'
+    msg = (f'Woodmark: Order {order.order_id} confirmed ({tag}). '
            f'Track: {site}/orders/{order.order_id}')
     result = send_transactional_sms(phone, msg, name=order.user_name or '')
     return result.get('status') == 'sent'
@@ -384,7 +384,7 @@ def send_order_confirmation_email(order) -> bool:
             body=_build_text(order),
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[order.user_email],
-            reply_to=['hello@furnotech.in'],
+            reply_to=['hello@woodmark.in'],
         )
         msg.attach_alternative(_build_html(order), 'text/html')
         msg.send(fail_silently=False)
@@ -408,7 +408,7 @@ def send_order_status_email(order, *, new_status: str) -> bool:
         'CANCELLED': 'Order cancelled',
     }.get(status_label, f'Order {status_label.title()}')
     subject = f'#{order.order_id} • {pretty}'
-    site = (settings.SITE_URL or '').rstrip('/') or 'https://furnotech.in'
+    site = (settings.SITE_URL or '').rstrip('/') or 'https://woodmark.in'
     track = f'{site}/orders/{order.order_id}'
 
     html = f"""<!doctype html>
@@ -437,14 +437,14 @@ def send_order_status_email(order, *, new_status: str) -> bool:
         f'Hi {order.user_name or "there"},\n\n'
         f'Order #{order.order_id} — {pretty}.\n\n'
         f'Track: {track}\n\n'
-        f'— FurnoTech'
+        f'— Woodmark'
     )
     try:
         msg = EmailMultiAlternatives(
             subject=subject, body=body,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[order.user_email],
-            reply_to=['hello@furnotech.in'],
+            reply_to=['hello@woodmark.in'],
         )
         msg.attach_alternative(html, 'text/html')
         msg.send(fail_silently=False)
@@ -460,7 +460,7 @@ def _simple_card_email(order, *, headline, accent, body_para, subject, cta_label
     with custom headline + body."""
     if not getattr(order, 'user_email', None):
         return False
-    site = (getattr(settings, 'SITE_URL', '') or 'https://furnotech.in').rstrip('/')
+    site = (getattr(settings, 'SITE_URL', '') or 'https://woodmark.in').rstrip('/')
     track = f'{site}/orders/{order.order_id}'
     name = escape(order.user_name or 'there')
     html = f"""<!doctype html>
@@ -485,7 +485,7 @@ def _simple_card_email(order, *, headline, accent, body_para, subject, cta_label
           <a href="{track}" style="display:inline-block;background:{BRAND_NAVY};color:#fff;text-decoration:none;padding:11px 24px;border-radius:8px;font-weight:700;font-size:14px">{escape(cta_label)} →</a>
           <p style="margin:22px 0 0;font-size:12px;color:{MUTED};line-height:1.5">
             Need help? Reply to this email or write to
-            <a href="mailto:hello@furnotech.in" style="color:{BRAND_NAVY}">hello@furnotech.in</a> with your order number.
+            <a href="mailto:hello@woodmark.in" style="color:{BRAND_NAVY}">hello@woodmark.in</a> with your order number.
           </p>
         </td></tr>
       </table>
@@ -498,14 +498,14 @@ def _simple_card_email(order, *, headline, accent, body_para, subject, cta_label
         f'{body_para}\n\n'
         f'Amount on order: {_fmt_money(order.total_amount)}\n\n'
         f'{cta_label}: {track}\n\n'
-        f'— FurnoTech'
+        f'— Woodmark'
     )
     try:
         msg = EmailMultiAlternatives(
             subject=subject, body=text_body,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[order.user_email],
-            reply_to=['hello@furnotech.in'],
+            reply_to=['hello@woodmark.in'],
         )
         msg.attach_alternative(html, 'text/html')
         msg.send(fail_silently=False)

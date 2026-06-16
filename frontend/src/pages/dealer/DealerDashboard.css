@@ -294,7 +294,7 @@
 .dealer-stat-card__icon {
   width: 48px;
   height: 48px;
-  background: rgba(0, 115, 106, 0.1);
+  background: rgba(45, 46, 95, 0.1);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -781,7 +781,7 @@
 .dealer-profile__field input:focus {
   outline: none;
   border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px rgba(0, 115, 106, 0.12);
+  box-shadow: 0 0 0 3px rgba(45, 46, 95, 0.12);
 }
 
 .dealer-profile__field input:disabled {

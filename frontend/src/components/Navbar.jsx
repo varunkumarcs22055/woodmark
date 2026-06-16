@@ -29,11 +29,14 @@ import {
   FiTrendingUp,
   FiUserCheck,
   FiMessageSquare,
+  FiGift,
 } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { fetchContentBlocks } from '../api';
+import { fetchContentBlocks, fetchSearchSuggestions } from '../api';
 import { useSettings } from '../context/SettingsContext';
+import { formatPrice } from '../utils/format';
+import Logo from './Logo';
 import './Navbar.css';
 
 /* ─── Catalog navigation ────────────────────────────────────────────────
@@ -184,6 +187,8 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [suggest, setSuggest] = useState({ products: [], categories: [] });
+  const [suggestLoading, setSuggestLoading] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -244,6 +249,43 @@ export default function Navbar() {
   useEffect(() => {
     if (searchOpen && searchRef.current) searchRef.current.focus();
   }, [searchOpen]);
+
+  // Live search autocomplete — debounced typeahead against /products/suggest/.
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!searchOpen || q.length < 2) {
+      setSuggest({ products: [], categories: [] });
+      setSuggestLoading(false);
+      return undefined;
+    }
+    setSuggestLoading(true);
+    const t = setTimeout(() => {
+      fetchSearchSuggestions(q)
+        .then((d) => setSuggest({
+          products: d.products || [],
+          categories: d.categories || [],
+        }))
+        .catch(() => setSuggest({ products: [], categories: [] }))
+        .finally(() => setSuggestLoading(false));
+    }, 220);
+    return () => clearTimeout(t);
+  }, [searchQuery, searchOpen]);
+
+  const goToSearch = (q) => {
+    navigate(q ? `/?search=${encodeURIComponent(q)}` : '/');
+    setSearchOpen(false);
+    setSearchQuery('');
+  };
+  const goToProduct = (slug) => {
+    navigate(`/product/${slug}`);
+    setSearchOpen(false);
+    setSearchQuery('');
+  };
+  const goToCategory = (slug) => {
+    navigate(`/?category=${encodeURIComponent(slug)}`);
+    setSearchOpen(false);
+    setSearchQuery('');
+  };
 
   // Close account menu when clicking outside
   useEffect(() => {
@@ -374,36 +416,10 @@ export default function Navbar() {
       {/* Main Navbar */}
       <nav className={`navbar ${scrolled ? 'scrolled' : ''}`}>
         <div className="navbar-inner container">
-          {/* Logo — uses the printed image from /logo.png (the file lives
-              in frontend/public/logo.png, dropped in by the brand owner).
-              The image renders the full lockup (mark + wordmark + tagline)
-              from the official brand asset, so it always matches the
-              printed material exactly. */}
-          <Link to="/" className="navbar-brand">
-            <img
-              src="/logo.webp"
-              alt="FurnoTech"
-              className="brand-logo-img"
-              onError={(e) => {
-                // If the user hasn't dropped logo.png in /public yet, fall
-                // back to the inline SVG wordmark so the navbar is never
-                // empty. The image element is hidden and we render the
-                // text alongside as a backup.
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.nextElementSibling.style.display = 'inline-flex';
-              }}
-            />
-            <span className="brand-logo brand-logo--fallback">
-              <span className="brand-icon-wrap" aria-hidden="true">
-                <svg width="34" height="34" viewBox="0 0 40 40" fill="none">
-                  <rect width="40" height="40" rx="8" fill="var(--color-accent)" />
-                  <path d="M12 30 V10 H30 V14 H17 V18 H27 V22 H17 V30 Z" fill="#fff" />
-                </svg>
-              </span>
-              <span className="brand-text">
-                Furno<span className="brand-text__accent">Tech</span>
-              </span>
-            </span>
+          {/* Brand — inline Woodmark lockup (mark + wordmark), pure SVG/text
+              so it scales crisply and needs no raster asset. */}
+          <Link to="/" className="navbar-brand" aria-label="Woodmark home">
+            <Logo markSize={36} />
           </Link>
 
           {/* Desktop Nav */}
@@ -523,6 +539,11 @@ export default function Navbar() {
                           <FiUserCheck size={16} /> My Account
                         </Link>
                       )}
+                      {user.role !== 'dealer' && (
+                        <Link to="/rewards" className="account-menu__link" onClick={() => setAccountOpen(false)}>
+                          <FiGift size={16} /> Rewards &amp; Referrals
+                        </Link>
+                      )}
                       {user.role === 'user' && (
                         <Link to="/account/support" className="account-menu__link" onClick={() => setAccountOpen(false)}>
                           <FiMessageSquare size={16} /> Support Inbox
@@ -562,7 +583,7 @@ export default function Navbar() {
                     </>
                   ) : (
                     <>
-                      <p className="account-menu__greet">Welcome to FurnoTech</p>
+                      <p className="account-menu__greet">Welcome to Woodmark</p>
                       <Link to="/login" className="btn-primary account-menu__cta" onClick={() => setAccountOpen(false)}>
                         Sign In
                       </Link>
@@ -627,20 +648,63 @@ export default function Navbar() {
                   <FiX size={20} />
                 </button>
               </form>
-              <div className="search-suggestions">
-                {SEARCH_SUGGESTIONS.map((s) => (
-                  <button
-                    key={s}
-                    className="search-suggestion-chip"
-                    onClick={() => {
-                      navigate(`/?search=${encodeURIComponent(s)}`);
-                      setSearchOpen(false);
-                    }}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
+              {searchQuery.trim().length >= 2 ? (
+                <div className="search-autocomplete">
+                  {suggestLoading && suggest.products.length === 0
+                    && suggest.categories.length === 0 ? (
+                    <p className="search-ac-empty">Searching…</p>
+                  ) : (suggest.products.length === 0 && suggest.categories.length === 0) ? (
+                    <p className="search-ac-empty">
+                      No matches. Press Enter to search all products.
+                    </p>
+                  ) : (
+                    <>
+                      {suggest.categories.length > 0 && (
+                        <div className="search-ac-cats">
+                          {suggest.categories.map((c) => (
+                            <button
+                              key={c.slug}
+                              type="button"
+                              className="search-suggestion-chip"
+                              onClick={() => goToCategory(c.slug)}
+                            >
+                              {c.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {suggest.products.map((p) => (
+                        <button
+                          key={p.slug}
+                          type="button"
+                          className="search-ac-row"
+                          onClick={() => goToProduct(p.slug)}
+                        >
+                          {p.image_url && (
+                            <img src={p.image_url} alt="" className="search-ac-thumb" loading="lazy" />
+                          )}
+                          <span className="search-ac-name">{p.name}</span>
+                          {p.price != null && (
+                            <span className="search-ac-price">{formatPrice(p.price)}</span>
+                          )}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="search-suggestions">
+                  {SEARCH_SUGGESTIONS.map((s) => (
+                    <button
+                      key={s}
+                      className="search-suggestion-chip"
+                      onClick={() => goToSearch(s)}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -656,7 +720,7 @@ export default function Navbar() {
                aria-label="Site navigation">
             <div className="mobile-drawer-header">
               <Link to="/" className="navbar-brand" onClick={() => setMobileOpen(false)}>
-                <span className="brand-text">FurnoTech</span>
+                <span className="brand-text">Woodmark</span>
               </Link>
               <button onClick={() => setMobileOpen(false)} aria-label="Close menu"
                       className="mobile-drawer-close">

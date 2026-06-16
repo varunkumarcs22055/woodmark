@@ -32,7 +32,7 @@
   width: 4px;
   background: #D1D5DB;
 }
-.support-stat--neutral::before { background: #0E766E; }
+.support-stat--neutral::before { background: #2D2E5F; }
 .support-stat--warn::before    { background: #F59E0B; }
 .support-stat--danger::before  { background: #DC2626; }
 
@@ -102,8 +102,8 @@
 }
 .support-search input:focus {
   outline: none;
-  border-color: #0E766E;
-  box-shadow: 0 0 0 3px rgba(14, 118, 110, 0.12);
+  border-color: #2D2E5F;
+  box-shadow: 0 0 0 3px rgba(45, 46, 95, 0.12);
 }
 
 .support-chips {
@@ -126,14 +126,14 @@
   transition: background 140ms, color 140ms, border-color 140ms;
 }
 .support-chip:hover {
-  background: #F0FDFA;
-  color: #0F766E;
-  border-color: #99E1D6;
+  background: #EFF0F7;
+  color: #2D2E5F;
+  border-color: #C7C9E6;
 }
 .support-chip--active {
-  background: #0E766E;
+  background: #2D2E5F;
   color: #fff;
-  border-color: #0E766E;
+  border-color: #2D2E5F;
 }
 
 .support-list__rows {
@@ -164,8 +164,8 @@
   background: #F9FAFB;
 }
 .support-row--active {
-  background: #F0FDFA !important;
-  border-color: #99E1D6 !important;
+  background: #EFF0F7 !important;
+  border-color: #C7C9E6 !important;
 }
 .support-row--skeleton {
   cursor: default;
@@ -391,8 +391,8 @@
   transition: background 140ms, color 140ms, border-color 140ms;
 }
 .support-status-btn:hover:not(:disabled) {
-  border-color: #0E766E;
-  color: #0E766E;
+  border-color: #2D2E5F;
+  color: #2D2E5F;
 }
 .support-status-btn:disabled {
   opacity: 0.5;
@@ -463,9 +463,9 @@
   box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
 }
 .support-bubble--customer .support-bubble__content {
-  background: #0E766E;
+  background: #2D2E5F;
   color: #fff;
-  border-color: #0E766E;
+  border-color: #2D2E5F;
   border-bottom-right-radius: 4px;
 }
 .support-bubble--agent .support-bubble__content {
@@ -532,8 +532,8 @@
 }
 .support-composer textarea:focus {
   outline: none;
-  border-color: #0E766E;
-  box-shadow: 0 0 0 3px rgba(14, 118, 110, 0.12);
+  border-color: #2D2E5F;
+  box-shadow: 0 0 0 3px rgba(45, 46, 95, 0.12);
 }
 .support-composer--internal textarea {
   background: #FFFBEB;

@@ -9,7 +9,7 @@
 .bs-hero {
   position: relative;
   background:
-    radial-gradient(circle at 15% 0%, rgba(14,118,110,0.10), transparent 55%),
+    radial-gradient(circle at 15% 0%, rgba(45, 46, 95,0.10), transparent 55%),
     radial-gradient(circle at 85% 100%, rgba(220,38,38,0.07), transparent 55%),
     linear-gradient(180deg, #FFFFFF 0%, #FAFAF7 100%);
   border-bottom: 1px solid #EFEFEA;
@@ -25,7 +25,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #0E766E;
+  color: #2D2E5F;
   text-decoration: none;
   font-size: 13px;
   font-weight: 500;
@@ -40,8 +40,8 @@
   gap: 6px;
   padding: 5px 12px;
   border-radius: 999px;
-  background: rgba(14,118,110,0.10);
-  color: #0E766E;
+  background: rgba(45, 46, 95,0.10);
+  color: #2D2E5F;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -162,7 +162,7 @@
 }
 .bs-cta {
   margin-top: 4px;
-  color: #0E766E;
+  color: #2D2E5F;
   font-size: 14px;
   font-weight: 600;
 }

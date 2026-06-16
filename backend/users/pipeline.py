@@ -6,7 +6,7 @@
 # 5. Application type: Web application
 # 6. Authorized redirect URIs:
 #    - http://localhost:8000/social-auth/complete/google-oauth2/ (development)
-#    - https://api.furnishop.com/social-auth/complete/google-oauth2/ (production)
+#    - https://api.woodmark.in/social-auth/complete/google-oauth2/ (production)
 # 7. Copy Client ID → GOOGLE_CLIENT_ID in .env
 # 8. Copy Client Secret → GOOGLE_CLIENT_SECRET in .env
 

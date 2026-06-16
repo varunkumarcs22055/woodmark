@@ -90,12 +90,22 @@ class StockMovement(models.Model):
                 )
             level.quantity = new_quantity
             level.save(update_fields=['quantity', 'updated_at'])
+            # Capture the storefront stock BEFORE we bump it, so we can detect a
+            # 0 -> positive transition and fire back-in-stock alerts.
+            prev_stock = (Product.objects.filter(pk=level.product_id)
+                          .values_list('stock', flat=True).first()) or 0
             # Propagate to Product.stock. F-expression keeps it atomic vs
             # concurrent order placements that also touch product.stock.
             Product.objects.filter(pk=level.product_id).update(
                 stock=F('stock') + self.delta,
             )
             super().save(*args, **kwargs)
+            # Restock transition → notify subscribers AFTER commit (email I/O
+            # must never roll back the movement).
+            if self.delta > 0 and prev_stock <= 0:
+                pid = level.product_id
+                from products.stock_alerts import notify_back_in_stock
+                transaction.on_commit(lambda: notify_back_in_stock(pid))
 
     def __str__(self):
         sign = '+' if self.delta >= 0 else ''

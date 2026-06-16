@@ -353,7 +353,7 @@ export function PrivacyPolicyPage() {
 
             <h2>Your rights</h2>
             <p>You can request a data export or full account deletion any time —
-            email <a href="mailto:privacy@furnishop.in">privacy@furnishop.in</a>.
+            email <a href="mailto:privacy@woodmark.in">privacy@woodmark.in</a>.
             We'll honour it within 30 days as required by India's Digital Personal
             Data Protection Act.</p>
           </>
@@ -384,11 +384,11 @@ export function ContactPage() {
             <small>Mon–Sat · 9am – 9pm IST</small>
           </div>
         </a>
-        <a href="mailto:hello@furnishop.in" className="contact-card">
+        <a href="mailto:hello@woodmark.in" className="contact-card">
           <FiMail size={20} />
           <div>
             <strong>Email</strong>
-            <span>hello@furnishop.in</span>
+            <span>hello@woodmark.in</span>
             <small>Replies within one business day</small>
           </div>
         </a>
@@ -404,7 +404,7 @@ export function ContactPage() {
           <FiMapPin size={20} />
           <div>
             <strong>Visit</strong>
-            <span>FurnoTech Studios</span>
+            <span>Woodmark Studios</span>
             <small>Mumbai, India · Showroom by appointment</small>
           </div>
         </div>
@@ -477,7 +477,7 @@ export function SupportPage() {
       }
       toast.success("Thanks — we've got your message.");
     } catch {
-      toast.error('Could not send. Please email hello@furnishop.in directly.');
+      toast.error('Could not send. Please email hello@woodmark.in directly.');
     } finally {
       setSubmitting(false);
     }
@@ -567,7 +567,7 @@ export function SupportPage() {
                     placeholder="Share the order number, what happened, and what you'd like us to do." />
         </label>
         <div className="support-public-footer">
-          <small>Or email us at <a href="mailto:hello@furnishop.in">hello@furnishop.in</a></small>
+          <small>Or email us at <a href="mailto:hello@woodmark.in">hello@woodmark.in</a></small>
           <button type="submit" disabled={submitting} className="btn-primary"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <FiSend size={14} />

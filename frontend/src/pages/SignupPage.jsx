@@ -3,7 +3,7 @@
  * On success, the user is auto-logged-in (backend returns access+refresh).
  */
 import { useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import toast from 'react-hot-toast';
@@ -38,6 +38,8 @@ const STRENGTH_CLASSES = ['', 'weak', 'fair', 'good', 'strong'];
 export default function SignupPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const referralCode = (searchParams.get('ref') || '').trim();
 
   const [form, setForm] = useState({
     full_name: '',
@@ -77,7 +79,9 @@ export default function SignupPage() {
     setLoading(true);
     setErrors({});
     try {
-      const data = await registerUser(form);
+      const data = await registerUser(
+        referralCode ? { ...form, referral_code: referralCode } : form
+      );
       // RegisterView now creates the user as inactive and emails an OTP.
       // We MUST send the user to the verify-email page; only after they
       // enter the OTP does the backend issue tokens.
@@ -88,7 +92,7 @@ export default function SignupPage() {
       }
       // Legacy fallback — backend issued tokens directly (older builds).
       login({ access: data.access, refresh: data.refresh }, data.user);
-      toast.success('Account created! Welcome to FurnoTech.');
+      toast.success('Account created! Welcome to Woodmark.');
       navigate('/');
     } catch (err) {
       const serverErrors = err.response?.data || {};
@@ -122,7 +126,7 @@ export default function SignupPage() {
         />
         <div className="auth-page__overlay">
           <div className="auth-page__brand">
-            <h1>Join FurnoTech</h1>
+            <h1>Join Woodmark</h1>
             <blockquote>"Designed for the modern Indian home."</blockquote>
             <p>Free shipping on orders above ₹2,999 · 30-day easy returns.</p>
           </div>
@@ -135,6 +139,15 @@ export default function SignupPage() {
             <h2>Create Your Account</h2>
             <p>Start shopping premium furniture in seconds</p>
           </div>
+
+          {referralCode && (
+            <div
+              className="auth-error-banner"
+              style={{ background: '#FDF2E6', color: '#C66416', borderColor: '#F09650' }}
+            >
+              🎁 You were invited! Place your first order and you’ll both earn bonus reward points.
+            </div>
+          )}
 
           <button className="google-btn" onClick={handleGoogleLogin} type="button">
             <FcGoogle size={20} />

@@ -204,11 +204,11 @@ DEFAULT_PAGES = [
             '## Get in Touch\n'
             'We\'d love to hear from you!\n\n'
             '## Support\n'
-            '- **Email:** support@furnishop.in\n'
+            '- **Email:** support@woodmark.in\n'
             '- **Phone:** 1800-123-4567 (Mon-Sat, 9 AM - 6 PM)\n'
             '- **WhatsApp:** +91 98765 43210\n\n'
             '## Address\n'
-            'FurnoTech HQ, Sector 62, Noida, UP - 201301\n'
+            'Woodmark HQ, Sector 62, Noida, UP - 201301\n'
         ),
         'is_published': True,
     },

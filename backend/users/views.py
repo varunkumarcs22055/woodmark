@@ -71,6 +71,23 @@ class RegisterView(APIView):
         user.is_active = False
         user.save(update_fields=['is_active'])
 
+        # Referral linkage — if they signed up via someone's code, record it so
+        # both sides get rewarded on the referee's first confirmed order.
+        ref_code = (request.data.get('referral_code') or '').strip().upper()
+        if ref_code:
+            try:
+                from rewards.models import Referral
+                anchor = Referral.objects.filter(
+                    code=ref_code, referee__isnull=True).first()
+                if anchor and anchor.referrer_id != user.id:
+                    Referral.objects.create(
+                        code=Referral.code_for(user) + '-R',
+                        referrer=anchor.referrer, referee=user,
+                    )
+            except Exception:
+                import logging
+                logging.getLogger(__name__).warning('referral link failed for %s', user.email)
+
         # Issue OTP + email it.
         otp = EmailOTP.issue(user, purpose='signup', ttl_minutes=15)
         self._send_signup_otp_email(user, otp.code)
@@ -89,21 +106,21 @@ class RegisterView(APIView):
             '<div style="max-width:480px;margin:auto;background:#fff;padding:28px;'
             'border-radius:8px;border:1px solid #eee">'
             '<h2 style="color:#00736A;margin:0 0 12px">Verify your email</h2>'
-            f'<p>Hi {user.full_name or "there"}, your FurnoTech verification code is:</p>'
+            f'<p>Hi {user.full_name or "there"}, your Woodmark verification code is:</p>'
             f'<div style="font-size:32px;font-weight:800;letter-spacing:8px;'
             f'background:#f6f6f4;text-align:center;padding:18px;border-radius:8px;'
             f'margin:18px 0;color:#00736A">{code}</div>'
             '<p>This code expires in 15 minutes. If you didn\'t sign up, '
             'you can ignore this email.</p>'
-            '<p style="color:#888;font-size:12px;margin-top:24px">- FurnoTech</p>'
+            '<p style="color:#888;font-size:12px;margin-top:24px">- Woodmark</p>'
             '</div></div>'
         )
         try:
             msg = EmailMultiAlternatives(
-                subject=f'Your FurnoTech verification code: {code}',
+                subject=f'Your Woodmark verification code: {code}',
                 body=(f'Hi {user.full_name or "there"},\n\n'
-                      f'Your FurnoTech verification code is: {code}\n\n'
-                      f'It expires in 15 minutes.\n\n- FurnoTech'),
+                      f'Your Woodmark verification code is: {code}\n\n'
+                      f'It expires in 15 minutes.\n\n- Woodmark'),
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 to=[user.email],
             )
@@ -339,7 +356,7 @@ class DealerApplicationView(APIView):
                     f'Email: {user.email}\n'
                     f'GST: {user.dealer_gst_number}\n\n'
                     f'Review it here: {request.build_absolute_uri("/")}admin-dashboard/dealers/',
-                    'no-reply@furnishop.in',
+                    'no-reply@woodmark.in',
                     [settings.DEFAULT_FROM_EMAIL], # Or a dedicated admin email
                     fail_silently=True
                 )
@@ -400,14 +417,14 @@ class DevLoginView(APIView):
 
     TEST_USERS = {
         'admin': {
-            'email': 'dev-admin@furnishop.local',
+            'email': 'dev-admin@woodmark.local',
             'password': 'DevAdmin@2024!',
             'first_name': 'Dev',
             'last_name': 'Admin',
             'role': 'admin',
         },
         'dealer': {
-            'email': 'dev-dealer@furnishop.local',
+            'email': 'dev-dealer@woodmark.local',
             'password': 'DevDealer@2024!',
             'first_name': 'Dev',
             'last_name': 'Dealer',
@@ -417,7 +434,7 @@ class DevLoginView(APIView):
             'dealer_gst_number': '29ABCDE1234F1Z5',
         },
         'user': {
-            'email': 'dev-user@furnishop.local',
+            'email': 'dev-user@woodmark.local',
             'password': 'DevUser@2024!',
             'first_name': 'Dev',
             'last_name': 'User',
@@ -529,7 +546,7 @@ class EmailOTPRequestView(APIView):
                     notify(
                         user=user,
                         kind='login_otp',
-                        title='Your FurnoTech login code',
+                        title='Your Woodmark login code',
                         body=(
                             f'Hi {user.full_name},\n\n'
                             f'Your one-time login code is: {otp.code}\n'
@@ -650,7 +667,7 @@ class PasswordResetRequestView(APIView):
                 notify(
                     user=user,
                     kind='password_reset',
-                    title='Reset your FurnoTech password',
+                    title='Reset your Woodmark password',
                     body=(
                         f"Hi {user.full_name},\n\n"
                         f"Use the link below to reset your password. "
@@ -783,11 +800,11 @@ class AdminUserListCreateView(APIView):
             notify(
                 user=user,
                 kind='admin_account_created',
-                title='You\'ve been added as an admin on FurnoTech',
+                title='You\'ve been added as an admin on Woodmark',
                 body=(
                     f'Hi {full_name or email},\n\n'
                     f'{request.user.full_name or request.user.email} has added you '
-                    f'as an administrator on FurnoTech.\n\n'
+                    f'as an administrator on Woodmark.\n\n'
                     f'Sign in at {site or "your site"} with this email and the '
                     f'password they shared with you.'
                 ),

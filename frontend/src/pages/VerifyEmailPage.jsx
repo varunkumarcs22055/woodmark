@@ -51,7 +51,7 @@ export default function VerifyEmailPage() {
       const data = await verifySignupEmail(email, otp);
       // Backend returned tokens — log the user in for real this time.
       login({ access: data.access, refresh: data.refresh }, data.user);
-      toast.success('Email verified! Welcome to FurnoTech.');
+      toast.success('Email verified! Welcome to Woodmark.');
       navigate('/');
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Invalid or expired code.');
@@ -79,7 +79,7 @@ export default function VerifyEmailPage() {
       <div className="auth-page__left">
         <img
           src="https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=1200&q=80"
-          alt="FurnoTech"
+          alt="Woodmark"
           className="auth-page__bg-image"
         />
         <div className="auth-page__overlay">

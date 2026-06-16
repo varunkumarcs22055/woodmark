@@ -1,6 +1,6 @@
 
 """
-Django settings for FurnoTech e-commerce project.
+Django settings for Woodmark e-commerce project.
 
 Configured for:
 - Neon PostgreSQL via DATABASE_URL
@@ -84,6 +84,7 @@ INSTALLED_APPS = [
     'dealer_wallet',
     'support',
     'sms_campaigns',
+    'rewards',
 ]
 
 MIDDLEWARE = [
@@ -354,7 +355,7 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
 EMAIL_TIMEOUT = 5  # seconds — never let mail block a request
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@furnishop.local')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@woodmark.local')
 SITE_URL = os.getenv('SITE_URL', 'http://localhost:5174')
 
 # ---------------------------------------------------------------------------
@@ -379,7 +380,7 @@ CLOUDINARY_STORAGE = {
     'API_SECRET': os.getenv('CLOUDINARY_API_SECRET', ''),
     # Where uploads land in Cloudinary. Keeps Console > Media Library
     # organised when one Cloudinary account is shared across staging/prod.
-    'PREFIX': os.getenv('CLOUDINARY_FOLDER', 'furnishop'),
+    'PREFIX': os.getenv('CLOUDINARY_FOLDER', 'woodmark'),
     # Reject anything that isn't an image — extra defence on top of model
     # validators. Override the type list at upload-time if we later need
     # to host PDFs (e.g. invoices) on Cloudinary too.

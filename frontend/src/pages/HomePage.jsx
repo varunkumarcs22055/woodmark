@@ -9,6 +9,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { fetchProducts, fetchLimitedOffers, fetchBanners, fetchContentBlocks } from "../api";
 import ProductCard from "../components/ProductCard";
 import FilterSidebar from "../components/FilterSidebar";
+import Reveal from "../components/Reveal";
 import { useSettings } from "../context/SettingsContext";
 import {
   FiSearch,
@@ -344,14 +345,14 @@ export default function HomePage() {
       {/* ── Why Us Strip ────────────────────────────────────── */}
       <section className="why-us-strip">
         <div className="why-us-inner container">
-          {whyUs.map((item) => (
-            <div key={item.title} className="why-us-item">
+          {whyUs.map((item, i) => (
+            <Reveal key={item.title} className="why-us-item" delay={i * 90}>
               <span className="why-us-icon">{item.icon}</span>
               <div>
                 <p className="why-us-title">{item.title}</p>
                 <p className="why-us-desc">{item.desc}</p>
               </div>
-            </div>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -398,7 +399,7 @@ export default function HomePage() {
 
       {/* ── Promo Banner ─────────────────────────────────────── */}
       <section className="promo-banner-section container">
-        <div className="promo-banner">
+        <Reveal className="promo-banner" variant="scale">
           <div className="promo-banner-content">
             <span className="promo-banner-tag">{promo.tag}</span>
             <h3 className="promo-banner-title">
@@ -410,7 +411,7 @@ export default function HomePage() {
               {promo.desc}
             </p>
             <button
-              className="btn-primary promo-banner-btn"
+              className="btn-primary btn-shine promo-banner-btn"
               onClick={() => navigate(promo.cta_link || '/best-sellers')}
             >
               {promo.cta_text}
@@ -419,7 +420,7 @@ export default function HomePage() {
           {/* Right-side visual removed — the redundant "40% OFF" circle
               was overlapping the gradient and duplicating the title text
               ("Up to 40% off on Best Sellers"). */}
-        </div>
+        </Reveal>
       </section>
 
       {/* ── Products Section ─────────────────────────────────── */}
@@ -704,7 +705,7 @@ function HeroSection({ heroSearch, setHeroSearch, onSearchSubmit, onTagClick, sl
               className="hero-search-input"
               id="hero-search-input"
             />
-            <button type="submit" className="hero-search-btn">
+            <button type="submit" className="hero-search-btn btn-shine">
               Search
             </button>
           </form>

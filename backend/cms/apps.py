@@ -7,5 +7,5 @@ class CmsConfig(AppConfig):
 
     def ready(self):
         # Wire the post-save signal that pins Banner uploads into the
-        # `furnishop/banners` Cloudinary asset folder (dynamic-mode).
+        # `woodmark/banners` Cloudinary asset folder (dynamic-mode).
         from . import signals  # noqa: F401

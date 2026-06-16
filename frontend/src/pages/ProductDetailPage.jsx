@@ -28,8 +28,10 @@ import useAddToCartGuarded from '../utils/useAddToCartGuarded';
 import { formatPrice, calcDiscountPercent } from '../utils/format';
 import ProductCard from '../components/ProductCard';
 import ProductGallery from '../components/ProductGallery';
+import ProductStrip from '../components/ProductStrip';
 import StarRating from '../components/StarRating';
 import WishlistButton from '../components/WishlistButton';
+import { addRecentlyViewed, useRecentlyViewed } from '../utils/recentlyViewed';
 import './ProductDetailPage.css';
 
 export default function ProductDetailPage() {
@@ -48,6 +50,7 @@ export default function ProductDetailPage() {
   // Quantity-aware delivery ETA. Refetched (debounced) when qty/pin changes.
   const [eta, setEta] = useState(null);
   const [etaPincode, setEtaPincode] = useState('');
+  const recentlyViewed = useRecentlyViewed(product?.id);
 
   useEffect(() => {
     setLoading(true);
@@ -58,6 +61,7 @@ export default function ProductDetailPage() {
     fetchProduct(slug)
       .then((data) => {
         setProduct(data);
+        addRecentlyViewed(data);
         // Fan out — reviews and similar are independent
         Promise.all([
           fetchSimilarProducts(data.id).catch(() => []),
@@ -78,7 +82,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (!product) return undefined;
     const prevTitle = document.title;
-    document.title = product.meta_title || `${product.name} | FurnoTech`;
+    document.title = product.meta_title || `${product.name} | Woodmark`;
 
     let metaDesc = document.querySelector('meta[name="description"]');
     const prevDesc = metaDesc?.getAttribute('content') || null;
@@ -91,7 +95,7 @@ export default function ProductDetailPage() {
       'content',
       product.meta_description ||
         (product.description || '').slice(0, 160) ||
-        `Shop ${product.name} on FurnoTech.`,
+        `Shop ${product.name} on Woodmark.`,
     );
 
     const ldId = 'pd-jsonld';
@@ -469,10 +473,10 @@ export default function ProductDetailPage() {
           {eta && (
             <div style={{
               display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10,
-              padding: '10px 14px', background: '#F0FDFA', borderRadius: 10,
+              padding: '10px 14px', background: '#EFF0F7', borderRadius: 10,
               border: '1px solid #99F6E4', marginTop: 12,
             }}>
-              <FiTruck color="#0E766E" />
+              <FiTruck color="#2D2E5F" />
               <span style={{ fontSize: 14 }}>
                 <strong>Delivery:</strong> {eta.etd_days_min === eta.etd_days_max
                   ? `${eta.etd_days_max} days`
@@ -664,6 +668,17 @@ export default function ProductDetailPage() {
             ))}
           </div>
         </section>
+      )}
+
+      {/* Recently viewed — excludes the current product */}
+      {recentlyViewed.length > 0 && (
+        <div className="container">
+          <ProductStrip
+            eyebrow="Your history"
+            title="Recently viewed"
+            products={recentlyViewed}
+          />
+        </div>
       )}
     </div>
   );
@@ -911,7 +926,7 @@ function StockAlertSignup({ slug, defaultEmail }) {
     return (
       <div style={{
         marginTop: 8, padding: '10px 14px',
-        background: '#F0FDFA', border: '1px solid #99E1D6', borderRadius: 10,
+        background: '#EFF0F7', border: '1px solid #C7C9E6', borderRadius: 10,
         color: '#134e4a', fontSize: 13.5,
         display: 'flex', alignItems: 'center', gap: 8,
       }}>

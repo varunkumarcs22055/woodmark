@@ -1,6 +1,6 @@
 """
-One-off: reorganize existing flat `furnishop/products/<slug>` assets into
-per-product folders `furnishop/products/<slug>/main`.
+One-off: reorganize existing flat `woodmark/products/<slug>` assets into
+per-product folders `woodmark/products/<slug>/main`.
 
 Cloudinary's `rename()` API moves an asset to a new public_id; the old
 URL stops working but the new one returns the same image. We then update
@@ -31,8 +31,8 @@ def reorganize_products():
     moved, skipped, failed = 0, 0, 0
     for p in Product.objects.all():
         slug = _slug(p.slug or p.name)
-        old_public_id = f'furnishop/products/{slug}'
-        new_public_id = f'furnishop/products/{slug}/main'
+        old_public_id = f'woodmark/products/{slug}'
+        new_public_id = f'woodmark/products/{slug}/main'
 
         # Skip if no Cloudinary URL configured on this product.
         if not (p.image_url and 'res.cloudinary.com' in p.image_url):
@@ -73,5 +73,5 @@ if __name__ == '__main__':
     print('Reorganizing products into per-product folders...')
     m, s, f = reorganize_products()
     print(f'\nSummary: {m} moved, {s} skipped, {f} failed')
-    print('Open Cloudinary Media Library -> furnishop -> products -> '
+    print('Open Cloudinary Media Library -> woodmark -> products -> '
           '<slug folder> to see each one.')

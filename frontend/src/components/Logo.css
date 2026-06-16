@@ -1,0 +1,49 @@
+/* ─── Woodmark logo lockup ───────────────────────────────────────────── */
+.wm-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1;
+  user-select: none;
+}
+
+.wm-logo__mark {
+  flex-shrink: 0;
+  display: block;
+}
+
+.wm-logo__lockup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wm-logo__word {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 1.4rem;
+  letter-spacing: -0.01em;
+  color: var(--color-brand);
+  line-height: 1;
+}
+
+.wm-logo__accent {
+  color: var(--color-accent);
+}
+
+.wm-logo__tagline {
+  font-family: var(--font-sans);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* Inverse (dark backgrounds, e.g. footer) */
+.wm-logo--inverse .wm-logo__word { color: #ffffff; }
+.wm-logo--inverse .wm-logo__tagline { color: rgba(255, 255, 255, 0.6); }
+
+@media (max-width: 768px) {
+  .wm-logo__word { font-size: 1.2rem; }
+}

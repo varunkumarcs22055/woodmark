@@ -104,7 +104,7 @@ export default function OrderCard({ order }) {
                     display: 'flex', justifyContent: 'flex-end' }}>
         <Link to={`/orders/${order.order_id}`}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 4,
-                       fontSize: 13, fontWeight: 500, color: '#0E766E' }}>
+                       fontSize: 13, fontWeight: 500, color: '#2D2E5F' }}>
           View details &amp; invoice <FiArrowRight size={13} />
         </Link>
       </div>

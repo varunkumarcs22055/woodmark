@@ -21,7 +21,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import {
   createOrder, simulatePayment, createRazorpayOrder, verifyPayment,
-  validateCoupon, estimateShipping,
+  validateCoupon, estimateShipping, fetchLoyalty, checkGiftCard,
 } from '../api';
 import { formatPrice } from '../utils/format';
 import './CheckoutPage.css';
@@ -107,9 +107,40 @@ export default function CheckoutPage() {
   const [shipEstimate, setShipEstimate] = useState(null);
   const [shipLoading, setShipLoading] = useState(false);
 
+  // Rewards redemption (B2C retail buyers)
+  const [loyalty, setLoyalty] = useState(null);
+  const [redeemPoints, setRedeemPoints] = useState(0);
+  const [giftCardInput, setGiftCardInput] = useState('');
+  const [giftCard, setGiftCard] = useState({ code: '', balance: 0, valid: false, message: '' });
+  const [giftLoading, setGiftLoading] = useState(false);
+
   // Dealer specific state
   const [dealerCredit, setDealerCredit] = useState(null);
   const [dealerWallet, setDealerWallet] = useState(null);
+
+  // Load loyalty balance for retail buyers so they can redeem points.
+  useEffect(() => {
+    if (user && user.role !== 'dealer') {
+      fetchLoyalty().then(setLoyalty).catch(() => setLoyalty(null));
+    } else {
+      setLoyalty(null);
+    }
+  }, [user]);
+
+  const applyGiftCard = async () => {
+    const code = giftCardInput.trim();
+    if (!code) return;
+    setGiftLoading(true);
+    try {
+      const r = await checkGiftCard(code);
+      setGiftCard({ code: r.code, balance: parseFloat(r.balance), valid: true,
+                    message: `Gift card applied — ${formatPrice(r.balance)} available.` });
+    } catch {
+      setGiftCard({ code: '', balance: 0, valid: false, message: 'Invalid or inactive gift card.' });
+    } finally {
+      setGiftLoading(false);
+    }
+  };
 
   // Re-prefill if user logs in mid-flow
 
@@ -301,6 +332,8 @@ export default function CheckoutPage() {
       else orderPayload.payment_method = 'razorpay';
 
       if (couponState.code) orderPayload.coupon_code = couponState.code;
+      if (redeemPoints > 0) orderPayload.redeem_points = redeemPoints;
+      if (giftCard.valid && giftCard.code) orderPayload.gift_card_code = giftCard.code;
       order = await createOrder(orderPayload);
       setCreatedOrder(order);
       // Clear the cart the moment the order is committed. Any subsequent
@@ -376,7 +409,7 @@ export default function CheckoutPage() {
       key: rzOrder.key_id,
       amount: rzOrder.amount,
       currency: rzOrder.currency,
-      name: 'FurnoTech',
+      name: 'Woodmark',
       description: `Order ${order.order_id}`,
       order_id: rzOrder.razorpay_order_id,
       prefill: rzOrder.prefill || {
@@ -384,7 +417,7 @@ export default function CheckoutPage() {
         email: form.user_email,
         contact: form.phone,
       },
-      notes: { furnishop_order_id: order.order_id },
+      notes: { woodmark_order_id: order.order_id },
       theme: { color: '#2D2E5F' },
       modal: {
         ondismiss: () => {
@@ -443,7 +476,7 @@ export default function CheckoutPage() {
             <FiCheckCircle size={64} />
           </div>
           <h2>Order Placed Successfully!</h2>
-          <p>Thank you for shopping with FurnoTech.</p>
+          <p>Thank you for shopping with Woodmark.</p>
 
           <div className="checkout-success__details">
             <div className="checkout-success__detail-row">
@@ -493,7 +526,7 @@ export default function CheckoutPage() {
           </p>
           <div className="checkout-error__actions">
             <Link to="/orders" className="btn-primary">Check Order Status</Link>
-            <a href="mailto:support@furnishop.com" className="btn-outline">Contact Support</a>
+            <a href="mailto:support@woodmark.in" className="btn-outline">Contact Support</a>
           </div>
         </div>
       </div>
@@ -837,6 +870,70 @@ export default function CheckoutPage() {
                 <span>−{formatPrice(couponState.discount)}</span>
               </div>
             )}
+
+            {/* Gift card */}
+            <div style={{ display: 'flex', gap: 6, alignItems: 'stretch', marginTop: 8 }}>
+              <input
+                type="text"
+                placeholder="Gift card code"
+                value={giftCardInput}
+                onChange={(e) => setGiftCardInput(e.target.value.toUpperCase())}
+                disabled={giftCard.valid || giftLoading}
+                style={{ flex: 1, padding: '8px 10px', border: '1px solid #D1D5DB',
+                         borderRadius: 6, textTransform: 'uppercase' }}
+              />
+              {giftCard.valid ? (
+                <button type="button"
+                        onClick={() => { setGiftCard({ code: '', balance: 0, valid: false, message: '' }); setGiftCardInput(''); }}
+                        style={{ padding: '0 12px', borderRadius: 6, border: '1px solid #D1D5DB',
+                                 background: '#F3F4F6', cursor: 'pointer' }}>
+                  Remove
+                </button>
+              ) : (
+                <button type="button" onClick={applyGiftCard}
+                        disabled={!giftCardInput.trim() || giftLoading}
+                        style={{ padding: '0 12px', borderRadius: 6, border: 0,
+                                 background: '#111827', color: '#fff', cursor: 'pointer' }}>
+                  {giftLoading ? '…' : 'Apply'}
+                </button>
+              )}
+            </div>
+            {giftCard.message && (
+              <p style={{ fontSize: 12, marginTop: 4,
+                          color: giftCard.valid ? 'var(--color-success)' : 'var(--color-error)' }}>
+                {giftCard.message}
+              </p>
+            )}
+
+            {/* Loyalty points redeem */}
+            {loyalty && loyalty.points_balance > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between',
+                              fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+                  <span>Use reward points</span>
+                  <span>{loyalty.points_balance.toLocaleString()} available</span>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    type="number" min={0} max={loyalty.points_balance}
+                    value={redeemPoints}
+                    onChange={(e) => setRedeemPoints(Math.max(0, Math.min(
+                      parseInt(e.target.value, 10) || 0, loyalty.points_balance)))}
+                    style={{ flex: 1, padding: '8px 10px', border: '1px solid #D1D5DB', borderRadius: 6 }}
+                  />
+                  <button type="button"
+                          onClick={() => setRedeemPoints(loyalty.points_balance)}
+                          style={{ padding: '0 12px', borderRadius: 6, border: '1px solid #D1D5DB',
+                                   background: '#F3F4F6', cursor: 'pointer' }}>
+                    Max
+                  </button>
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                  1 point = {formatPrice(parseFloat(loyalty.point_value))}. Up to 50% of the bill
+                  can be paid with points (we’ll apply the eligible amount).
+                </p>
+              </div>
+            )}
             {earlyPayDiscount > 0 && (
               <div className="checkout-summary__row checkout-summary__row--savings">
                 <span>Pay-Now Discount ({EARLY_DISCOUNT_PCT}%)</span>
@@ -883,7 +980,7 @@ export default function CheckoutPage() {
 const paymentTileStyle = (active) => ({
   display: 'flex', alignItems: 'flex-start', gap: 6,
   padding: 12, borderRadius: 8,
-  border: `2px solid ${active ? '#0E766E' : '#E5E7EB'}`,
-  background: active ? '#F0FDFA' : '#fff',
+  border: `2px solid ${active ? '#2D2E5F' : '#E5E7EB'}`,
+  background: active ? '#EFF0F7' : '#fff',
   cursor: 'pointer',
 });

@@ -20,6 +20,9 @@ from inventory.models import StockLevel, StockMovement, Warehouse
 from products.models import Product
 from users.models import User
 from shipping.models import ShippingZone
+from dealer_pricing.models import DealerTier
+from dealer_credit.models import DealerCredit
+from dealer_wallet.models import DealerWallet
 
 
 class Command(BaseCommand):
@@ -27,16 +30,52 @@ class Command(BaseCommand):
 
     def handle(self, *args, **opts):
         self._seed_users()
+        self._seed_dealer_finance()
         self._seed_warehouses_and_stock()
         self._seed_cms()
         self._seed_shipping_zones()
         self.stdout.write(self.style.SUCCESS('Seed complete.'))
 
+    # ── Dealer tier / credit / wallet ────────────────────────────────────
+
+    def _seed_dealer_finance(self):
+        """Give the active demo dealer a usable tier, credit line, and wallet
+        balance so every dealer feature (tier pricing, pay-on-credit at
+        checkout, wallet pay, self-clear credit) actually has data to work
+        with. Without this the dealer dashboard renders all-zeros and looks
+        broken even though the code is fine."""
+        dealer = User.objects.filter(email='dealer-active@example.com').first()
+        if not dealer:
+            return
+
+        # Pricing tier → dealer sees discounted prices across the catalogue.
+        tier = (DealerTier.objects.filter(slug='premium').first()
+                or DealerTier.objects.filter(is_active=True).order_by('sort_order').first())
+        if tier and dealer.dealer_tier_id != tier.id:
+            dealer.dealer_tier = tier
+            dealer.save(update_fields=['dealer_tier'])
+            self.stdout.write(f'  ~ dealer tier -> {tier.name}')
+
+        # Credit line (do NOT touch amount_used — that's invoice-driven).
+        credit, _ = DealerCredit.objects.get_or_create(dealer=dealer)
+        if credit.credit_limit != Decimal('200000'):
+            credit.credit_limit = Decimal('200000')
+            credit.terms_days = 30
+            credit.is_active = True
+            credit.save(update_fields=['credit_limit', 'terms_days', 'is_active'])
+            self.stdout.write('  ~ dealer credit limit -> Rs 2,00,000')
+
+        # Wallet balance via a real transaction (so history isn't empty).
+        wallet, _ = DealerWallet.objects.get_or_create(dealer=dealer)
+        if wallet.balance <= 0:
+            wallet.credit(Decimal('50000'), reason='Seed deposit', reference='SEED-TOPUP')
+            self.stdout.write('  ~ dealer wallet -> Rs 50,000')
+
     # ── Users ────────────────────────────────────────────────────────────
 
     def _seed_users(self):
         defs = [
-            {'email': 'admin@furnishop.local', 'role': 'admin', 'first_name': 'Site', 'last_name': 'Admin',
+            {'email': 'admin@woodmark.local', 'role': 'admin', 'first_name': 'Site', 'last_name': 'Admin',
              'password': 'AdminPass@2024', 'is_staff': True, 'is_superuser': True},
             {'email': 'shopper-1@example.com', 'role': 'user', 'first_name': 'Asha',
              'last_name': 'Kumar', 'password': 'UserPass@2024'},
@@ -94,7 +133,7 @@ class Command(BaseCommand):
 
     def _seed_cms(self):
         Banner.objects.get_or_create(
-            title='Welcome to FurnoTech',
+            title='Welcome to Woodmark',
             defaults={
                 'image_url': 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1600',
                 'link_url': '/',

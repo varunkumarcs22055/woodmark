@@ -66,10 +66,11 @@ class RegisterView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create user as inactive — they can't log in until OTP is verified.
+        # Email-OTP verification is DISABLED (no deliverable mail in the demo).
+        # New accounts are active immediately and signed in on the spot.
+        # To re-enable later: set user.is_active=False, issue an EmailOTP,
+        # and return {'requires_verification': True} instead of tokens.
         user = serializer.save()
-        user.is_active = False
-        user.save(update_fields=['is_active'])
 
         # Referral linkage — if they signed up via someone's code, record it so
         # both sides get rewarded on the referee's first confirmed order.
@@ -88,14 +89,11 @@ class RegisterView(APIView):
                 import logging
                 logging.getLogger(__name__).warning('referral link failed for %s', user.email)
 
-        # Issue OTP + email it.
-        otp = EmailOTP.issue(user, purpose='signup', ttl_minutes=15)
-        self._send_signup_otp_email(user, otp.code)
-
+        tokens = get_tokens_for_user(user)
         return Response({
-            'detail': 'Account created. Check your email for a 6-digit verification code.',
-            'email': user.email,
-            'requires_verification': True,
+            **tokens,
+            'user': UserProfileSerializer(user).data,
+            'requires_verification': False,
         }, status=status.HTTP_201_CREATED)
 
     @staticmethod

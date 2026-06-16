@@ -32,6 +32,32 @@ export default function LoginPage() {
   const [otpCode, setOtpCode] = useState('');
   const [otpDebug, setOtpDebug] = useState('');
 
+  // One-tap demo login — authenticates against the live backend with the
+  // seeded demo accounts (no OTP, no backdoor — these are real users in the
+  // production DB). Lets anyone explore the admin / dealer / shopper views.
+  const DEMO_ACCOUNTS = {
+    user:   { email: 'shopper-1@example.com',     password: 'UserPass@2024',   dest: '/' },
+    dealer: { email: 'dealer-active@example.com',  password: 'DealerPass@2024', dest: '/dealer-dashboard' },
+    admin:  { email: 'admin@woodmark.local',       password: 'AdminPass@2024',  dest: '/admin-dashboard' },
+  };
+  const demoLogin = async (role) => {
+    const acc = DEMO_ACCOUNTS[role];
+    setLoading(true);
+    setErrors({});
+    try {
+      const data = await loginUser({ email: acc.email, password: acc.password });
+      login({ access: data.access, refresh: data.refresh }, data.user);
+      toast.success(`Signed in as ${role}`);
+      navigate(acc.dest, { replace: true });
+    } catch (err) {
+      toast.error(
+        err.response?.data?.detail || `Demo ${role} login failed. The account may have changed.`
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Quick test login — surface failures explicitly instead of silently
   // bouncing back to the same page (which is what happened before because
   // the .then() never ran when loginAsTestUser threw).
@@ -335,29 +361,25 @@ export default function LoginPage() {
             Business buyer? <Link to="/dealer-apply">Apply as Dealer →</Link>
           </p>
 
-          {/* Quick test login — shown in any Vite dev build, or when
-              VITE_ENABLE_DEV_LOGIN=true is set on the prod build (Vercel).
-              Backend mirrors with the ALLOW_DEV_LOGIN env var on Render. */}
-          {(import.meta.env.DEV
-            || import.meta.env.VITE_ENABLE_DEV_LOGIN === 'true') && (
-            <div className="dev-quick-login">
-              <div className="dev-quick-login__label">Quick Test Login</div>
-              <div className="dev-quick-login__buttons">
-                <button type="button" onClick={() => quickLogin('user', '/')}>
-                  As User
-                </button>
-                <button type="button" onClick={() => quickLogin('dealer', '/dealer-dashboard')}>
-                  As Dealer
-                </button>
-                <button type="button" onClick={() => quickLogin('admin', '/admin-dashboard')}>
-                  As Admin
-                </button>
-              </div>
-              <p className="dev-quick-login__note">
-                Logs in as a real backend test user — API calls work fully.
-              </p>
+          {/* Demo access — one-tap login as each role against the live
+              backend. Always visible (this is a public demo). */}
+          <div className="dev-quick-login">
+            <div className="dev-quick-login__label">Explore the demo — one-tap login</div>
+            <div className="dev-quick-login__buttons">
+              <button type="button" onClick={() => demoLogin('user')} disabled={loading}>
+                As Shopper
+              </button>
+              <button type="button" onClick={() => demoLogin('dealer')} disabled={loading}>
+                As Dealer
+              </button>
+              <button type="button" onClick={() => demoLogin('admin')} disabled={loading}>
+                As Admin
+              </button>
             </div>
-          )}
+            <p className="dev-quick-login__note">
+              Signs in as a real demo account — full admin / dealer / shopper access.
+            </p>
+          </div>
         </div>
       </div>
     </div>

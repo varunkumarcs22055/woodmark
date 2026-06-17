@@ -203,13 +203,13 @@ class OrderCreateSerializer(serializers.Serializer):
             product = Product.objects.get(pk=item_data['product_id'])
             quantity = item_data['quantity']
             original_price = product.price
-            if user_role == 'dealer' and user is not None:
+            if is_active_dealer:
                 from dealer_pricing.service import resolve as resolve_dealer
                 res = resolve_dealer(product, user, quantity=quantity)
                 effective_price = res['effective_price']
             else:
                 effective_price, _, _ = get_effective_price(
-                    product, user_role, quantity=quantity,
+                    product, 'user', quantity=quantity,
                 )
 
             # Dealer backorder: detect short stock per line.

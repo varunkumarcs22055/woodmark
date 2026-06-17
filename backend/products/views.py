@@ -430,13 +430,15 @@ class BestSellersView(APIView):
             # Preserve the aggregate order — Postgres can't ORDER BY array.
             qs = (Product.objects
                   .filter(pk__in=ranked_ids)
-                  .select_related('category'))
+                  .select_related('category')
+                  .prefetch_related('tags', 'discounts', 'negotiated_prices', 'media'))
             products = sorted(qs, key=lambda p: ranked_ids.index(p.pk))
         else:
             # Cold-start fallback: best-rated products with at least one review.
             qs = (Product.objects
                   .filter(is_deleted=False, status='active', rating_count__gt=0)
                   .select_related('category')
+                  .prefetch_related('tags', 'discounts', 'negotiated_prices', 'media')
                   .order_by('-rating_avg', '-rating_count', '-created_at'))
             if _hide_dealer_only_for(request.user):
                 qs = qs.filter(dealer_only=False)

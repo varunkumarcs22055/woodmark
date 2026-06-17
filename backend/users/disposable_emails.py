@@ -107,10 +107,11 @@ def is_disposable_email(email: str) -> bool:
     if not email or '@' not in email:
         return False
     domain = email.rsplit('@', 1)[1].strip().lower()
-    if domain in DISPOSABLE_DOMAINS:
-        return True
-    # Subdomain match (e.g. xyz.mailinator.com)
-    for d in DISPOSABLE_DOMAINS:
-        if domain.endswith('.' + d):
+    
+    # Check domain and parent subdomains using O(1) set lookup for performance
+    parts = domain.split('.')
+    for i in range(len(parts) - 1):  # skip final TLD (e.g. 'com')
+        sub = '.'.join(parts[i:])
+        if sub in DISPOSABLE_DOMAINS:
             return True
     return False

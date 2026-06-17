@@ -72,7 +72,9 @@ class DiscountInfoMixin:
         # Dealer-only branch: resolve via the dealer pricing service so
         # tier discounts stack with quantity-tier ladders and per-dealer
         # negotiated prices win outright.
-        if role == 'dealer':
+        is_active_dealer = (role == 'dealer'
+                            and getattr(request.user, 'dealer_status', None) == 'active')
+        if is_active_dealer:
             from dealer_pricing.service import resolve as resolve_dealer
             res = resolve_dealer(obj, request.user, quantity=self._requested_qty())
             # Build a synthetic discount-shaped object for downstream consumers.
@@ -92,7 +94,7 @@ class DiscountInfoMixin:
             )
             return res['effective_price'], synthetic, None
 
-        return get_effective_price(obj, role, quantity=self._requested_qty())
+        return get_effective_price(obj, 'user' if role == 'dealer' else role, quantity=self._requested_qty())
 
     def get_effective_price(self, obj):
         price, _, _ = self._get_pricing(obj)

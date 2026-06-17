@@ -332,7 +332,8 @@ class SimilarProductsView(APIView):
         base = (Product.objects
                 .filter(is_deleted=False, status='active')
                 .exclude(pk=product.pk)
-                .select_related('category'))
+                .select_related('category')
+                .prefetch_related('tags', 'discounts', 'negotiated_prices', 'media'))
         if _hide_dealer_only_for(request.user):
             base = base.filter(dealer_only=False)
 

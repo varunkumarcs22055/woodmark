@@ -117,6 +117,7 @@ class ProductSuggestView(APIView):
         if len(q) < 2:
             return Response({'products': [], 'categories': []})
         qs = (Product.objects.select_related('category')
+              .prefetch_related('tags', 'discounts', 'negotiated_prices', 'media')
               .filter(is_deleted=False)
               .filter(Q(name__icontains=q) | Q(brand__icontains=q) | Q(tags__name__icontains=q))
               .distinct())

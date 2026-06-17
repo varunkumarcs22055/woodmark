@@ -89,7 +89,7 @@ class ProductListView(generics.ListAPIView):
     def get_queryset(self):
         qs = (Product.objects
               .select_related('category')
-              .prefetch_related('tags', 'discounts', 'negotiated_prices')
+              .prefetch_related('tags', 'discounts', 'negotiated_prices', 'media')
               .defer(
                   'description', 'short_description', 'highlights',
                   'feature_blocks', 'perks', 'youtube_url',

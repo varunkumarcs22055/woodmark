@@ -629,7 +629,10 @@ class ProductAdminViewSet(APIView):
     permission_classes = [IsAdminRole]
 
     def get(self, request):
-        products = Product.objects.select_related('category').filter(is_deleted=False)
+        products = (Product.objects
+                    .select_related('category')
+                    .prefetch_related('tags', 'discounts', 'negotiated_prices', 'media')
+                    .filter(is_deleted=False))
         serializer = ProductListSerializer(products, many=True)
         return Response(serializer.data)
 

@@ -51,9 +51,13 @@ class DiscountWriteSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, data):
-        product = data.get('product')
-        discount_type = data.get('discount_type')
-        min_qty = data.get('min_quantity', 1)
+        # Merge payload with the existing instance's fields to support partial updates (PATCH)
+        instance = self.instance
+        product = data.get('product') or (instance.product if instance else None)
+        discount_type = data.get('discount_type') or (instance.discount_type if instance else None)
+        min_qty = data.get('min_quantity') if 'min_quantity' in data else (instance.min_quantity if instance else 1)
+        mode = data.get('mode') or (instance.mode if instance else None)
+        value = data.get('value') if 'value' in data else (instance.value if instance else 0)
 
         # Multiple tiers per (product, type) are now allowed, but each tier
         # must have a distinct min_quantity so the ladder is unambiguous.
@@ -61,17 +65,17 @@ class DiscountWriteSerializer(serializers.ModelSerializer):
             qs = Discount.objects.filter(
                 product=product, discount_type=discount_type, min_quantity=min_qty,
             )
-            if self.instance:
-                qs = qs.exclude(pk=self.instance.pk)
+            if instance:
+                qs = qs.exclude(pk=instance.pk)
             if qs.exists():
                 raise serializers.ValidationError(
                     f'A {discount_type} tier with min_quantity={min_qty} already exists '
                     f'for this product. Use a different min_quantity to add another tier.'
                 )
 
-        if data.get('mode') == 'percent' and not (0 < data.get('value', 0) <= 100):
+        if mode == 'percent' and not (0 < value <= 100):
             raise serializers.ValidationError({'value': 'Percentage must be between 1 and 100.'})
-        if data.get('mode') == 'flat' and data.get('value', 0) <= 0:
+        if mode == 'flat' and value <= 0:
             raise serializers.ValidationError({'value': 'Flat discount amount must be greater than 0.'})
 
         return data

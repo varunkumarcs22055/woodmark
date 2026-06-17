@@ -86,6 +86,8 @@ export default function OrderDetailPage() {
     try {
       await requestOrderReturn(order.order_id, reason.trim());
       toast.success('Return request submitted. We\'ll be in touch within 1 business day.');
+      const updated = await fetchOrderDetail(orderId, !user ? guestEmail : undefined);
+      setOrder(updated);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Could not submit return.');
     } finally {

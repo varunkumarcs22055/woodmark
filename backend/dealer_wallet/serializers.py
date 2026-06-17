@@ -14,11 +14,16 @@ class WalletTransactionSerializer(serializers.ModelSerializer):
 
 
 class DealerWalletSerializer(serializers.ModelSerializer):
-    transactions = WalletTransactionSerializer(many=True, read_only=True)
+    transactions = serializers.SerializerMethodField()
 
     class Meta:
         model = DealerWallet
         fields = ['id', 'balance', 'is_active', 'created_at', 'updated_at', 'transactions']
+
+    def get_transactions(self, obj):
+        # Limit to the last 50 transactions for performance optimization
+        txns = obj.transactions.all()[:50]
+        return WalletTransactionSerializer(txns, many=True).data
 
 
 class WalletTopupSerializer(serializers.Serializer):
